@@ -1,15 +1,16 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ESNext", 
+    "module": "ESNext",
     "moduleResolution": "Bundler",
     "outDir": "dist",
     "rootDir": ".",
     "baseUrl": ".",
-    "paths": { "@workspace/db": ["./lib/db/src/index.ts"] },
+    "paths": { "@/*": ["./lib/db/src/*", "./src/*"] },
     "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+    "esModuleInterop": true
   },
-  "include": ["artifacts/api-server/src/**/*", "lib/db/src/**/*"]
+  "include": ["artifacts/api-server/src/**/*", "lib/db/src/**/*", "src/**/*"]
 }
