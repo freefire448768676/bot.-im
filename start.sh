@@ -1,2 +1,2 @@
 npm install
-node src/index.js
+npx ts-node src/index.ts
