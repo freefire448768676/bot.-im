@@ -1,36 +1,39 @@
-import type { Telegraf, Context } from "telegraf";
-import { Markup } from "telegraf";
-import { upsertUser } from "../users";
-import { getBotStatus, getExchangeRate } from "../settings";
-import { formatBalance } from "../format";
-import { db, contactLinksTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { Telegraf } from "telegraf";
+import { ensureDefaults } from "./settings";
+import { ensureDefaultDepositMethods, registerWallet } from "./handlers/wallet";
+import { registerStart, registerCommands } from "./handlers/start";
+import { registerCategories } from "./handlers/categories";
+import { registerOrders, startOrderPoller } from "./handlers/orders";
+import { registerAdmin, startPingScheduler } from "./handlers/admin";
 
-export async function ensureUser(ctx: Context) {
-  const f = ctx.from;
-  if (!f) return null;
-  return upsertUser({ id: f.id, username: f.username ?? undefined, first_name: f.first_name ?? undefined, last_name: f.last_name ?? undefined });
-}
+let bot: Telegraf | null = null;
 
-export async function showMainMenu(ctx: Context) {
-  const user = await ensureUser(ctx);
-  if (!user) return;
-  if (user.status === "banned") return ctx.reply("🚫 تم حظرك من استخدام البوت.");
-  const greeting = `أهلاً فيك في متجر المروان 🌟\nالرصيد: ${formatBalance(Number(user.balance), await getExchangeRate())}`;
-  await ctx.reply(greeting, Markup.inlineKeyboard([[
-    Markup.button.callback("🛒 المنتجات", "cat:0:1:0"),
-    Markup.button.callback("💰 رصيدي", "balance")
-  ]]));
-}
+export async function startBot() {
+  const token = process.env["BOT_TOKEN"];
+  if (!token) throw new Error("BOT_TOKEN is not set");
 
-export function registerStart(bot: Telegraf) {
-  bot.start(async (ctx) => await showMainMenu(ctx));
-  bot.command("balance", async (ctx) => {
-    const u = await ensureUser(ctx);
-    if (!u) return;
-    await ctx.reply(`💰 رصيدك: ${formatBalance(Number(u.balance), await getExchangeRate())}`);
+  await ensureDefaults();
+  await ensureDefaultDepositMethods();
+
+  bot = new Telegraf(token, { handlerTimeout: 60_000 });
+
+  registerStart(bot);
+  registerCategories(bot);
+  registerWallet(bot);
+  registerOrders(bot);
+  registerAdmin(bot);
+
+  bot.catch((err, ctx) => {
+    console.error({ err, update: ctx.update }, "telegraf error");
   });
-}
-export async function registerCommands(bot: Telegraf) {
-  await bot.telegram.setMyCommands([{ command: "start", description: "🚀 بدء" }]);
+
+  await registerCommands(bot);
+  bot.launch({ allowedUpdates: ["message", "callback_query"] });
+  console.log("Telegram bot launched");
+
+  startOrderPoller(bot);
+  startPingScheduler(bot);
+
+  process.once("SIGINT", () => bot?.stop("SIGINT"));
+  process.once("SIGTERM", () => bot?.stop("SIGTERM"));
 }
