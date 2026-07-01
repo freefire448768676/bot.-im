@@ -1,0 +1,36 @@
+import type { Telegraf, Context } from "telegraf";
+import { Markup } from "telegraf";
+import { upsertUser } from "../users";
+import { getBotStatus, getExchangeRate } from "../settings";
+import { formatBalance } from "../format";
+import { db, contactLinksTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+
+export async function ensureUser(ctx: Context) {
+  const f = ctx.from;
+  if (!f) return null;
+  return upsertUser({ id: f.id, username: f.username ?? undefined, first_name: f.first_name ?? undefined, last_name: f.last_name ?? undefined });
+}
+
+export async function showMainMenu(ctx: Context) {
+  const user = await ensureUser(ctx);
+  if (!user) return;
+  if (user.status === "banned") return ctx.reply("🚫 تم حظرك من استخدام البوت.");
+  const greeting = `أهلاً فيك في متجر المروان 🌟\nالرصيد: ${formatBalance(Number(user.balance), await getExchangeRate())}`;
+  await ctx.reply(greeting, Markup.inlineKeyboard([[
+    Markup.button.callback("🛒 المنتجات", "cat:0:1:0"),
+    Markup.button.callback("💰 رصيدي", "balance")
+  ]]));
+}
+
+export function registerStart(bot: Telegraf) {
+  bot.start(async (ctx) => await showMainMenu(ctx));
+  bot.command("balance", async (ctx) => {
+    const u = await ensureUser(ctx);
+    if (!u) return;
+    await ctx.reply(`💰 رصيدك: ${formatBalance(Number(u.balance), await getExchangeRate())}`);
+  });
+}
+export async function registerCommands(bot: Telegraf) {
+  await bot.telegram.setMyCommands([{ command: "start", description: "🚀 بدء" }]);
+}
