@@ -1,3 +1,39 @@
-export * from "./users";
-export * from "./orders";
-export * from "./products";
+import { Telegraf } from "telegraf";
+import { ensureDefaults } from "./settings";
+import { ensureDefaultDepositMethods, registerWallet } from "./handlers/wallet";
+import { registerStart, registerCommands } from "./handlers/start";
+import { registerCategories } from "./handlers/categories";
+import { registerOrders, startOrderPoller } from "./handlers/orders";
+import { registerAdmin, startPingScheduler } from "./handlers/admin";
+
+let bot: Telegraf | null = null;
+
+export async function startBot() {
+  const token = process.env["BOT_TOKEN"];
+  if (!token) throw new Error("BOT_TOKEN is not set");
+
+  await ensureDefaults();
+  await ensureDefaultDepositMethods();
+
+  bot = new Telegraf(token, { handlerTimeout: 60_000 });
+
+  registerStart(bot);
+  registerCategories(bot);
+  registerWallet(bot);
+  registerOrders(bot);
+  registerAdmin(bot);
+
+  bot.catch((err, ctx) => {
+    console.error({ err, update: ctx.update }, "telegraf error");
+  });
+
+  await registerCommands(bot);
+  bot.launch({ allowedUpdates: ["message", "callback_query"] });
+  console.log("Telegram bot launched");
+
+  startOrderPoller(bot);
+  startPingScheduler(bot);
+
+  process.once("SIGINT", () => bot?.stop("SIGINT"));
+  process.once("SIGTERM", () => bot?.stop("SIGTERM"));
+}
