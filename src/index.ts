@@ -1,6 +1,6 @@
 import { Telegraf } from "telegraf";
 import dotenv from "dotenv";
-import { ensureDefaults, db, botSettingsTable } from "../lib/db/index.js";
+import { ensureDefaults } from "@workspace/db";
 import { ensureDefaultDepositMethods } from "./bot/handlers/wallet.js";
 import { registerStart, registerCommands } from "./bot/handlers/start.js";
 import { registerCategories } from "./bot/handlers/categories.js";
