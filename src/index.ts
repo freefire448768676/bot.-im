@@ -1,12 +1,38 @@
-import http from "http";
+import { Telegraf } from "telegraf";
+import dotenv from "dotenv";
+import { ensureDefaults, db, botSettingsTable } from "../lib/db/index.js";
+import { ensureDefaultDepositMethods } from "./bot/handlers/wallet.js";
+import { registerStart, registerCommands } from "./bot/handlers/start.js";
+import { registerCategories } from "./bot/handlers/categories.js";
+import { registerOrders, startOrderPoller } from "./bot/handlers/orders.js";
+import { registerAdmin, startPingScheduler } from "./bot/handlers/admin.js";
 
-const port = process.env.PORT || 3000;
+dotenv.config();
 
-const server = http.createServer((_req, res) => {
-  res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end("Bot is running");
-});
+async function main() {
+  const token = process.env.BOT_TOKEN;
+  if (!token) throw new Error("BOT_TOKEN not set");
+  
+  await ensureDefaults();
+  await ensureDefaultDepositMethods();
 
-server.listen(port, () => {
-  console.log(`Server listening on ${port}`);
-});
+  const bot = new Telegraf(token);
+
+  registerStart(bot);
+  registerCategories(bot);
+  registerOrders(bot);
+  registerAdmin(bot);
+  
+  await registerCommands(bot);
+  
+  bot.launch();
+  console.log("Bot is running with long polling");
+  
+  startOrderPoller(bot);
+  startPingScheduler(bot);
+  
+  process.once("SIGINT", () => bot.stop("SIGINT"));
+  process.once("SIGTERM", () => bot.stop("SIGTERM"));
+}
+
+main().catch(console.error);
