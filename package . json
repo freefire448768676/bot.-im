@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "npx tsc",
-    "start": "node artifacts/api-server/src/bot/index.js",
+    "start": "npm run db:push && node artifacts/api-server/src/bot/index.js",
     "dev": "ts-node artifacts/api-server/src/bot/index.ts",
     "db:push": "npx drizzle-kit push"
   },
