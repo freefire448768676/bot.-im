@@ -1,33 +1,29 @@
-import { Telegraf } from "telegraf";
 import express from "express";
 import http from "http";
+import { startBot } from "./bot/index";
 
-const bot = new Telegraf(process.env.BOT_TOKEN!);
-const PORT = process.env.PORT || 8080;
-
-// 1. اوامر البوت تبعك
-bot.start((ctx) => ctx.reply("اهلا وسهلا! البوت شغال 24/7"));
-// حط باقي اوامر البوت تبعك هون
-
-// 2. سيرفر الـ health عشان Railway ما ينام
+// 1. سيرفر الـ Health عشان Railway و UptimeRobot
 const app = express();
+const PORT = process.env.PORT || 3000;
+
 app.get("/health", (req, res) => {
-  res.status(200).send("OK");
+  res.send("OK");
 });
 
 app.listen(PORT, () => {
   console.log(`Health server running on port ${PORT}`);
 });
 
-// 3. شغل البوت
-bot.launch();
-console.log("Bot is running...");
+// 2. شغل البوت تبعك
+startBot().catch((err) => {
+  console.error("Failed to start bot", err);
+  process.exit(1);
+});
 
-// 4. self-ping كل 4 دقايق زيادة امان
+// 3. نخلي البوت صاحي: نضرب /health كل 4 دقايق لحالنا
 setInterval(() => {
   http.get(`http://localhost:${PORT}/health`);
 }, 4 * 60 * 1000);
 
-// ايقاف امن
-process.once("SIGINT", () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
+process.once("SIGINT", () => process.exit(0));
+process.once("SIGTERM", () => process.exit(0));
