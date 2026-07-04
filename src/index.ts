@@ -1,35 +1,33 @@
 import { Telegraf } from "telegraf";
-import dotenv from "dotenv";
-import { registerStart } from "./bot/handlers/start";
-import { registerCategories } from "./bot/handlers/categories";
-import { registerOrders } from "./bot/handlers/orders";
-import { registerAdmin } from "./bot/handlers/admin";
-import { ensureDefaultDepositMethods } from "./bot/handlers/wallet";
-import { startOrderPoller, startPingScheduler } from "./bot/handlers/admin";
+import express from "express";
+import http from "http";
 
-dotenv.config();
+const bot = new Telegraf(process.env.BOT_TOKEN!);
+const PORT = process.env.PORT || 8080;
 
-async function main() {
-  const token = process.env.BOT_TOKEN;
-  if (!token) throw new Error("BOT_TOKEN not set");
+// 1. اوامر البوت تبعك
+bot.start((ctx) => ctx.reply("اهلا وسهلا! البوت شغال 24/7"));
+// حط باقي اوامر البوت تبعك هون
 
-  await ensureDefaultDepositMethods();
+// 2. سيرفر الـ health عشان Railway ما ينام
+const app = express();
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
 
-  const bot = new Telegraf(token);
+app.listen(PORT, () => {
+  console.log(`Health server running on port ${PORT}`);
+});
 
-  registerStart(bot);
-  registerCategories(bot);
-  registerOrders(bot);
-  registerAdmin(bot);
+// 3. شغل البوت
+bot.launch();
+console.log("Bot is running...");
 
-  bot.launch();
-  console.log("Bot is running with long polling");
+// 4. self-ping كل 4 دقايق زيادة امان
+setInterval(() => {
+  http.get(`http://localhost:${PORT}/health`);
+}, 4 * 60 * 1000);
 
-  startOrderPoller();
-  startPingScheduler();
-
-  process.once("SIGINT", () => bot.stop("SIGINT"));
-  process.once("SIGTERM", () => bot.stop("SIGTERM"));
-}
-
-main().catch(console.error);
+// ايقاف امن
+process.once("SIGINT", () => bot.stop("SIGINT"));
+process.once("SIGTERM", () => bot.stop("SIGTERM"));
