@@ -4,4 +4,4 @@ COPY package.json ./
 RUN npm install
 COPY .
 EXPOSE 8080
-CMD ["npx", "tsx", "المصدر/index.ts"]
+CMD ["npx", "tsx", "src/index.ts"]
