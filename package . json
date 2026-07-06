@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "npx tsc",
-    "start": "npx prisma db push && node artifacts/api-server/dist/index.js",
-    "dev": "tsx watch artifacts/api-server/src/bot/index.ts",
-    "db:push": "npx drizzle-kit push",
+    "build": "tsc",
+    "start": "node artifacts/api-server/dist/index.js",
+    "dev": "tsx watch src/bot/index.ts",
+    "db:push": "npx prisma db push",
     "db:studio": "npx drizzle-kit studio"
   },
   "dependencies": {
@@ -19,7 +19,7 @@
   "devDependencies": {
     "@types/node": "^22.5.0",
     "drizzle-kit": "^0.24.2",
-    "tsx": "^4.16.2",
+    "tsx": "^4.19.2",
     "typescript": "^5.5.4"
   }
 }
