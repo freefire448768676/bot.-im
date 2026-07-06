@@ -8,7 +8,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/src/index.js"
+    "start": "node dist/src/index.js",
+    "postinstall": "npm install typescript @types/node @types/express @types/pg"
   },
   "dependencies": {
     "telegraf": "^4.15.0",
