@@ -8,6 +8,6 @@
   "scripts": {
     "install": "cd artifacts/api-server && npm install",
     "build": "cd artifacts/api-server && npx prisma generate",
-    "start": "cd artifacts/api-server && npx prisma db push && npx tsx index.ts"
+    "start": "cd artifacts/api-server && npx prisma db push && npm start"
   }
 }
