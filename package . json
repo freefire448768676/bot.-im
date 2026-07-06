@@ -1,13 +1,13 @@
 {
   "name": "bot-im",
   "version": "1.0.0",
-  "main": "artifacts/api-server/dist/index.js",
+  "main": "artifacts/api-server/index.ts",
   "engines": {
     "node": "20.x"
   },
   "scripts": {
     "install": "cd artifacts/api-server && npm install",
     "build": "cd artifacts/api-server && npx prisma generate",
-    "start": "cd artifacts/api-server && npx prisma db push && npx tsx dist/index.js"
+    "start": "cd artifacts/api-server && npx prisma db push && npx tsx index.ts"
   }
 }
