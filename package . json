@@ -7,7 +7,7 @@
   },
   "scripts": {
     "install": "cd artifacts/api-server && npm install",
-    "build": "cd artifacts/api-server && npx prisma generate && npx tsc",
-    "start": "cd artifacts/api-server && npx prisma db push && node dist/index.js"
+    "build": "cd artifacts/api-server && npx prisma generate",
+    "start": "cd artifacts/api-server && npx prisma db push && npx tsx dist/index.js"
   }
 }
