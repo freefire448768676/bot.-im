@@ -2,7 +2,6 @@
   "name": "oranos-bot",
   "version": "1.0.0",
   "description": "Oranos Telegram Bot",
-  "main": "src/index.ts",
   "type": "module",
   "scripts": {
     "start": "npx tsx src/index.ts"
