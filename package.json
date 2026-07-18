@@ -5,11 +5,11 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "start": "npx tsx src/index.ts",
-    "dev": "npx tsx src/index.ts"
+    "start": "npx tsx src/index.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
+    "express": "^4.18.2",
     "pg": "^8.11.5",
     "telegraf": "^4.15.3",
     "tsx": "^4.7.1"
