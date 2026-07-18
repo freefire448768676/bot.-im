@@ -1,16 +1,18 @@
 {
-  "name": "al-marwan-store",
+  "name": "bot-marwan",
+  "version": "1.0.0",
   "type": "module",
+  "main": "src/index.ts",
   "scripts": {
-    "start": "tsx src/index.ts"
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts"
   },
   "dependencies": {
     "axios": "^1.7.2",
-    "dotenv": "^16.4.5",
     "drizzle-orm": "^0.31.2",
-    "express": "^4.19.2",
-    "grammy": "^1.27.0",
     "pg": "^8.11.5",
+    "telegraf": "^4.16.3",
+    "telegraf-ratelimit": "^1.2.2",
     "tsx": "^4.15.6"
   }
 }
