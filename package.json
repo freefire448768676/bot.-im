@@ -1,21 +1,14 @@
 {
   "name": "bot-im",
   "version": "1.0.0",
-  "description": "Telegram Bot for IM",
-  "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "start": "npx tsx src/index.ts",
-    "dev": "npx tsx src/index.ts",
-    "build": "npx tsc"
+    "start": "npx tsx src/index.ts"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "dotenv": "^16.4.5",
-    "drizzle-orm": "^0.30.10",
-    "drizzle-kit": "^0.22.10",
+    "drizzle-orm": "^0.29.3",
+    "drizzle-kit": "^0.20.14",
     "grammy": "^1.24.1",
     "pg": "^8.11.5",
     "tsx": "^4.15.6"
@@ -26,6 +19,6 @@
     "typescript": "^5.5.4"
   },
   "engines": {
-    "node": ">=18"
+    "node": "18"
   }
 }
