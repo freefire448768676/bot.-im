@@ -1,4 +1,5 @@
 import { Telegraf } from "telegraf";
+import rateLimit from "telegraf-ratelimit";
 import { ensureDefaultSettings, ensureDefaultDepositMethods, getBotStatus, getUser } from "./lib/db";
 import { registerStart } from "./bot/handlers/start";
 import { registerWallet } from "./bot/handlers/wallet";
@@ -12,6 +13,14 @@ if (!token) throw new Error("BOT_TOKEN is not set");
 
 const bot = new Telegraf(token);
 
+// Rate limit: 3 requests per 1 second
+bot.use(rateLimit({
+  window: 1000,
+  limit: 3,
+  onLimitExceeded: (ctx) => ctx.reply("⏳ انتظر قليلاً ثم أعد المحاولة")
+}));
+
+// Middleware عمل البوت
 bot.use(async (ctx, next) => {
   const status = await getBotStatus();
   const userId = ctx.from?.id;
@@ -28,6 +37,7 @@ bot.use(async (ctx, next) => {
 async function main() {
   await ensureDefaultSettings();
   await ensureDefaultDepositMethods();
+
   registerStart(bot);
   registerCategories(bot);
   registerWallet(bot);
@@ -35,16 +45,22 @@ async function main() {
   registerAdmin(bot);
   registerOrderTextHandlers(bot);
   registerAdminTextHandlers(bot);
+
   process.on("uncaughtException", (e) => console.error("uncaughtException", e));
   process.on("unhandledRejection", (e) => console.error("unhandledRejection", e));
   bot.catch((err, ctx) => console.error("Bot error", err, ctx.update));
+
   await bot.launch({ dropPendingUpdates: false, allowedUpdates: ["message", "callback_query"] });
+
   prefetchInitialContent().catch(() => {});
   startBackgroundRefresher();
   startOrderPoller(bot);
   startPingScheduler(bot);
+
   http.createServer((_, res) => { res.writeHead(200); res.end("OK"); }).listen(process.env.PORT || 3000);
+
   process.once("SIGINT", () => bot.stop("SIGINT"));
   process.once("SIGTERM", () => bot.stop("SIGTERM"));
 }
+
 main();
