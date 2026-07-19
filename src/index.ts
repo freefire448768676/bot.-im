@@ -1,5 +1,4 @@
 import { Telegraf } from "telegraf";
-import rateLimit from "telegraf-ratelimit";
 import { ensureDefaultSettings, ensureDefaultDepositMethods, getBotStatus, getUser } from "./lib/db";
 import { registerStart } from "./bot/handlers/start";
 import { registerWallet } from "./bot/handlers/wallet";
@@ -13,25 +12,23 @@ if (!token) throw new Error("BOT_TOKEN is not set");
 
 const bot = new Telegraf(token);
 
-// Rate limit: 3 requests per 1 second
-bot.use(rateLimit({
-  window: 1000,
-  limit: 3,
-  onLimitExceeded: (ctx) => ctx.reply("⏳ انتظر قليلاً ثم أعد المحاولة")
-}));
-
 // Middleware عمل البوت
 bot.use(async (ctx, next) => {
-  const status = await getBotStatus();
-  const userId = ctx.from?.id;
-  if (status === "off" && userId) {
-    const user = await getUser(userId);
-    if (!user?.isAdmin) {
-      if (ctx.callbackQuery) return ctx.answerCbQuery("🚫 البوت متوقف مؤقتاً للصيانة");
-      return ctx.reply("🚫 البوت متوقف مؤقتاً للصيانة. يرجى المحاولة لاحقاً.");
+  try {
+    const status = await getBotStatus();
+    const userId = ctx.from?.id;
+    if (status === "off" && userId) {
+      const user = await getUser(userId);
+      if (!user?.isAdmin) {
+        if (ctx.callbackQuery) return ctx.answerCbQuery("🚫 البوت متوقف مؤقتاً للصيانة");
+        return ctx.reply("🚫 البوت متوقف مؤقتاً للصيانة. يرجى المحاولة لاحقاً.");
+      }
     }
+    return next();
+  } catch (e) {
+    console.error(e);
+    return next();
   }
-  return next();
 });
 
 async function main() {
@@ -51,6 +48,7 @@ async function main() {
   bot.catch((err, ctx) => console.error("Bot error", err, ctx.update));
 
   await bot.launch({ dropPendingUpdates: false, allowedUpdates: ["message", "callback_query"] });
+  console.log("Bot started");
 
   prefetchInitialContent().catch(() => {});
   startBackgroundRefresher();
