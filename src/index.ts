@@ -1,5 +1,5 @@
 import { Telegraf } from "telegraf";
-import { ensureDefaultSettings, ensureDefaultDepositMethods, getBotStatus } from "./lib/db/index.js";
+import { ensureDefaultSettings, ensureDefaultDepositMethods, getBotStatus, getUser } from "./lib/db.js";
 import { registerStart } from "./bot/handlers/start.js";
 import { registerWallet } from "./bot/handlers/wallet.js";
 import { registerCategories, prefetchInitialContent, startBackgroundRefresher } from "./bot/handlers/categories.js";
@@ -17,7 +17,6 @@ bot.use(async (ctx, next) => {
   const status = await getBotStatus();
   const userId = ctx.from?.id;
   if (status === "off" && userId) {
-    const { getUser } = await import("./lib/db/index.js");
     const user = await getUser(userId);
     if (!user?.isAdmin) {
       if (ctx.callbackQuery) return ctx.answerCbQuery("🚫 البوت متوقف مؤقتاً للصيانة");
@@ -39,7 +38,6 @@ async function main() {
   registerOrderTextHandlers(bot);
   registerAdminTextHandlers(bot);
 
-  // معالجة الاخطاء
   process.on("uncaughtException", (e) => console.error("uncaughtException", e));
   process.on("unhandledRejection", (e) => console.error("unhandledRejection", e));
   bot.catch((err, ctx) => console.error("Bot error", err, ctx.update));
@@ -51,7 +49,6 @@ async function main() {
   startOrderPoller(bot);
   startPingScheduler(bot);
 
-  // سيرفر خفيف ل Railway + UptimeRobot
   http.createServer((_, res) => { res.writeHead(200); res.end("OK"); }).listen(process.env.PORT || 3000);
 
   process.once("SIGINT", () => bot.stop("SIGINT"));
