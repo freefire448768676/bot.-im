@@ -1,10 +1,10 @@
 import { Telegraf } from "telegraf";
-import { ensureDefaultSettings, ensureDefaultDepositMethods, getBotStatus, getUser } from "./lib/db.js";
-import { registerStart } from "./bot/handlers/start.js";
-import { registerWallet } from "./bot/handlers/wallet.js";
-import { registerCategories, prefetchInitialContent, startBackgroundRefresher } from "./bot/handlers/categories.js";
-import { registerOrders, registerOrderTextHandlers, startOrderPoller } from "./bot/handlers/orders.js";
-import { registerAdmin, registerAdminTextHandlers, startPingScheduler } from "./bot/handlers/admin.js";
+import { ensureDefaultSettings, ensureDefaultDepositMethods, getBotStatus, getUser } from "./lib/db";
+import { registerStart } from "./bot/handlers/start";
+import { registerWallet } from "./bot/handlers/wallet";
+import { registerCategories, prefetchInitialContent, startBackgroundRefresher } from "./bot/handlers/categories";
+import { registerOrders, registerOrderTextHandlers, startOrderPoller } from "./bot/handlers/orders";
+import { registerAdmin, registerAdminTextHandlers, startPingScheduler } from "./bot/handlers/admin";
 import * as http from "http";
 
 const token = process.env.BOT_TOKEN;
