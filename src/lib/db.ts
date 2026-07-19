@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { pgTable, serial, text, numeric, integer, boolean, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, numeric, integer, boolean } from 'drizzle-orm/pg-core';
 import { eq } from 'drizzle-orm';
 
 const connectionString = process.env.DATABASE_URL!;
@@ -40,14 +40,17 @@ export async function ensureDefaultSettings() {
   await db.insert(settingsTable).values({key: 'bot_status', value: 'on'}).onConflictDoNothing();
 }
 export async function ensureDefaultDepositMethods() {}
+
 export async function getBotStatus() {
   const [res] = await db.select().from(settingsTable).where(eq(settingsTable.key, 'bot_status'));
   return res?.value || 'on';
 }
+
 export async function getUser(id: number) {
   const [res] = await db.select().from(usersTable).where(eq(usersTable.id, id));
   return res;
 }
+
 export async function listAdmins() {
   const res = await db.select().from(usersTable).where(eq(usersTable.isAdmin, true));
   return res.map(u => u.id);
