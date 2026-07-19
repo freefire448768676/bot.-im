@@ -15,3 +15,8 @@
     "tsx": "^4.15.6"
   }
 }
+"dependencies": {
+  "telegraf": "^4.16.3",
+  "telegraf-ratelimit": "^1.0.2",
+  "@workspace/db": "*"
+}
