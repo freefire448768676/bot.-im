@@ -1,6 +1,6 @@
 // ============================================================
-//  بوت متجر المروان - نسخة Render.com (ملف واحد)
-//  تم تحويله من TypeScript/Drizzle Monorepo إلى JavaScript/SQL
+//  بوت متجر المروان - نسخة Railway (JavaScript/pg)
+//  تم تحويله من TypeScript/Drizzle إلى JavaScript/SQL
 // ============================================================
 
 const { Telegraf, Markup } = require("telegraf");
@@ -8,6 +8,7 @@ const { Pool } = require("pg");
 const axios = require("axios");
 const express = require("express");
 const crypto = require("crypto");
+const http = require("http");
 
 // ── Environment Variables Required ──
 // BOT_TOKEN=your_telegram_bot_token
@@ -15,7 +16,7 @@ const crypto = require("crypto");
 // ORANOS_API_TOKEN=your_oranos_token
 // ORANOS_API_BASE=https://api.oranosmarket.com (optional)
 // ADMIN_USERNAME=your_telegram_username
-// PORT=10000 (Render sets this automatically)
+// PORT=3000 (Railway sets this automatically)
 // OPENAI_API_KEY=sk-... (optional, for AI support)
 
 // ═════════════════════════════════════════════════════════════
@@ -30,6 +31,17 @@ const logger = {
 };
 
 // ═════════════════════════════════════════════════════════════
+//  EXPRESS SERVER (for Railway health checks)
+// ═════════════════════════════════════════════════════════════
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get("/", (req, res) => res.send("OK - Bot is running"));
+app.get("/health", (req, res) => res.send("OK"));
+app.listen(PORT, () => logger.info(`Express server running on port ${PORT}`));
+
+// ═════════════════════════════════════════════════════════════
 //  DATABASE (PostgreSQL via pg)
 // ═════════════════════════════════════════════════════════════
 
@@ -39,7 +51,9 @@ if (!process.env.DATABASE_URL) {
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL.includes('render.com') ? { rejectUnauthorized: false } : false
+  ssl: process.env.DATABASE_URL.includes('railway.app') || process.env.DATABASE_URL.includes('render.com') 
+    ? { rejectUnauthorized: false } 
+    : false
 });
 
 // Initialize tables
@@ -665,7 +679,41 @@ async function clearInlineKeyboard(ctx) {
 
 const convHistory = new Map();
 
-const SYSTEM_PROMPT = `أنت مساعد ذكاء اصطناعي متخصص في إدارة متجر "متجر المروان" على تيليجرام...`; // (same as original)
+const SYSTEM_PROMPT = `أنت مساعد ذكاء اصطناعي متخصص في إدارة متجر "متجر المروان" على تيليجرام.
+البوت يبيع منتجات رقمية عبر منصة oranosmarket.com.
+
+المزايا الرئيسية للبوت:
+- بيع منتجات رقمية (ألعاب، سوشل ميديا، ذكاء اصطناعي، اشتراكات، وغيرها)
+- نظام رصيد بالدولار مع عرض تلقائي بالليرة السورية
+- لوحة إدارة شاملة: طلبات، مستخدمون، إيداعات، إعدادات
+- نسبة ربح عامة + نسبة ربح للسوشل ميديا قابلتان للتعديل
+- طلبات إيداع تتم بالموافقة اليدوية من الأدمن
+- إشعارات تلقائية عند قبول أو رفض الطلب
+- رد رصيد تلقائي عند رفض الطلب بمبالغ بالدولار والليرة
+- بث رسائل جماعية لجميع المستخدمين
+- أقسام مخصصة وأسعار مخصصة لكل منتج
+- منتجات يدوية يضيفها الأدمن
+- بينج تلقائي كل X دقائق للتأكد أن البوت شغال
+- مساعد ذكي (هذا الحوار) للإجابة على أسئلة الإدارة
+
+الإعدادات الرئيسية في لوحة الإدارة:
+- سعر الصرف: كم ليرة سورية = 1 دولار (الإعدادات ← تعديل سعر الصرف)
+- نسبة الربح العام: تُضاف على سعر API لجميع المنتجات (الإعدادات ← تعديل الربح العام)
+- نسبة ربح السوشل ميديا: للمنتجات ذات الطابع الاجتماعي (الإعدادات ← تعديل ربح السوشل)
+- كلمة مرور الإدارة: للوصول للوحة (الإعدادات ← تغيير كلمة المرور)
+- حالة البوت: تشغيل/إيقاف (وضع الصيانة) من الزر في لوحة الإدارة
+- البينج التلقائي: لوحة الإدارة ← 🔄 بينج تلقائي
+
+كيف يعمل البوت بشكل عام:
+1. المستخدم يضغط /start ويتصفح المنتجات
+2. يختار المنتج ويدخل الكميات والمعاملات المطلوبة
+3. يؤكد الطلب → يُخصم الرصيد تلقائياً
+4. البوت يرسل الطلب لـ oranosmarket.com
+5. الطلب قد ينفذ فوراً أو يبقى معلقاً
+6. إذا تأخر: يتحقق البوت كل 90 ثانية ويُشعر المستخدم عند الحل
+7. رفض الطلب: يُعاد الرصيد + إشعار بالمبلغ بالعملتين
+
+أجب دائماً بالعربية. كن دقيقاً وعملياً. إذا لم تعرف الإجابة، قل ذلك بصراحة.`;
 
 async function callAiSupport(userId, userMessage) {
   const apiKey = process.env["OPENAI_API_KEY"];
@@ -708,10 +756,61 @@ function hasAiKey() {
 }
 
 function buildSmartFaq(msg) {
-  // Same logic as original...
   const q = msg.toLowerCase().trim();
-  // ... (shortened for brevity, include all FAQ responses from original)
-  return `🤖 *مساعد متجر المروان*\n\nيمكنني مساعدتك...`;
+
+  if ((q.includes("سعر") && q.includes("صرف")) || q.includes("ليرة") || q.includes("ل.س")) {
+    return `💱 *تعديل سعر الصرف:*\n1. لوحة الإدارة\n2. ⚙️ الإعدادات\n3. 💱 تعديل سعر الصرف\n4. أرسل القيمة الجديدة\n\n_مثال: إذا أرسلت 500، فكل دولار = 500 ل.س_\n\nملاحظة: سعر الصرف يؤثر على عرض الأسعار فقط، لا يغير الأرصدة المخزنة.`;
+  }
+  if (q.includes("ربح") || q.includes("markup") || q.includes("هامش")) {
+    return `📈 *تعديل نسبة الربح:*\n\n*الربح العام* (لكل المنتجات):\nالإعدادات ← ✏️ تعديل الربح العام\n\n*ربح السوشل ميديا* (منتجات التواصل):\nالإعدادات ← ✏️ تعديل ربح السوشل\n\nأرسل رقماً فقط (مثال: 10 يعني 10%)`;
+  }
+  if (q.includes("رصيد") && (q.includes("أضف") || q.includes("إضافة") || q.includes("خصم") || q.includes("تعديل"))) {
+    return `💰 *تعديل رصيد مستخدم:*\n1. لوحة الإدارة ← 🔍 بحث مستخدم\n2. أدخل معرف المستخدم أو اسمه\n3. اضغط ➕ إضافة رصيد أو ➖ خصم رصيد\n4. أدخل المبلغ بالدولار\n\nأو من: 👥 المستخدمون ← اختر المستخدم`;
+  }
+  if (q.includes("إيداع") || q.includes("شحن") || q.includes("قبول") || q.includes("رفض")) {
+    return `💳 *إدارة الإيداعات:*\n\n• طلبات جديدة: لوحة الإدارة ← 📥 طلبات الإيداع\n• لقبول طلب: اضغط ✅ قبول وأدخل المبلغ\n• لرفض طلب: اضغط ❌ رفض\n\n*إضافة طريقة إيداع:*\nلوحة الإدارة ← 💳 طرق الإيداع ← ➕ إضافة طريقة`;
+  }
+  if ((q.includes("كلمة") && q.includes("مرور")) || q.includes("باسورد") || q.includes("password")) {
+    return `🔑 *تغيير كلمة المرور:*\n1. لوحة الإدارة\n2. ⚙️ الإعدادات\n3. 🔑 تغيير كلمة المرور\n4. أرسل كلمة المرور الجديدة`;
+  }
+  if (q.includes("منتج") || q.includes("سعر منتج") || q.includes("تعديل منتج")) {
+    return `🛒 *تعديل سعر منتج:*\n1. لوحة الإدارة ← 🛒 إدارة المنتجات\n2. اختر القسم ثم المنتج\n3. اضغط 💲 تعديل السعر\n4. أرسل السعر بالدولار أو النسبة%\n\n*إضافة منتج يدوي:*\nلوحة الإدارة ← ➕ إضافة منتج يدوي`;
+  }
+  if (q.includes("بث") || q.includes("رسالة جماعية") || q.includes("broadcast")) {
+    return `📣 *إرسال رسالة جماعية:*\n1. لوحة الإدارة\n2. 📣 رسالة جماعية\n3. اكتب الرسالة وأرسلها\n\nستُرسل لجميع المستخدمين النشطين تلقائياً.`;
+  }
+  if (q.includes("صيانة") || q.includes("إيقاف البوت") || q.includes("تشغيل البوت")) {
+    return `🔧 *وضع الصيانة:*\nمن لوحة الإدارة، اضغط زر الحالة:\n• 🟢 البوت: شغال ← اضغطه لإيقاف البوت\n• 🔴 البوت: متوقف ← اضغطه لتشغيل البوت\n\nعند الإيقاف: تظهر رسالة صيانة للمستخدمين ولا يمكنهم الشراء.`;
+  }
+  if (q.includes("سوشل") || q.includes("سوشال") || q.includes("social") || q.includes("انستغرام") || q.includes("يوتيوب")) {
+    return `📱 *إعدادات السوشل ميديا:*\n\n• نسبة الربح: الإعدادات ← تعديل ربح السوشل\n• الحد الأدنى/الأقصى للكمية: محدد تلقائياً من المنتج نفسه، وإلا من الإعدادات العامة\n• الكلمات المفتاحية: تحدد أي المنتجات تُعامَل كسوشل ميديا\n\nالمنتجات التي لها qty_values خاصة تستخدمها بدلاً من الإعدادات العامة.`;
+  }
+  if (q.includes("طلب") || q.includes("أوردر") || q.includes("order")) {
+    return `📦 *إدارة الطلبات:*\n\n• كل الطلبات: لوحة الإدارة ← 📦 كل الطلبات\n• طلبات مستخدم: 👥 المستخدمون ← اختر المستخدم ← 📋 طلباته\n\n*الإشعارات التلقائية:*\n• عند القبول: يُرسل للمستخدم كود + رد الموقع\n• عند الرفض: يُعاد الرصيد + إشعار بالمبلغ بالعملتين\n• يتحقق البوت من الطلبات المعلقة كل 90 ثانية`;
+  }
+  if (q.includes("بينج") || q.includes("keep alive") || q.includes("ping") || q.includes("شغال")) {
+    return `🔄 *البينج التلقائي:*\nمن لوحة الإدارة ← 🔄 بينج تلقائي\n\n• يرسل رسالة /start للأدمن كل X دقائق\n• يمكن تفعيله وإيقافه وتحديد الفترة\n• يستخدم لضمان أن البوت يعمل بشكل مستمر`;
+  }
+  if (q.includes("قسم") || q.includes("category") || q.includes("فئة")) {
+    return `📁 *الأقسام المخصصة:*\nلوحة الإدارة ← 📁 أقسام مخصصة\n\n• إضافة قسم: ➕ داخل القسم الأصلي\n• نقل منتج لقسم: افتح المنتج ← 🚚 نقل ← أرسل رقم القسم\n• تغيير اسم قسم: افتح القسم ← ✏️ تعديل الاسم`;
+  }
+  if (q.includes("مستخدم") || q.includes("user") || q.includes("عميل")) {
+    return `👥 *إدارة المستخدمين:*\n\n• عرض الكل: لوحة الإدارة ← 👥 المستخدمون\n• بحث بالاسم/المعرف: 🔍 بحث مستخدم\n• من بطاقة المستخدم يمكنك:\n  - ➕/➖ تعديل الرصيد\n  - 🚫 حظر/رفع الحظر\n  - 📋 عرض طلباته`;
+  }
+
+  return `🤖 *مساعد متجر المروان*\n\nيمكنني مساعدتك في:\n\n` +
+    `• 💱 سعر الصرف ونسب الربح\n` +
+    `• 💰 إدارة أرصدة المستخدمين\n` +
+    `• 📥 طلبات الإيداع وطرقها\n` +
+    `• 🛒 أسعار المنتجات وإدارتها\n` +
+    `• 📣 الرسائل الجماعية\n` +
+    `• 🔧 وضع الصيانة\n` +
+    `• 📦 متابعة الطلبات\n` +
+    `• 🔄 البينج التلقائي\n\n` +
+    `اكتب سؤالك بالتفصيل وسأجيبك فوراً. 💡\n\n` +
+    (process.env["OPENAI_API_KEY"]
+      ? `✅ المساعد الذكي مفعّل (GPT-4o mini)`
+      : `⚠️ *لتفعيل الذكاء الاصطناعي الكامل:*\nأضف OPENAI_API_KEY في Secrets`);
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -1186,226 +1285,4 @@ async function checkOrderStatus(ctx, orderId) {
     const rate = await getExchangeRate();
     const priceUsd = Number(row.price_usd);
     const priceSyp = Math.round(priceUsd * rate);
-    await ctx.reply(`الحالة الحالية للطلب #${row.id}: ${statusLabel(finalStatus)}\n💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`);
-  } catch (err) {
-    logger.error({ err }, "checkOrder failed");
-    await ctx.reply("⚠️ تعذّر فحص الحالة الآن.");
-  }
-}
-
-async function pollOneOrder(bot, order) {
-  let resp = null;
-  if (order.oranos_order_id) resp = await checkOrder(order.oranos_order_id).catch(() => null);
-  if (!resp && order.oranos_uuid) resp = await checkOrder(order.oranos_uuid, true).catch(() => null);
-  if (!resp) return;
-
-  const orderData = extractOrderData(resp);
-  const rawNew = ((orderData?.status ?? "").toString().toLowerCase());
-  if (!rawNew || rawNew === order.status) return;
-
-  const isRejected = REJECT_STATUSES.has(rawNew);
-  const isAccepted = ACCEPT_STATUSES.has(rawNew);
-  const prevRejected = REJECT_STATUSES.has(order.status);
-  const prevAccepted = ACCEPT_STATUSES.has(order.status);
-  if (isRejected && prevRejected) return;
-  if (isAccepted && prevAccepted) return;
-
-  const code = extractDeliveredCode(resp);
-  const finalStatus = isRejected ? "reject" : isAccepted ? "accept" : rawNew;
-
-  await pool.query('UPDATE orders SET status=$1, api_response=$2, delivered_code=$3 WHERE id=$4',
-    [finalStatus, JSON.stringify(resp), code ?? null, order.id]);
-
-  const fullText = formatFullApiResponse(resp);
-  const priceUsd = Number(order.price_usd);
-  const rate = await getExchangeRate();
-
-  if (isRejected) {
-    if (!prevRejected) await adjustBalance(order.user_id, priceUsd);
-    const refundSyp = Math.round(priceUsd * rate);
-    const msgLines = [`❌ تم رفض الطلب #${order.id}`, `🛒 المنتج: ${order.product_name}`, `💰 تمت إعادة ${priceUsd.toFixed(2)}$ | ${refundSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`];
-    if (fullText) msgLines.push(`\n📋 الرد:\n${fullText}`);
-    msgLines.push("\n⟳ يمكنك المحاولة مجدداً من القائمة الرئيسية.");
-    await bot.telegram.sendMessage(order.user_id, msgLines.join("\n")).catch(() => {});
-  } else if (isAccepted) {
-    const priceSyp = Math.round(priceUsd * rate);
-    const msgLines = [`✅ تم تنفيذ طلبك #${order.id} بنجاح!`, `🛒 المنتج: ${order.product_name}`, `💰 المبلغ: ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`];
-    if (fullText) msgLines.push(`\n📋 الرد:\n${fullText}`);
-    await bot.telegram.sendMessage(order.user_id, msgLines.join("\n")).catch(() => {});
-  } else {
-    const msgLines = [`🔄 تحديث الطلب #${order.id}`, `🛒 المنتج: ${order.product_name}`, `📊 الحالة: ${statusLabel(rawNew)}`];
-    if (fullText) msgLines.push(`\n📋 الرد:\n${fullText}`);
-    await bot.telegram.sendMessage(order.user_id, msgLines.join("\n")).catch(() => {});
-  }
-}
-
-function startOrderPoller(bot) {
-  setInterval(async () => {
-    try {
-      const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const res = await pool.query(
-        "SELECT * FROM orders WHERE status != ALL($1) AND created_at > $2 LIMIT 200",
-        [TERMINAL_STATUSES, cutoff]
-      );
-      const pendingRows = res.rows;
-      const CHUNK = 5;
-      for (let i = 0; i < pendingRows.length; i += CHUNK) {
-        await Promise.allSettled(pendingRows.slice(i, i + CHUNK).map(order =>
-          pollOneOrder(bot, order).catch(err => logger.warn({ err, orderId: order.id }, "pollOneOrder failed"))
-        ));
-      }
-    } catch (err) {
-      logger.error({ err }, "order poller error");
-    }
-  }, 90 * 1000).unref();
-}
-
-// ═════════════════════════════════════════════════════════════
-//  ADMIN HANDLERS (simplified - core functions)
-// ═════════════════════════════════════════════════════════════
-
-const ADMIN_USERNAMES_LOWER = (process.env["ADMIN_USERNAME"] ?? ADMIN_USERNAME)
-  .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
-
-function isAllowedAdminUsername(u) {
-  if (!u) return false;
-  return ADMIN_USERNAMES_LOWER.includes(u.toLowerCase());
-}
-
-async function requireAdmin(ctx) {
-  const u = await getUser(ctx.from.id);
-  if (!u?.is_admin) { await ctx.reply("⛔ هذا القسم للإدارة فقط."); return false; }
-  return true;
-}
-
-async function showAdminMenu(ctx) {
-  if (!(await requireAdmin(ctx))) return;
-  const status = await getBotStatus();
-  const rows = [
-    [Markup.button.callback("📥 طلبات الإيداع", "adm:depList:1"), Markup.button.callback("👥 المستخدمون", "adm:users:1")],
-    [Markup.button.callback("🔍 بحث مستخدم", "adm:findUser"), Markup.button.callback("📦 كل الطلبات", "adm:allOrders:1")],
-    [Markup.button.callback("📣 رسالة جماعية", "adm:broadcast"), Markup.button.callback("💳 طرق الإيداع", "adm:methods")],
-    [Markup.button.callback("🛒 إدارة المنتجات", "cat:0:1:0"), Markup.button.callback("⚙️ الإعدادات", "adm:settings")],
-    [Markup.button.callback("📞 وسائل التواصل", "adm:contacts"), Markup.button.callback("📁 أقسام مخصصة", "adm:vcList")],
-    [Markup.button.callback("➕ إضافة منتج يدوي", "adm:manualProds"), Markup.button.callback("🛠️ مساعد الذكاء", "adm:aiSupport")],
-    [Markup.button.callback("🔄 بينج تلقائي", "adm:ping"), Markup.button.callback(status === "on" ? "🟢 البوت: شغال" : "🔴 البوت: متوقف", "adm:toggleStatus")],
-    [Markup.button.callback("🏠 الرئيسية", "home")],
-  ];
-  await sendOrEdit(ctx, "👑 لوحة الإدارة", Markup.inlineKeyboard(rows));
-}
-
-async function showSettingsMenu(ctx) {
-  if (!(await requireAdmin(ctx))) return;
-  const m = await getMarkupPercent();
-  const sm = await getSocialMarkupPercent();
-  const r = await getExchangeRate();
-  const text = `⚙️ الإعدادات\n\nالربح العام: ${m}%\nربح السوشل ميديا: ${sm}%\nسعر الصرف: ${r} ل.س لكل دولار`;
-  await sendOrEdit(ctx, text, Markup.inlineKeyboard([
-    [Markup.button.callback("✏️ تعديل الربح العام", "adm:setMarkup")],
-    [Markup.button.callback("✏️ تعديل ربح السوشل", "adm:setSocialMarkup")],
-    [Markup.button.callback("💱 تعديل سعر الصرف", "adm:setRate")],
-    [Markup.button.callback("🔑 تغيير كلمة المرور", "adm:newPass")],
-    [Markup.button.callback("🔘 تعديل أزرار التنقل", "adm:btnLabels")],
-    [Markup.button.callback("⬅️ رجوع", "admin:menu")],
-  ]));
-}
-
-// ═════════════════════════════════════════════════════════════
-//  CATEGORY DISPLAY (showCategory, showProduct, etc.)
-// ═════════════════════════════════════════════════════════════
-
-async function loadCategoryOverrides(ids) {
-  if (ids.length === 0) return new Map();
-  const res = await pool.query('SELECT * FROM category_overrides WHERE category_id = ANY($1)', [ids]);
-  const m = new Map();
-  for (const r of res.rows) m.set(r.category_id, { customName: r.custom_name, hidden: r.hidden, customMarkupPercent: r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null, sortOrder: r.sort_order });
-  return m;
-}
-
-async function showCategory(ctx, parentId, page, backTo) {
-  if (isMaintenanceMode()) {
-    await sendOrEdit(ctx, MAINTENANCE_MSG, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
-    return;
-  }
-
-  const user = await getUser(ctx.from.id);
-  const isAdmin = !!user?.is_admin;
-  let content;
-  try { content = await getCachedContent(parentId); }
-  catch {
-    await sendOrEdit(ctx, MAINTENANCE_MSG, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
-    return;
-  }
-
-  const excludedCats = await getExcludedCategoryIds();
-  const kws = await getExcludedKeywords();
-  const socialKws = await getSocialKeywords();
-  const socialMarkup = await getSocialMarkupPercent();
-  const visibleDirect = await buildVisibleCategoryIds(excludedCats, kws);
-  const catIds = content.categories.map(c => c.id);
-  const catOv = await loadCategoryOverrides(catIds);
-  const candidate = content.categories.filter(c => {
-    if (excludedCats.has(c.id)) return false;
-    const ov = catOv.get(c.id);
-    if (ov?.hidden && !isAdmin) return false;
-    if (!c.name || c.name === "null") return false;
-    return true;
-  });
-  let visibleCats = candidate;
-  if (!isAdmin) {
-    const checks = await Promise.all(candidate.map(async c => ({ c, ok: await isCategoryVisible(c.id, visibleDirect) })));
-    visibleCats = checks.filter(x => x.ok).map(x => x.c);
-  }
-
-  const allProducts = await getCachedProducts();
-  const allOv = await getAllOverridesCached();
-  const movedIntoHere = [];
-  const movedAwayFromHere = new Set();
-  for (const [pid, ov] of allOv) {
-    if (ov.customCategoryId == null) continue;
-    if (ov.customCategoryId === parentId) { const p = allProducts.find(x => x.id === pid); if (p) movedIntoHere.push(p); }
-    else movedAwayFromHere.add(pid);
-  }
-  const baseProducts = content.products.filter(p => !movedAwayFromHere.has(p.id));
-  const mergedById = new Map();
-  for (const p of baseProducts) mergedById.set(p.id, p);
-  for (const p of movedIntoHere) mergedById.set(p.id, p);
-  const merged = Array.from(mergedById.values());
-  const prodIds = merged.map(p => p.id);
-  const ovMap = await loadOverrideMap(prodIds);
-  const visibleProds = merged.filter(p => {
-    if (isExcludedProduct(p, kws)) return false;
-    const ov = ovMap.get(p.id);
-    if (ov?.hidden && !isAdmin) return false;
-    if (!p.available && !isAdmin) return false;
-    return true;
-  });
-
-  const vcRes = await pool.query('SELECT * FROM virtual_categories WHERE parent_id=$1', [parentId]);
-  const vcRows = vcRes.rows;
-  const virtualCats = isAdmin ? vcRows : vcRows.filter(v => v.active);
-  const vcBtns = virtualCats.map(v => {
-    const prefix = v.active ? "📂 " : "🔒 ";
-    return Markup.button.callback(`${prefix}${v.name}`.slice(0, 60), `vcat:${v.id}:1:${parentId}`);
-  });
-
-  const manualRes = await pool.query('SELECT * FROM manual_products WHERE category_id=$1 AND category_is_virtual=false AND active=true', [parentId]);
-  const manualRows = manualRes.rows;
-  const rate = await getExchangeRate();
-  const manualBtns = manualRows.map(m => {
-    const usd = Number(m.price_usd);
-    const syp = Math.round(usd * rate);
-    return Markup.button.callback(`🛒 ${m.name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `mprod:${m.id}:${parentId}`);
-  });
-
-  if (visibleCats.length === 0 && visibleProds.length === 0 && vcBtns.length === 0 && manualBtns.length === 0) {
-    const [backLabel, homeLabel] = await Promise.all([getBtnBackLabel(), getBtnHomeLabel()]);
-    const emptyBackBtn = backTo === 0 ? Markup.button.callback(homeLabel, "home") : Markup.button.callback(backLabel, `cat:${backTo}:1:0`);
-    const emptyRows = [];
-    if (isAdmin) {
-      emptyRows.push([Markup.button.callback("✏️ تعديل اسم القسم", `adm:catEdit:${parentId}`)]);
-      emptyRows.push([Markup.button.callback("🙈 إخفاء القسم", `adm:catToggle:${parentId}`)]);
-      emptyRows.push([Markup.button.callback("🚚 نقل كل منتجات القسم", `adm:moveCatAll:${parentId}`)]);
-    }
-    emptyRows.push([emptyBackBtn]);
-    await sendOrEdit(ctx, "📭 هذا القسم فارغ ح
+    await ctx.reply(`الحالة الحالية للطلب #${row.id}: ${statusLabel(finalStatus)}\n💰 ${priceUsd.toFixed(
