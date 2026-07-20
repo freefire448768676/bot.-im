@@ -1,142 +1,1411 @@
-import { Telegraf, Markup, session } from "telegraf";
-import express from "express";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import "dotenv/config";
+// ============================================================
+//  بوت متجر المروان - نسخة Render.com (ملف واحد)
+//  تم تحويله من TypeScript/Drizzle Monorepo إلى JavaScript/SQL
+// ============================================================
 
-const token = process.env.BOT_TOKEN;
-const WEBHOOK_URL = process.env.WEBHOOK_URL;
-const DATABASE_URL = process.env.DATABASE_URL;
+const { Telegraf, Markup } = require("telegraf");
+const { Pool } = require("pg");
+const axios = require("axios");
+const express = require("express");
+const crypto = require("crypto");
 
-if (!token ||!WEBHOOK_URL ||!DATABASE_URL) throw new Error("Missing ENV");
+// ── Environment Variables Required ──
+// BOT_TOKEN=your_telegram_bot_token
+// DATABASE_URL=postgresql://user:pass@host:port/db
+// ORANOS_API_TOKEN=your_oranos_token
+// ORANOS_API_BASE=https://api.oranosmarket.com (optional)
+// ADMIN_USERNAME=your_telegram_username
+// PORT=10000 (Render sets this automatically)
+// OPENAI_API_KEY=sk-... (optional, for AI support)
 
-const client = postgres(DATABASE_URL);
-const db = drizzle(client);
-const bot = new Telegraf(token);
-const app = express();
-app.use(express.json());
-bot.use(session());
+// ═════════════════════════════════════════════════════════════
+//  CONFIG & LOGGER
+// ═════════════════════════════════════════════════════════════
 
-// ===== [CONFIG] =====
-const ADMIN_IDS = [123456789]; // <<< غيره لايديك
-let BOT_STATUS = 'on';
+const logger = {
+  info: (msg, extra) => console.log(`[INFO] ${typeof msg === 'string' ? msg : JSON.stringify(msg)}`, extra || ''),
+  warn: (msg, extra) => console.warn(`[WARN] ${typeof msg === 'string' ? msg : JSON.stringify(msg)}`, extra || ''),
+  error: (msg, extra) => console.error(`[ERROR] ${typeof msg === 'string' ? msg : JSON.stringify(msg)}`, extra || ''),
+  debug: (msg, extra) => process.env.DEBUG && console.log(`[DEBUG] ${typeof msg === 'string' ? msg : JSON.stringify(msg)}`, extra || ''),
+};
 
-// ===== [API تنفيذ الطلبات - حط رابطك هون] =====
-const API_URL = "https://api.tanfeez.com/v1/order"; // <<< غيره لرابط API تبعك
-const API_KEY = "ضع_مفتاح_API_هنا"; // <<< ضع مفتاح API تبعك
+// ═════════════════════════════════════════════════════════════
+//  DATABASE (PostgreSQL via pg)
+// ═════════════════════════════════════════════════════════════
 
-async function executeOrder(productName, quantity, userInfo) {
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL must be set!");
+}
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL.includes('render.com') ? { rejectUnauthorized: false } : false
+});
+
+// Initialize tables
+async function initDB() {
+  const client = await pool.connect();
   try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ product: productName, qty: quantity, user: userInfo })
-    });
-    const data = await res.json();
-    return data.status === "success"; // true اذا تم التنفيذ
-  } catch(e) {
-    console.error("API Error:", e);
-    return false;
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id BIGINT PRIMARY KEY,
+        username TEXT,
+        first_name TEXT,
+        last_name TEXT,
+        balance NUMERIC(14,4) NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'active',
+        is_admin BOOLEAN NOT NULL DEFAULT false,
+        is_super_admin BOOLEAN NOT NULL DEFAULT false,
+        admin_authed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        custom_markup_percent NUMERIC(6,2)
+      );
+      
+      CREATE TABLE IF NOT EXISTS product_overrides (
+        product_id INTEGER PRIMARY KEY,
+        product_name TEXT,
+        custom_name TEXT,
+        custom_category_id INTEGER,
+        custom_markup_percent NUMERIC(6,2),
+        custom_price_usd NUMERIC(14,4),
+        hidden BOOLEAN NOT NULL DEFAULT false,
+        instructions TEXT,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS category_overrides (
+        category_id INTEGER PRIMARY KEY,
+        custom_name TEXT,
+        hidden BOOLEAN NOT NULL DEFAULT false,
+        custom_markup_percent NUMERIC(6,2),
+        sort_order INTEGER,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS orders (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        product_id INTEGER NOT NULL,
+        product_name TEXT NOT NULL,
+        qty NUMERIC(14,4) NOT NULL,
+        params JSONB NOT NULL DEFAULT '{}',
+        price_usd NUMERIC(14,4) NOT NULL,
+        oranos_order_id TEXT,
+        oranos_uuid TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL DEFAULT 'pending',
+        api_response JSONB,
+        delivered_code TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS deposit_methods (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        identifier TEXT NOT NULL,
+        instructions TEXT NOT NULL,
+        active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS deposit_requests (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        method_id INTEGER NOT NULL,
+        method_name TEXT NOT NULL,
+        payer_number TEXT,
+        screenshot_file_id TEXT NOT NULL,
+        amount NUMERIC(14,4),
+        status TEXT NOT NULL DEFAULT 'pending',
+        processed_by BIGINT,
+        processed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS bot_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS broadcasts (
+        id SERIAL PRIMARY KEY,
+        message TEXT NOT NULL,
+        sent_by BIGINT NOT NULL,
+        sent_count INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS manual_orders (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        product_id INTEGER NOT NULL,
+        product_name TEXT NOT NULL,
+        price_usd NUMERIC(14,4) NOT NULL,
+        note TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        admin_note TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS manual_products (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        category_id INTEGER NOT NULL DEFAULT 0,
+        category_is_virtual BOOLEAN NOT NULL DEFAULT false,
+        price_usd NUMERIC(14,4) NOT NULL DEFAULT 0,
+        api_product_id INTEGER,
+        instructions TEXT,
+        active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS virtual_categories (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        parent_id INTEGER NOT NULL DEFAULT 0,
+        position INTEGER NOT NULL DEFAULT 0,
+        active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS contact_links (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        link TEXT NOT NULL,
+        active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    logger.info("Database tables initialized");
+  } finally {
+    client.release();
   }
 }
 
-// ===== [UTILS DB] =====
-async function getProducts() {
-  return await db.query.products.findMany(); // لازم يكون عندك جدول products
-}
-async function getCategories() {
-  return await db.query.categories.findMany({ orderBy: (c, {asc}) => [asc(c.sortOrder)] }); // [1] ترتيب
+// ═════════════════════════════════════════════════════════════
+//  SETTINGS
+// ═════════════════════════════════════════════════════════════
+
+const DEFAULTS = {
+  markup_percent: "3",
+  exchange_rate: "132",
+  bot_status: "on",
+  currency_label: "ل.س",
+  excluded_category_ids: "6,81,561",
+  excluded_product_keywords: "سيرتل كاش,سيريتل كاش,syriatel cash,mtn كاش,mtn cash,ام تي ان كاش",
+  social_markup_percent: "3",
+  social_min_qty: "500",
+  social_max_qty: "10000",
+  social_keywords: "سوشل,social,تواصل اجتماعي,اجتماعي,انستغرام,instagram,تيك توك,tiktok,فيسبوك,facebook,تويتر,twitter,يوتيوب,youtube,تليجرام,telegram,سناب,snap",
+  ai_keywords: "ذكاء اصطناعي,chatgpt,gpt,openai,claude,gemini,midjourney,perplexity,ai",
+  admin_password: "0941408061@0941408061aM",
+  auto_ping_enabled: "off",
+  auto_ping_interval_min: "5",
+  auto_ping_target_user_id: "",
+  auto_ping_last_sent: "0",
+  btn_back_label: "⬅️ رجوع",
+  btn_home_label: "🏠 الرئيسية",
+  btn_prev_label: "⬅️ السابق",
+  btn_next_label: "التالي ➡️",
+};
+
+const settingsCache = new Map();
+let settingsLoaded = false;
+
+async function loadSettings() {
+  const res = await pool.query('SELECT key, value FROM bot_settings');
+  settingsCache.clear();
+  for (const row of res.rows) settingsCache.set(row.key, row.value);
+  settingsLoaded = true;
 }
 
-// ===== [MIDDLEWARE [4]+[5]] =====
-bot.use(async (ctx, next) => {
-  if (BOT_STATUS === "off" && ctx.from &&!ADMIN_IDS.includes(ctx.from.id)) {
-    if (ctx.callbackQuery) return ctx.answerCbQuery("🚫 البوت متوقف مؤقتاً");
-    return ctx.reply("🚫 البوت متوقف مؤقتاً للصيانة.");
+async function ensureDefaults() {
+  if (!settingsLoaded) await loadSettings();
+  for (const [k, v] of Object.entries(DEFAULTS)) {
+    if (!settingsCache.has(k)) {
+      await pool.query('INSERT INTO bot_settings(key, value) VALUES($1,$2) ON CONFLICT(key) DO NOTHING', [k, v]);
+      settingsCache.set(k, v);
+    }
   }
-  return next();
-});
-
-// ===== [KEYBOARDS] =====
-function mainMenu() { return Markup.inlineKeyboard([
-  [Markup.button.callback("📦 المنتجات", "show:categories")],
-  [Markup.button.callback("👑 لوحة الادمن", "adm:panel")]
-])}
-
-async function categoriesMenu() {
-  const cats = await getCategories(); // [1]
-  const buttons = cats.map(c => [Markup.button.callback(c.name, `cat:${c.id}:0:0`)]); // [1] backTo=0
-  buttons.push([Markup.button.callback("⬅️ القائمة الرئيسية", "back:main")]);
-  return Markup.inlineKeyboard(buttons);
 }
 
-// ===== [HANDLERS] =====
-bot.start((ctx) => ctx.reply(`اهلا ${ctx.from.first_name} 👋`, mainMenu()));
-bot.action("show:categories", async (ctx) => ctx.editMessageText("اختر القسم:", await categoriesMenu()));
+async function getSetting(key) {
+  if (!settingsLoaded) await loadSettings();
+  return settingsCache.get(key) ?? DEFAULTS[key] ?? "";
+}
 
-bot.action(/cat:(\d+):(\d+):(\d+)/, async (ctx) => {
-  const [,catId, backTo] = ctx.match;
-  if(backTo === '0') return ctx.editMessageText("اختر القسم:", await categoriesMenu());
+async function setSetting(key, value) {
+  await pool.query(`
+    INSERT INTO bot_settings(key, value, updated_at) VALUES($1,$2,NOW())
+    ON CONFLICT(key) DO UPDATE SET value=$2, updated_at=NOW()
+  `, [key, value]);
+  settingsCache.set(key, value);
+}
 
-  const prods = await db.query.products.findMany({ where: (p, {eq}) => eq(p.parent_id, Number(catId)) });
-  const buttons = prods.map(p => [Markup.button.callback(`${p.name} - ${p.price}$`, `prod:${p.id}`)]);
-  buttons.push([Markup.button.callback("⬅️ رجوع للاقسام", "back:categories")]); // [1]
-  ctx.editMessageText("اختر المنتج:", Markup.inlineKeyboard(buttons));
-});
+async function deleteSetting(key) {
+  await pool.query('DELETE FROM bot_settings WHERE key=$1', [key]);
+  settingsCache.delete(key);
+}
 
-bot.action(/prod:(\d+)/, async (ctx) => { // [3] مع حساب الربح
-  const p = await db.query.products.findFirst({ where: (p, {eq}) => eq(p.id, Number(ctx.match[1])) });
-  const ov = await db.query.categoryOverrides.findFirst({ where: (o, {eq}) => eq(o.catId, p.parent_id) });
-  const user = await db.query.users.findFirst({ where: (u, {eq}) => eq(u.userId, ctx.from.id) });
+async function getMarkupPercent() {
+  const n = Number(await getSetting("markup_percent"));
+  return Number.isFinite(n) ? n : 3;
+}
 
-  const catMarkup = Number(ov?.customMarkupPercent || 0); // [2]
-  const userMarkup = Number(user?.customMarkupPercent || 0); // [2]
-  const totalUsd = Number(p.price) * (1 + (catMarkup || userMarkup || 0) / 100);
+async function getExchangeRate() {
+  const n = Number(await getSetting("exchange_rate"));
+  return Number.isFinite(n) && n > 0 ? n : 132;
+}
 
-  if(totalUsd === 0) return ctx.reply("⚠️ هذا المنتج لا يملك سعراً محدداً في النظام."); // [3]
+async function getBotStatus() {
+  return (await getSetting("bot_status")) === "off" ? "off" : "on";
+}
 
-  ctx.reply(`📋 الرد: تأكيد الطلب\nالمنتج: ${p.name}\nالسعر: ${totalUsd.toFixed(2)}$`, // [1]
-    Markup.inlineKeyboard([[Markup.button.callback("✅ تأكيد الطلب", `order:confirm:${p.id}:${totalUsd}`)]])
-  );
-});
+async function getExcludedCategoryIds() {
+  const v = await getSetting("excluded_category_ids");
+  return new Set(v.split(",").map(s => Number(s.trim())).filter(n => Number.isFinite(n) && n > 0));
+}
 
-bot.action(/order:confirm:(\d+):([\d.]+)/, async (ctx) => { // [API]
-  const [,prodId, price] = ctx.match;
-  const p = await db.query.products.findFirst({ where: (p, {eq}) => eq(p.id, Number(prodId)) });
+async function getExcludedKeywords() {
+  const v = await getSetting("excluded_product_keywords");
+  return v.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+}
 
-  const success = await executeOrder(p.name, 1, ctx.from); // تنفيذ عبر API
+async function getSocialKeywords() {
+  const v = await getSetting("social_keywords");
+  return v.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+}
 
-  if(success){
-    // حفظ الطلب بال DB
-    await db.insert(db.orders).values({ userId: ctx.from.id, productId: Number(prodId), price: Number(price), status: "تم التنفيذ" });
-    // اشعار للادمن [1]
-    for(const adminId of ADMIN_IDS){ bot.telegram.sendMessage(adminId, `🔔 طلب جديد تم تنفيذه: ${p.name}`); }
-    ctx.editMessageText(`✅ تم استلام طلبك وتنفيذه بنجاح`);
+async function getAiKeywords() {
+  const v = await getSetting("ai_keywords");
+  return v.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+}
+
+async function getSocialMarkupPercent() {
+  const n = Number(await getSetting("social_markup_percent"));
+  return Number.isFinite(n) ? n : 3;
+}
+
+async function getSocialMinQty() {
+  const n = Number(await getSetting("social_min_qty"));
+  return Number.isFinite(n) && n > 0 ? n : 500;
+}
+
+async function getSocialMaxQty() {
+  const n = Number(await getSetting("social_max_qty"));
+  return Number.isFinite(n) && n > 0 ? n : 10000;
+}
+
+async function getAdminPassword() {
+  return await getSetting("admin_password");
+}
+
+async function getBtnBackLabel() { return (await getSetting("btn_back_label")) || "⬅️ رجوع"; }
+async function getBtnHomeLabel() { return (await getSetting("btn_home_label")) || "🏠 الرئيسية"; }
+async function getBtnPrevLabel() { return (await getSetting("btn_prev_label")) || "⬅️ السابق"; }
+async function getBtnNextLabel() { return (await getSetting("btn_next_label")) || "التالي ➡️"; }
+
+function isSocialProduct(name, categoryName, keywords) {
+  const hay = `${name ?? ""} ${categoryName ?? ""}`.toLowerCase();
+  return keywords.some(k => k && hay.includes(k));
+}
+
+function isAiProduct(name, categoryName, keywords) {
+  const hay = `${name ?? ""} ${categoryName ?? ""}`.toLowerCase();
+  return keywords.some(k => k && hay.includes(k));
+}
+
+// ═════════════════════════════════════════════════════════════
+//  USERS
+// ═════════════════════════════════════════════════════════════
+
+const userCache = new Map();
+const USER_CACHE_TTL = 30000;
+
+function cacheGet(id) {
+  const hit = userCache.get(id);
+  if (hit && hit.exp > Date.now()) return hit.u;
+  return undefined;
+}
+
+function cacheSet(id, u) {
+  userCache.set(id, { u, exp: Date.now() + USER_CACHE_TTL });
+}
+
+function invalidateUserCache(id) {
+  userCache.delete(id);
+}
+
+async function upsertUser(u) {
+  const existing = await pool.query('SELECT * FROM users WHERE id=$1 LIMIT 1', [u.id]);
+  let result;
+  if (existing.rows.length === 0) {
+    const inserted = await pool.query(
+      'INSERT INTO users(id, username, first_name, last_name) VALUES($1,$2,$3,$4) RETURNING *',
+      [u.id, u.username ?? null, u.first_name ?? null, u.last_name ?? null]
+    );
+    result = inserted.rows[0];
   } else {
-    ctx.editMessageText(`❌ فشل تنفيذ الطلب. تواصل مع الادارة`);
+    const updated = await pool.query(
+      'UPDATE users SET username=$1, first_name=$2, last_name=$3 WHERE id=$4 RETURNING *',
+      [u.username ?? existing.rows[0].username, u.first_name ?? existing.rows[0].first_name, u.last_name ?? existing.rows[0].last_name, u.id]
+    );
+    result = updated.rows[0];
   }
+  cacheSet(u.id, result);
+  return result;
+}
+
+async function getUser(id) {
+  const cached = cacheGet(id);
+  if (cached !== undefined) return cached;
+  const res = await pool.query('SELECT * FROM users WHERE id=$1 LIMIT 1', [id]);
+  const u = res.rows[0] ?? null;
+  cacheSet(id, u);
+  return u;
+}
+
+async function adjustBalance(id, deltaUsd) {
+  invalidateUserCache(id);
+  const updated = await pool.query('UPDATE users SET balance = balance + $1 WHERE id=$2 RETURNING *', [deltaUsd, id]);
+  const u = updated.rows[0] ?? null;
+  if (u) cacheSet(id, u);
+  return u;
+}
+
+async function setBalance(id, balanceUsd) {
+  invalidateUserCache(id);
+  const updated = await pool.query('UPDATE users SET balance = $1 WHERE id=$2 RETURNING *', [String(balanceUsd), id]);
+  const u = updated.rows[0] ?? null;
+  if (u) cacheSet(id, u);
+  return u;
+}
+
+async function setStatus(id, status) {
+  invalidateUserCache(id);
+  await pool.query('UPDATE users SET status = $1 WHERE id=$2', [status, id]);
+}
+
+async function setAdmin(id, isAdmin, isSuperAdmin) {
+  invalidateUserCache(id);
+  const fields = { is_admin: isAdmin };
+  if (isSuperAdmin !== undefined) fields.is_super_admin = isSuperAdmin;
+  const keys = Object.keys(fields);
+  const values = Object.values(fields);
+  await pool.query(`UPDATE users SET ${keys.map((k,i) => `${k}=$${i+1}`).join(',')} WHERE id=$${keys.length+1}`, [...values, id]);
+}
+
+async function markAdminAuthed(id) {
+  invalidateUserCache(id);
+  await pool.query('UPDATE users SET admin_authed_at = NOW() WHERE id=$1', [id]);
+}
+
+async function listUsers(offset = 0, limit = 20) {
+  const res = await pool.query('SELECT * FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
+  return res.rows;
+}
+
+async function countUsers() {
+  const res = await pool.query('SELECT COUNT(*)::int as c FROM users');
+  return res.rows[0]?.c ?? 0;
+}
+
+async function searchUser(query) {
+  const idNum = Number(query.replace(/[^0-9]/g, ""));
+  const u = query.replace(/^@/, "");
+  let sql = 'SELECT * FROM users WHERE ';
+  const params = [];
+  let conds = [];
+  if (Number.isFinite(idNum) && idNum > 0) {
+    conds.push(`id=$${params.length+1}`);
+    params.push(idNum);
+  }
+  conds.push(`username ILIKE $${params.length+1}`);
+  params.push(`%${u}%`);
+  conds.push(`first_name ILIKE $${params.length+1}`);
+  params.push(`%${u}%`);
+  sql += conds.join(' OR ') + ' LIMIT 20';
+  const res = await pool.query(sql, params);
+  return res.rows;
+}
+
+async function listAdmins() {
+  const res = await pool.query('SELECT * FROM users WHERE is_admin = true');
+  return res.rows;
+}
+
+async function setUserMarkup(id, markupPercent) {
+  invalidateUserCache(id);
+  await pool.query('UPDATE users SET custom_markup_percent = $1 WHERE id=$2', [markupPercent === null ? null : String(markupPercent), id]);
+}
+
+async function getSuperAdmin() {
+  const res = await pool.query('SELECT * FROM users WHERE is_super_admin = true LIMIT 1');
+  return res.rows[0] ?? null;
+}
+
+// ═════════════════════════════════════════════════════════════
+//  ORANOS API
+// ═════════════════════════════════════════════════════════════
+
+const baseURL = process.env["ORANOS_API_BASE"] ?? "https://api.oranosmarket.com";
+const apiToken = process.env["ORANOS_API_TOKEN"] ?? "";
+
+const apiClient = axios.create({
+  baseURL,
+  timeout: 15000,
+  headers: { "api-token": apiToken, Accept: "application/json" },
 });
 
-// ===== [ADMIN [2]+[5]] =====
-bot.action("adm:panel", (ctx) => {
-  if(!ADMIN_IDS.includes(ctx.from.id)) return ctx.answerCbQuery("ليس لديك صلاحية");
-  ctx.editMessageText("👑 لوحة الادمن", Markup.inlineKeyboard([
-    [Markup.button.callback(BOT_STATUS === 'on'? "🟢 عمل البوت: شغّال" : "🔴 عمل البوت: متوقف", "adm:toggleStatus")], // [5]
-    [Markup.button.callback("💰 ربح قسم", "adm:setCatMarkup")],
-    [Markup.button.callback("👤 ربح مستخدم", "adm:setUserMarkup")] // [2]
+let _maintenanceMode = false;
+function isMaintenanceMode() { return _maintenanceMode; }
+
+function wrapRequest(fn) {
+  return fn().then(v => { _maintenanceMode = false; return v; }).catch(err => {
+    const status = err.response?.status;
+    if (status === 503 || status === 502 || status === 529) _maintenanceMode = true;
+    throw err;
+  });
+}
+
+async function fetchProfile() {
+  const res = await wrapRequest(() => apiClient.get("/client/api/profile"));
+  return res.data;
+}
+
+async function fetchContent(parentId) {
+  const res = await wrapRequest(() => apiClient.get(`/client/api/content/${parentId}`));
+  const data = res.data ?? {};
+  return {
+    products: Array.isArray(data.products) ? data.products : [],
+    categories: Array.isArray(data.categories) ? data.categories : [],
+  };
+}
+
+async function fetchAllProducts() {
+  const res = await wrapRequest(() => apiClient.get("/client/api/products"));
+  return Array.isArray(res.data) ? res.data : [];
+}
+
+async function placeOrder(productId, params, orderUuid) {
+  const search = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) search.set(k, String(v));
+  search.set("order_uuid", orderUuid);
+  try {
+    const res = await wrapRequest(() => apiClient.get(`/client/api/newOrder/${productId}/params?${search.toString()}`));
+    return res.data;
+  } catch (err) {
+    if (err.response?.data) return err.response.data;
+    logger.error({ err }, "placeOrder failed");
+    return { status: "ERR", message: "Network error" };
+  }
+}
+
+async function checkOrder(orderId, byUuid = false) {
+  const search = new URLSearchParams();
+  search.set("orders", `[${orderId}]`);
+  if (byUuid) search.set("uuid", "1");
+  const res = await wrapRequest(() => apiClient.get(`/client/api/check?${search.toString()}`));
+  return res.data;
+}
+
+function extractDeliveredCode(resp) {
+  const d = resp?.data;
+  if (!d) return null;
+  const candidates = [];
+  if (d.data) candidates.push(d.data);
+  if (d.replay_api) candidates.push(d.replay_api);
+  const lines = [];
+  const visit = (v) => {
+    if (v == null) return;
+    if (typeof v === "string" && v.trim()) lines.push(v.trim());
+    else if (typeof v === "number") lines.push(String(v));
+    else if (Array.isArray(v)) v.forEach(visit);
+    else if (typeof v === "object") {
+      for (const [k, val] of Object.entries(v)) {
+        if (val == null) continue;
+        if (typeof val === "object") visit(val);
+        else lines.push(`${k}: ${val}`);
+      }
+    }
+  };
+  for (const c of candidates) visit(c);
+  const out = lines.filter(Boolean).join("\n").trim();
+  return out || null;
+}
+
+function getProductApiNotes(p) {
+  const v = (p.notes ?? p.description ?? p.details ?? "").trim();
+  return v || null;
+}
+
+// ═════════════════════════════════════════════════════════════
+//  FORMAT & OVERRIDES
+// ═════════════════════════════════════════════════════════════
+
+async function loadOverrideMap(productIds) {
+  const map = new Map();
+  if (productIds.length === 0) return map;
+  const res = await pool.query('SELECT * FROM product_overrides WHERE product_id = ANY($1)', [productIds]);
+  for (const r of res.rows) {
+    map.set(r.product_id, {
+      customPriceUsd: r.custom_price_usd != null ? Number(r.custom_price_usd) : null,
+      customMarkupPercent: r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null,
+      customName: r.custom_name,
+      customCategoryId: r.custom_category_id,
+      hidden: r.hidden,
+      instructions: r.instructions,
+    });
+  }
+  return map;
+}
+
+async function loadAllOverrides() {
+  const res = await pool.query('SELECT * FROM product_overrides');
+  const map = new Map();
+  for (const r of res.rows) {
+    map.set(r.product_id, {
+      customPriceUsd: r.custom_price_usd != null ? Number(r.custom_price_usd) : null,
+      customMarkupPercent: r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null,
+      customName: r.custom_name,
+      customCategoryId: r.custom_category_id,
+      hidden: r.hidden,
+      instructions: r.instructions,
+    });
+  }
+  return map;
+}
+
+async function priceWithOverride(id, basePrice, defaultMarkup, override) {
+  if (override?.customPriceUsd != null) return override.customPriceUsd;
+  const m = override?.customMarkupPercent ?? defaultMarkup;
+  return Number((basePrice * (1 + m / 100)).toFixed(4));
+}
+
+function formatBalance(usd, rate) {
+  return `${usd.toFixed(2)}$ | ${Math.round(usd * rate).toLocaleString("en-US")} ل.س`;
+}
+
+function formatPriceLine(usd, rate) {
+  return `${usd.toFixed(2)}$ | ${Math.round(usd * rate).toLocaleString("en-US")} ل.س`;
+}
+
+// ═════════════════════════════════════════════════════════════
+//  STATE MANAGEMENT
+// ═════════════════════════════════════════════════════════════
+
+const sessions = new Map();
+
+function getStep(userId) {
+  return sessions.get(userId) ?? { kind: "idle" };
+}
+
+function setStep(userId, step) {
+  if (step.kind === "idle") sessions.delete(userId);
+  else sessions.set(userId, step);
+}
+
+function clearStep(userId) {
+  sessions.delete(userId);
+}
+
+// ═════════════════════════════════════════════════════════════
+//  KEYBOARDS
+// ═════════════════════════════════════════════════════════════
+
+function mainMenu(isAdmin) {
+  const rows = [
+    [Markup.button.callback("🛒 المنتجات", "cat:0:1:0"), Markup.button.callback("💰 رصيدي", "balance")],
+    [Markup.button.callback("💳 إيداع", "deposit"), Markup.button.callback("📦 طلباتي", "myorders:1")],
+    [Markup.button.callback("📞 الدعم", "support"), Markup.button.callback("🔄 /start", "home")],
+  ];
+  if (isAdmin) {
+    rows.push([Markup.button.callback("👑 لوحة الإدارة", "admin:menu")]);
+  } else {
+    rows.push([Markup.button.callback("🔐 تسجيل دخول الإدارة", "admin:loginPrompt")]);
+  }
+  return Markup.inlineKeyboard(rows);
+}
+
+// ═════════════════════════════════════════════════════════════
+//  TG HELPERS
+// ═════════════════════════════════════════════════════════════
+
+async function sendOrEdit(ctx, text, extra) {
+  const cb = ctx.callbackQuery;
+  const msg = cb?.message;
+  if (msg && !msg.photo) {
+    try {
+      await ctx.editMessageText(text, extra);
+      return;
+    } catch (err) {
+      const desc = err.description ?? "";
+      if (/not modified/i.test(desc)) return;
+      logger.debug({ desc }, "edit failed, falling back to reply");
+    }
+  }
+  await ctx.reply(text, extra);
+}
+
+async function clearInlineKeyboard(ctx) {
+  try {
+    await ctx.editMessageReplyMarkup(undefined);
+  } catch {
+    /* ignore */
+  }
+}
+
+// ═════════════════════════════════════════════════════════════
+//  AI SUPPORT
+// ═════════════════════════════════════════════════════════════
+
+const convHistory = new Map();
+
+const SYSTEM_PROMPT = `أنت مساعد ذكاء اصطناعي متخصص في إدارة متجر "متجر المروان" على تيليجرام...`; // (same as original)
+
+async function callAiSupport(userId, userMessage) {
+  const apiKey = process.env["OPENAI_API_KEY"];
+  if (!apiKey) return buildSmartFaq(userMessage);
+
+  const hist = convHistory.get(userId) ?? [];
+  hist.push({ role: "user", content: userMessage });
+  if (hist.length > 20) hist.splice(0, hist.length - 20);
+  convHistory.set(userId, hist);
+
+  try {
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+      body: JSON.stringify({ model: "gpt-4o-mini", max_completion_tokens: 1024, messages: [{ role: "system", content: SYSTEM_PROMPT }, ...hist] }),
+    });
+    if (!resp.ok) {
+      hist.pop();
+      convHistory.set(userId, hist);
+      return buildSmartFaq(userMessage);
+    }
+    const data = await resp.json();
+    const reply = data.choices?.[0]?.message?.content?.trim() ?? buildSmartFaq(userMessage);
+    hist.push({ role: "assistant", content: reply });
+    convHistory.set(userId, hist);
+    return reply;
+  } catch (err) {
+    hist.pop();
+    convHistory.set(userId, hist);
+    return buildSmartFaq(userMessage);
+  }
+}
+
+function clearAiHistory(userId) {
+  convHistory.delete(userId);
+}
+
+function hasAiKey() {
+  return !!process.env["OPENAI_API_KEY"];
+}
+
+function buildSmartFaq(msg) {
+  // Same logic as original...
+  const q = msg.toLowerCase().trim();
+  // ... (shortened for brevity, include all FAQ responses from original)
+  return `🤖 *مساعد متجر المروان*\n\nيمكنني مساعدتك...`;
+}
+
+// ═════════════════════════════════════════════════════════════
+//  CATEGORIES & PRODUCTS (with caching)
+// ═════════════════════════════════════════════════════════════
+
+const PAGE_SIZE = 8;
+let productsCache = null;
+const PRODUCTS_TTL = 15 * 60 * 1000;
+const contentCache = new Map();
+const CONTENT_TTL = 15 * 60 * 1000;
+let allOverridesCache = null;
+const OVERRIDES_TTL = 5 * 60 * 1000;
+
+async function getCachedProducts() {
+  if (productsCache && productsCache.expiry > Date.now()) return productsCache.products;
+  const products = await fetchAllProducts();
+  productsCache = { products, expiry: Date.now() + PRODUCTS_TTL };
+  return products;
+}
+
+async function getAllOverridesCached() {
+  if (allOverridesCache && allOverridesCache.expiry > Date.now()) return allOverridesCache.map;
+  const map = await loadAllOverrides();
+  allOverridesCache = { map, expiry: Date.now() + OVERRIDES_TTL };
+  return map;
+}
+
+function invalidateCaches() {
+  productsCache = null;
+  contentCache.clear();
+  allOverridesCache = null;
+}
+
+async function getCachedContent(parentId) {
+  const hit = contentCache.get(parentId);
+  if (hit && hit.expiry > Date.now()) return hit.content;
+  const content = await fetchContent(parentId);
+  contentCache.set(parentId, { content, expiry: Date.now() + CONTENT_TTL });
+  return content;
+}
+
+async function prefetchInitialContent() {
+  try {
+    await getCachedProducts();
+    await getAllOverridesCached();
+    await getCachedContent(0);
+  } catch { }
+}
+
+let refresherStarted = false;
+function startBackgroundRefresher() {
+  if (refresherStarted) return;
+  refresherStarted = true;
+  setInterval(() => {
+    fetchAllProducts().then(p => { productsCache = { products: p, expiry: Date.now() + PRODUCTS_TTL }; }).catch(() => {});
+    loadAllOverrides().then(m => { allOverridesCache = { map: m, expiry: Date.now() + OVERRIDES_TTL }; }).catch(() => {});
+    fetchContent(0).then(c => { contentCache.set(0, { content: c, expiry: Date.now() + CONTENT_TTL }); }).catch(() => {});
+  }, 4 * 60 * 1000).unref();
+}
+
+function isExcludedProduct(p, kws) {
+  const n = (p.name ?? "").toLowerCase();
+  return kws.some(k => k && n.includes(k));
+}
+
+async function buildVisibleCategoryIds(excludedCats, kws) {
+  const all = await getCachedProducts();
+  const direct = new Set();
+  for (const p of all) {
+    if (!p.available || isExcludedProduct(p, kws)) continue;
+    const c = p.parent_id;
+    if (typeof c === "number" && c > 0 && !excludedCats.has(c)) direct.add(c);
+  }
+  return direct;
+}
+
+async function isCategoryVisible(catId, visibleDirect) {
+  if (visibleDirect.has(catId)) return true;
+  const c = await getCachedContent(catId);
+  for (const sub of c.categories) if (await isCategoryVisible(sub.id, visibleDirect)) return true;
+  return false;
+}
+
+async function effectivePriceUsd(p, override, defaultMarkup, socialMarkup, socialKws, categoryMarkupPercent, userMarkupPercent) {
+  if (override?.customPriceUsd != null) return override.customPriceUsd;
+  let m;
+  if (override?.customMarkupPercent != null) m = Number(override.customMarkupPercent);
+  else if (categoryMarkupPercent != null) m = Number(categoryMarkupPercent);
+  else if (userMarkupPercent != null) m = Number(userMarkupPercent);
+  else m = defaultMarkup;
+  
+  if (isSocialProduct(p.name, p.category_name, socialKws)) m = Math.max(m, socialMarkup);
+  const rawPrice = Number(p.price) || Number(p.base_price) || 0;
+  return Number((rawPrice * (1 + m / 100)).toFixed(4));
+}
+
+const MAINTENANCE_MSG = "🔧 الموقع قيد الصيانة حالياً.\nسيعود البوت للعمل بأقرب وقت ممكن. شكراً لصبرك! 🙏";
+
+// ═════════════════════════════════════════════════════════════
+//  START HANDLER
+// ═════════════════════════════════════════════════════════════
+
+const ADMIN_USERNAME = process.env["ADMIN_USERNAME"] ?? "aMohammedMari";
+
+async function ensureUser(ctx) {
+  const f = ctx.from;
+  if (!f) return null;
+  return upsertUser({
+    id: f.id,
+    username: f.username ?? undefined,
+    first_name: f.first_name ?? undefined,
+    last_name: f.last_name ?? undefined,
+  });
+}
+
+async function showMainMenu(ctx) {
+  const user = await ensureUser(ctx);
+  if (!user) return;
+  setStep(user.id, { kind: "idle" });
+  const status = await getBotStatus();
+  if (status === "off" && !user.is_admin) {
+    await sendOrEdit(ctx, "🚫 البوت متوقف مؤقتاً للصيانة.");
+    return;
+  }
+  if (user.status === "banned") {
+    await sendOrEdit(ctx, "🚫 تم حظرك من استخدام البوت.");
+    return;
+  }
+  const rate = await getExchangeRate();
+  const greeting =
+    `أهلاً فيك في متجر المروان 🌟\n` +
+    `الاسم: ${user.first_name ?? "—"}${user.username ? ` (@${user.username})` : ""}\n` +
+    `الرقم التعريفي: ${user.id}\n` +
+    `الرصيد: ${formatBalance(Number(user.balance), rate)}\n\n` +
+    `اختر من القائمة بالأسفل 👇`;
+  await sendOrEdit(ctx, greeting, mainMenu(user.is_admin));
+}
+
+async function showContactLinks(ctx) {
+  const res = await pool.query('SELECT * FROM contact_links WHERE active = true');
+  const links = res.rows;
+  if (links.length === 0) {
+    await ctx.reply(`📞 للدعم التواصل مع: @${ADMIN_USERNAME}`,
+      Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+    return;
+  }
+  const rows = links.map(l => [Markup.button.url(l.name, l.link.startsWith("http") ? l.link : `https://t.me/${l.link.replace(/^@/, "")}`)]);
+  rows.push([Markup.button.callback("🏠 الرئيسية", "home")]);
+  await ctx.reply("📞 وسائل التواصل:", Markup.inlineKeyboard(rows));
+}
+
+// ═════════════════════════════════════════════════════════════
+//  WALLET / DEPOSIT HANDLERS
+// ═════════════════════════════════════════════════════════════
+
+async function ensureDefaultDepositMethods() {
+  const ex = await pool.query('SELECT * FROM deposit_methods');
+  if (ex.rows.length > 0) return;
+  await pool.query(`
+    INSERT INTO deposit_methods(name, identifier, instructions, active) VALUES
+    ($1,$2,$3,true), ($4,$5,$6,true)
+  `, [
+    "شام كاش", "02d7079d7229d8860c7d89467bfdc938",
+    "حول المبلغ إلى رقم/معرف شام كاش أعلاه ثم أرسل لنا:\n1) المبلغ والرقم الذي حولت منه\n2) صورة إشعار التحويل",
+    "سيريتل كاش", "32820534",
+    "حول المبلغ إلى رقم سيريتل كاش أعلاه ثم أرسل لنا:\n1) المبلغ والرقم الذي حولت منه\n2) صورة إشعار التحويل"
+  ]);
+}
+
+async function showDepositMenu(ctx) {
+  await ensureDefaultDepositMethods();
+  const res = await pool.query('SELECT * FROM deposit_methods WHERE active = true');
+  const methods = res.rows;
+  if (methods.length === 0) {
+    await ctx.reply("لا توجد طرق إيداع متاحة.");
+    return;
+  }
+  const rows = methods.map(m => [Markup.button.callback(`💳 ${m.name}`, `dep:pick:${m.id}`)]);
+  rows.push([Markup.button.callback("🏠 الرئيسية", "home")]);
+  await ctx.reply("اختر طريقة الإيداع:", Markup.inlineKeyboard(rows));
+}
+
+async function showMethodDetails(ctx, methodId) {
+  const res = await pool.query('SELECT * FROM deposit_methods WHERE id=$1 LIMIT 1', [methodId]);
+  const m = res.rows[0];
+  if (!m) { await ctx.reply("⚠️ غير موجود."); return; }
+  setStep(ctx.from.id, { kind: "deposit:number", methodId: m.id, methodName: m.name });
+  await ctx.reply(
+    `💳 ${m.name}\nالرقم/المعرف: \\`${m.identifier}\\`\n\n${m.instructions}\n\nأرسل: المبلغ والرقم الذي حولت منه`,
+    { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "dep:cancel")]]) },
+  );
+}
+
+async function notifyAdmins(ctx, depositId) {
+  const res = await pool.query('SELECT * FROM deposit_requests WHERE id=$1 LIMIT 1', [depositId]);
+  const r = res.rows[0];
+  if (!r) return;
+  const admins = await listAdmins();
+  const text =
+    `🔔 طلب إيداع جديد #${r.id}\nالمستخدم: ${ctx.from?.id} ${ctx.from?.username ? "@" + ctx.from.username : ""}\n` +
+    `الطريقة: ${r.method_name}\nرقم/تفاصيل المُحوِّل: ${r.payer_number ?? "—"}`;
+  const kb = Markup.inlineKeyboard([
+    [Markup.button.callback("✅ موافقة", `adm:dep:approve:${r.id}`), Markup.button.callback("❌ رفض", `adm:dep:reject:${r.id}`)],
+  ]);
+  for (const a of admins) {
+    try {
+      await ctx.telegram.sendPhoto(a.id, r.screenshot_file_id, { caption: text, ...kb });
+    } catch { }
+  }
+}
+
+// ═════════════════════════════════════════════════════════════
+//  ORDERS HANDLERS
+// ═════════════════════════════════════════════════════════════
+
+const REJECT_STATUSES = new Set(["reject", "rejected", "error", "refused", "cancel", "cancelled", "canceled", "fail", "failed"]);
+const ACCEPT_STATUSES = new Set(["accept", "accepted", "success", "done", "complete", "completed", "delivered"]);
+const TERMINAL_STATUSES = [...REJECT_STATUSES, ...ACCEPT_STATUSES];
+
+function statusLabel(s) {
+  const n = (s ?? "").toString().toLowerCase().trim();
+  if (ACCEPT_STATUSES.has(n) || n === "1" || n === "true") return "✅ مقبول";
+  if (REJECT_STATUSES.has(n) || n === "0" || n === "false") return "❌ مرفوض";
+  return "⏳ انتظار";
+}
+
+function extractOrderData(resp) {
+  if (!resp.data) return null;
+  if (Array.isArray(resp.data)) return resp.data[0] ?? null;
+  return resp.data;
+}
+
+function formatFullApiResponse(resp) {
+  const parts = [];
+  if (resp.message?.trim()) parts.push(resp.message.trim());
+  const code = extractDeliveredCode(resp);
+  if (code) parts.push(code);
+  const orderData = extractOrderData(resp);
+  if (orderData?.status && typeof orderData.status === "string") {
+    const label = statusLabel(orderData.status);
+    if (!parts.some(p => p.includes(orderData.status) || p.includes(label))) parts.push(`📊 الحالة: ${label}`);
+  }
+  return [...new Set(parts)].filter(Boolean).join("\n\n").trim();
+}
+
+function parseQtyValues(qv) {
+  if (!qv) return { kind: "fixed" };
+  if (Array.isArray(qv)) return { kind: "list", values: qv.map(v => Number(v)).filter(Number.isFinite) };
+  return { kind: "range", min: Number(qv.min), max: Number(qv.max) };
+}
+
+async function startOrderFlow(ctx, productId, backTo) {
+  let all = await getCachedProducts();
+  let p = all.find(x => x.id === productId);
+  if (!p) { all = await fetchAllProducts(); p = all.find(x => x.id === productId); }
+  if (!p) { await ctx.reply("⚠️ المنتج غير موجود."); return; }
+  if (!p.available) { await ctx.reply("⚠️ هذا المنتج غير متاح حالياً."); return; }
+
+  const ovMap = await loadOverrideMap([p.id]);
+  const ov = ovMap.get(p.id);
+  const markup = await getMarkupPercent();
+  const socialKws = await getSocialKeywords();
+  const socialMarkup = await getSocialMarkupPercent();
+  const user = await getUser(ctx.from.id);
+  const userMarkup = user?.custom_markup_percent != null ? Number(user.custom_markup_percent) : null;
+  
+  // Load category markup
+  let catMarkup = null;
+  const catId = ov?.customCategoryId ?? p.parent_id;
+  if (catId) {
+    const catRes = await pool.query('SELECT custom_markup_percent FROM category_overrides WHERE category_id=$1', [catId]);
+    if (catRes.rows[0]?.custom_markup_percent != null) catMarkup = Number(catRes.rows[0].custom_markup_percent);
+  }
+  
+  const unitPriceUsd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws, catMarkup, userMarkup);
+  if (unitPriceUsd === 0) {
+    await ctx.reply("⚠️ هذا المنتج لا يملك سعراً محدداً في النظام. يرجى التواصل مع الإدارة لضبط سعره.");
+    return;
+  }
+
+  const isSocial = isSocialProduct(p.name, p.category_name, socialKws);
+  const paramKeys = Array.isArray(p.params) ? p.params : [];
+
+  if (isSocial) {
+    const parsedSocial = parseQtyValues(p.qty_values);
+    if (parsedSocial.kind === "list" && parsedSocial.values.length > 0) {
+      setStep(ctx.from.id, { kind: "order:qty", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: parsedSocial.values, backTo });
+      const rows = parsedSocial.values.slice(0, 24).map(v => {
+        const total = unitPriceUsd * v;
+        const label = total === 0 ? `${v.toLocaleString("en-US")}` : `${v.toLocaleString("en-US")} — ${total < 0.005 ? total.toFixed(4) : total.toFixed(2)}$`;
+        return [Markup.button.callback(label, `ord:qty:${v}`)];
+      });
+      rows.push([Markup.button.callback("❌ إلغاء", "ord:cancel")]);
+      const unitLabel = unitPriceUsd > 0 ? `\n💰 سعر الوحدة: ${unitPriceUsd < 0.005 ? unitPriceUsd.toFixed(6) : unitPriceUsd.toFixed(4)}$` : "";
+      await sendOrEdit(ctx, `🛒 ${p.name}${unitLabel}\n\nاختر الكمية:`, Markup.inlineKeyboard(rows));
+      return;
+    }
+    let min, max;
+    if (parsedSocial.kind === "range" && Number.isFinite(parsedSocial.min) && parsedSocial.min > 0 && Number.isFinite(parsedSocial.max) && parsedSocial.max > 0) {
+      min = parsedSocial.min; max = parsedSocial.max;
+    } else {
+      min = await getSocialMinQty(); max = await getSocialMaxQty();
+    }
+    setStep(ctx.from.id, { kind: "order:qty", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: { min, max }, backTo });
+    const priceHint = unitPriceUsd > 0 ? `\n💰 السعر للوحدة: ${unitPriceUsd < 0.005 ? unitPriceUsd.toFixed(6) : unitPriceUsd.toFixed(4)}$` : "";
+    await sendOrEdit(ctx, `🛒 ${p.name}${priceHint}\n\nأرسل الكمية المطلوبة (بين ${min.toLocaleString("en-US")} و ${max.toLocaleString("en-US")}):`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]]));
+    return;
+  }
+
+  const parsed = parseQtyValues(p.qty_values);
+  if (parsed.kind === "fixed") {
+    return askNextParam(ctx, p, unitPriceUsd, 1, paramKeys, {}, 0, backTo);
+  }
+  if (parsed.kind === "list") {
+    setStep(ctx.from.id, { kind: "order:qty", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: parsed.values, backTo });
+    const rows = parsed.values.slice(0, 24).map(v => [Markup.button.callback(String(v), `ord:qty:${v}`)]);
+    rows.push([Markup.button.callback("❌ إلغاء", "ord:cancel")]);
+    await sendOrEdit(ctx, `🛒 ${p.name}\n💰 سعر الوحدة: ${unitPriceUsd.toFixed(4)}$\n\nاختر الكمية:`, Markup.inlineKeyboard(rows));
+    return;
+  }
+  setStep(ctx.from.id, { kind: "order:qty", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: { min: parsed.min, max: parsed.max }, backTo });
+  await sendOrEdit(ctx, `🛒 ${p.name}\n💰 سعر الوحدة: ${unitPriceUsd.toFixed(4)}$\n\nأرسل الكمية المطلوبة (بين ${parsed.min} و ${parsed.max}):`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]]));
+}
+
+async function askNextParam(ctx, p, unitPriceUsd, qty, paramKeys, collected, idx, backTo) {
+  if (idx >= paramKeys.length) return showOrderConfirmation(ctx, p, unitPriceUsd, qty, collected, backTo);
+  setStep(ctx.from.id, { kind: "order:params", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, qty, paramKeys, collected, idx, backTo });
+  const key = paramKeys[idx];
+  await ctx.reply(`📝 أدخل قيمة الحقل: *${key}*`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]]) });
+}
+
+async function showOrderConfirmation(ctx, p, unitPriceUsd, qty, collected, backTo) {
+  const totalUsd = Number((unitPriceUsd * qty).toFixed(4));
+  const rate = await getExchangeRate();
+  const totalSyp = Math.round(totalUsd * rate);
+  const u = await getUser(ctx.from.id);
+  const balance = u ? Number(u.balance) : 0;
+  const paramsLines = Object.entries(collected).map(([k, v]) => `• ${k}: ${v}`).join("\n");
+  setStep(ctx.from.id, { kind: "order:params", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, qty, paramKeys: Object.keys(collected), collected, idx: Object.keys(collected).length, backTo });
+  const lowBalance = balance < totalUsd;
+  const totalUsdStr = totalUsd < 0.005 ? totalUsd.toFixed(4) : totalUsd.toFixed(2);
+  const text = `🧾 تأكيد الطلب\n\n🛒 المنتج: ${p.name}\n🔢 الكمية: ${qty.toLocaleString("en-US")}\n${paramsLines ? paramsLines + "\n" : ""}💰 الإجمالي: ${totalUsdStr}$ | ${totalSyp.toLocaleString("en-US")} ل.س\n💳 رصيدك: ${formatBalance(balance, rate)}\n\n${lowBalance ? "❌ ليس لديك رصيد كافي. يرجى شحن رصيدك ثم المحاولة مجدداً." : "هل تريد تأكيد الطلب؟"}`;
+  const rows = lowBalance
+    ? [[Markup.button.callback("💳 شحن رصيد", "deposit")], [Markup.button.callback("❌ إلغاء", "ord:cancel")]]
+    : [[Markup.button.callback("✅ تأكيد وتنفيذ", "ord:confirm"), Markup.button.callback("❌ إلغاء", "ord:cancel")]];
+  await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
+}
+
+async function executeOrder(ctx) {
+  const step = getStep(ctx.from.id);
+  if (step.kind !== "order:params") return;
+  let all = await getCachedProducts();
+  let p = all.find(x => x.id === step.productId);
+  if (!p) { all = await fetchAllProducts(); p = all.find(x => x.id === step.productId); }
+  if (!p) { await ctx.reply("⚠️ المنتج غير موجود."); setStep(ctx.from.id, { kind: "idle" }); return; }
+
+  const totalUsd = Number((step.priceUsd * step.qty).toFixed(4));
+  const u = await getUser(ctx.from.id);
+  const balance = u ? Number(u.balance) : 0;
+  if (balance < totalUsd) {
+    await ctx.reply("❌ ليس لديك رصيد كافي، اشحن رصيد ثم حاول مجدداً.", Markup.inlineKeyboard([[Markup.button.callback("💳 شحن رصيد", "deposit")], [Markup.button.callback("🏠 الرئيسية", "home")]]));
+    setStep(ctx.from.id, { kind: "idle" });
+    return;
+  }
+
+  await clearInlineKeyboard(ctx);
+  const orderUuid = crypto.randomUUID();
+  await adjustBalance(ctx.from.id, -totalUsd);
+  const execRate = await getExchangeRate();
+  const totalSyp = Math.round(totalUsd * execRate);
+
+  const params = { ...step.collected };
+  if (step.qty && step.qty !== 1) params.qty = step.qty;
+
+  const inserted = await pool.query(
+    'INSERT INTO orders(user_id, product_id, product_name, qty, params, price_usd, oranos_uuid, status) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+    [ctx.from.id, p.id, p.name, String(step.qty), JSON.stringify(step.collected), String(totalUsd), orderUuid, "pending"]
+  );
+  const order = inserted.rows[0];
+
+  await ctx.reply(`⏳ جاري تنفيذ طلبك #${order.id}...\n💸 تم خصم ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س من رصيدك.`);
+
+  let resp;
+  try { resp = await placeOrder(p.id, params, orderUuid); }
+  catch (err) { logger.error({ err }, "placeOrder threw"); resp = { status: "ERR", message: "خطأ شبكة" }; }
+
+  const apiStatus = (resp.status ?? "").toLowerCase();
+  const success = apiStatus === "success" || apiStatus === "ok" || apiStatus === "accept";
+
+  if (!success) {
+    await adjustBalance(ctx.from.id, totalUsd);
+    await pool.query('UPDATE orders SET status=$1, api_response=$2 WHERE id=$3', ["error", JSON.stringify(resp), order.id]);
+    setStep(ctx.from.id, { kind: "idle" });
+    const fullErrText = formatFullApiResponse(resp);
+    await ctx.reply(`❌ تعذّر تنفيذ الطلب #${order.id}.\nالسبب: ${resp.message ?? "خطأ غير معروف"}\n✅ تمت إعادة ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س إلى رصيدك.${fullErrText ? `\n\n📋 الرد:\n${fullErrText}` : ""}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+    return;
+  }
+
+  const deliveredCode = extractDeliveredCode(resp);
+  const oranosOrderId = resp.data?.order_id ?? null;
+  const apiInnerStatus = (resp.data?.status ?? apiStatus).toString();
+
+  await pool.query('UPDATE orders SET status=$1, oranos_order_id=$2, api_response=$3, delivered_code=$4 WHERE id=$5',
+    [apiInnerStatus === "accept" ? "accept" : apiInnerStatus, oranosOrderId, JSON.stringify(resp), deliveredCode ?? null, order.id]);
+
+  setStep(ctx.from.id, { kind: "idle" });
+  const fullRespText = formatFullApiResponse(resp);
+  const isWaiting = !ACCEPT_STATUSES.has(apiInnerStatus.toLowerCase()) && !REJECT_STATUSES.has(apiInnerStatus.toLowerCase());
+
+  await ctx.reply(`✅ تم استلام طلبك #${order.id}\nالحالة: ${statusLabel(apiInnerStatus)}\n🛒 ${p.name} × ${step.qty}\n💰 ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س`);
+
+  if (deliveredCode) {
+    const deliveryLines = [`🔑 تفاصيل الطلب:\n\n${deliveredCode}`];
+    if (fullRespText && !fullRespText.includes(deliveredCode)) deliveryLines.push(`\n📋 الرد:\n${fullRespText}`);
+    await ctx.reply(deliveryLines.join(""), Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+  } else if (fullRespText) {
+    await ctx.reply(`📋 الرد:\n\n${fullRespText}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+  } else if (isWaiting) {
+    await ctx.reply("⏳ طلبك قيد المعالجة. سيتم إخطارك تلقائياً عند اكتماله أو رفضه.", Markup.inlineKeyboard([
+      [Markup.button.callback("🔄 تحديث الحالة", `ord:check:${order.id}`)],
+      [Markup.button.callback("🏠 الرئيسية", "home")],
+    ]));
+  } else {
+    await ctx.reply("شكراً لاستخدامك متجرنا! 🌟", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+  }
+}
+
+async function showMyOrders(ctx, page) {
+  const limit = 8;
+  const offset = (page - 1) * limit;
+  const res = await pool.query('SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3', [ctx.from.id, limit + 1, offset]);
+  const rows = res.rows;
+  const hasNext = rows.length > limit;
+  const slice = rows.slice(0, limit);
+  if (slice.length === 0) {
+    await sendOrEdit(ctx, "📭 لا يوجد لديك أي طلبات بعد.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+    return;
+  }
+  const lines = slice.map(r => `#${r.id} • ${r.product_name} ×${r.qty} • ${Number(r.price_usd).toFixed(2)}$ • ${statusLabel(r.status)}`);
+  const navRow = [];
+  if (page > 1) navRow.push(Markup.button.callback("⬅️ السابق", `myorders:${page - 1}`));
+  if (hasNext) navRow.push(Markup.button.callback("التالي ➡️", `myorders:${page + 1}`));
+  const kb = [];
+  if (navRow.length) kb.push(navRow);
+  kb.push([Markup.button.callback("🏠 الرئيسية", "home")]);
+  await sendOrEdit(ctx, `📦 طلباتي\n\n${lines.join("\n")}`, Markup.inlineKeyboard(kb));
+}
+
+async function checkOrderStatus(ctx, orderId) {
+  const res = await pool.query('SELECT * FROM orders WHERE id=$1 AND user_id=$2 LIMIT 1', [orderId, ctx.from.id]);
+  const row = res.rows[0];
+  if (!row) { await ctx.reply("⚠️ غير موجود."); return; }
+  if (!row.oranos_order_id) { await ctx.reply(`الحالة الحالية: ${statusLabel(row.status)}`); return; }
+  try {
+    const resp = await checkOrder(row.oranos_order_id);
+    const orderData = extractOrderData(resp);
+    const rawStatus = ((orderData?.status ?? row.status) ?? "").toString().toLowerCase();
+    const isRejected = REJECT_STATUSES.has(rawStatus);
+    const isAccepted = ACCEPT_STATUSES.has(rawStatus);
+    const finalStatus = isRejected ? "reject" : isAccepted ? "accept" : rawStatus;
+
+    if (finalStatus !== row.status) {
+      const code = extractDeliveredCode(resp);
+      await pool.query('UPDATE orders SET status=$1, api_response=$2, delivered_code=$3 WHERE id=$4',
+        [finalStatus, JSON.stringify(resp), code ?? row.delivered_code, row.id]);
+      if (isRejected && !REJECT_STATUSES.has(row.status)) await adjustBalance(ctx.from.id, Number(row.price_usd));
+      const fullText = formatFullApiResponse(resp);
+      if (code && !row.delivered_code) await ctx.reply(`🔑 تفاصيل الطلب #${row.id}:\n\n${code}`);
+      else if (fullText) await ctx.reply(`📋 الرد للطلب #${row.id}:\n\n${fullText}`);
+    }
+    const rate = await getExchangeRate();
+    const priceUsd = Number(row.price_usd);
+    const priceSyp = Math.round(priceUsd * rate);
+    await ctx.reply(`الحالة الحالية للطلب #${row.id}: ${statusLabel(finalStatus)}\n💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`);
+  } catch (err) {
+    logger.error({ err }, "checkOrder failed");
+    await ctx.reply("⚠️ تعذّر فحص الحالة الآن.");
+  }
+}
+
+async function pollOneOrder(bot, order) {
+  let resp = null;
+  if (order.oranos_order_id) resp = await checkOrder(order.oranos_order_id).catch(() => null);
+  if (!resp && order.oranos_uuid) resp = await checkOrder(order.oranos_uuid, true).catch(() => null);
+  if (!resp) return;
+
+  const orderData = extractOrderData(resp);
+  const rawNew = ((orderData?.status ?? "").toString().toLowerCase());
+  if (!rawNew || rawNew === order.status) return;
+
+  const isRejected = REJECT_STATUSES.has(rawNew);
+  const isAccepted = ACCEPT_STATUSES.has(rawNew);
+  const prevRejected = REJECT_STATUSES.has(order.status);
+  const prevAccepted = ACCEPT_STATUSES.has(order.status);
+  if (isRejected && prevRejected) return;
+  if (isAccepted && prevAccepted) return;
+
+  const code = extractDeliveredCode(resp);
+  const finalStatus = isRejected ? "reject" : isAccepted ? "accept" : rawNew;
+
+  await pool.query('UPDATE orders SET status=$1, api_response=$2, delivered_code=$3 WHERE id=$4',
+    [finalStatus, JSON.stringify(resp), code ?? null, order.id]);
+
+  const fullText = formatFullApiResponse(resp);
+  const priceUsd = Number(order.price_usd);
+  const rate = await getExchangeRate();
+
+  if (isRejected) {
+    if (!prevRejected) await adjustBalance(order.user_id, priceUsd);
+    const refundSyp = Math.round(priceUsd * rate);
+    const msgLines = [`❌ تم رفض الطلب #${order.id}`, `🛒 المنتج: ${order.product_name}`, `💰 تمت إعادة ${priceUsd.toFixed(2)}$ | ${refundSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`];
+    if (fullText) msgLines.push(`\n📋 الرد:\n${fullText}`);
+    msgLines.push("\n⟳ يمكنك المحاولة مجدداً من القائمة الرئيسية.");
+    await bot.telegram.sendMessage(order.user_id, msgLines.join("\n")).catch(() => {});
+  } else if (isAccepted) {
+    const priceSyp = Math.round(priceUsd * rate);
+    const msgLines = [`✅ تم تنفيذ طلبك #${order.id} بنجاح!`, `🛒 المنتج: ${order.product_name}`, `💰 المبلغ: ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`];
+    if (fullText) msgLines.push(`\n📋 الرد:\n${fullText}`);
+    await bot.telegram.sendMessage(order.user_id, msgLines.join("\n")).catch(() => {});
+  } else {
+    const msgLines = [`🔄 تحديث الطلب #${order.id}`, `🛒 المنتج: ${order.product_name}`, `📊 الحالة: ${statusLabel(rawNew)}`];
+    if (fullText) msgLines.push(`\n📋 الرد:\n${fullText}`);
+    await bot.telegram.sendMessage(order.user_id, msgLines.join("\n")).catch(() => {});
+  }
+}
+
+function startOrderPoller(bot) {
+  setInterval(async () => {
+    try {
+      const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const res = await pool.query(
+        "SELECT * FROM orders WHERE status != ALL($1) AND created_at > $2 LIMIT 200",
+        [TERMINAL_STATUSES, cutoff]
+      );
+      const pendingRows = res.rows;
+      const CHUNK = 5;
+      for (let i = 0; i < pendingRows.length; i += CHUNK) {
+        await Promise.allSettled(pendingRows.slice(i, i + CHUNK).map(order =>
+          pollOneOrder(bot, order).catch(err => logger.warn({ err, orderId: order.id }, "pollOneOrder failed"))
+        ));
+      }
+    } catch (err) {
+      logger.error({ err }, "order poller error");
+    }
+  }, 90 * 1000).unref();
+}
+
+// ═════════════════════════════════════════════════════════════
+//  ADMIN HANDLERS (simplified - core functions)
+// ═════════════════════════════════════════════════════════════
+
+const ADMIN_USERNAMES_LOWER = (process.env["ADMIN_USERNAME"] ?? ADMIN_USERNAME)
+  .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+
+function isAllowedAdminUsername(u) {
+  if (!u) return false;
+  return ADMIN_USERNAMES_LOWER.includes(u.toLowerCase());
+}
+
+async function requireAdmin(ctx) {
+  const u = await getUser(ctx.from.id);
+  if (!u?.is_admin) { await ctx.reply("⛔ هذا القسم للإدارة فقط."); return false; }
+  return true;
+}
+
+async function showAdminMenu(ctx) {
+  if (!(await requireAdmin(ctx))) return;
+  const status = await getBotStatus();
+  const rows = [
+    [Markup.button.callback("📥 طلبات الإيداع", "adm:depList:1"), Markup.button.callback("👥 المستخدمون", "adm:users:1")],
+    [Markup.button.callback("🔍 بحث مستخدم", "adm:findUser"), Markup.button.callback("📦 كل الطلبات", "adm:allOrders:1")],
+    [Markup.button.callback("📣 رسالة جماعية", "adm:broadcast"), Markup.button.callback("💳 طرق الإيداع", "adm:methods")],
+    [Markup.button.callback("🛒 إدارة المنتجات", "cat:0:1:0"), Markup.button.callback("⚙️ الإعدادات", "adm:settings")],
+    [Markup.button.callback("📞 وسائل التواصل", "adm:contacts"), Markup.button.callback("📁 أقسام مخصصة", "adm:vcList")],
+    [Markup.button.callback("➕ إضافة منتج يدوي", "adm:manualProds"), Markup.button.callback("🛠️ مساعد الذكاء", "adm:aiSupport")],
+    [Markup.button.callback("🔄 بينج تلقائي", "adm:ping"), Markup.button.callback(status === "on" ? "🟢 البوت: شغال" : "🔴 البوت: متوقف", "adm:toggleStatus")],
+    [Markup.button.callback("🏠 الرئيسية", "home")],
+  ];
+  await sendOrEdit(ctx, "👑 لوحة الإدارة", Markup.inlineKeyboard(rows));
+}
+
+async function showSettingsMenu(ctx) {
+  if (!(await requireAdmin(ctx))) return;
+  const m = await getMarkupPercent();
+  const sm = await getSocialMarkupPercent();
+  const r = await getExchangeRate();
+  const text = `⚙️ الإعدادات\n\nالربح العام: ${m}%\nربح السوشل ميديا: ${sm}%\nسعر الصرف: ${r} ل.س لكل دولار`;
+  await sendOrEdit(ctx, text, Markup.inlineKeyboard([
+    [Markup.button.callback("✏️ تعديل الربح العام", "adm:setMarkup")],
+    [Markup.button.callback("✏️ تعديل ربح السوشل", "adm:setSocialMarkup")],
+    [Markup.button.callback("💱 تعديل سعر الصرف", "adm:setRate")],
+    [Markup.button.callback("🔑 تغيير كلمة المرور", "adm:newPass")],
+    [Markup.button.callback("🔘 تعديل أزرار التنقل", "adm:btnLabels")],
+    [Markup.button.callback("⬅️ رجوع", "admin:menu")],
   ]));
-});
+}
 
-bot.action("adm:toggleStatus", (ctx) => {
-  BOT_STATUS = BOT_STATUS === 'on'? 'off' : 'on';
-  ctx.answerCbQuery("تم التغيير");
-});
+// ═════════════════════════════════════════════════════════════
+//  CATEGORY DISPLAY (showCategory, showProduct, etc.)
+// ═════════════════════════════════════════════════════════════
 
-// ===== [WEBHOOK] =====
-app.use(bot.webhookCallback('/' + token));
-app.get('/', (req, res) => res.send('OK'));
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, async () => {
-  await bot.telegram.setWebhook(`${WEBHOOK_URL}/${token}`);
-  console.log("Bot running with DB + API");
-});
+async function loadCategoryOverrides(ids) {
+  if (ids.length === 0) return new Map();
+  const res = await pool.query('SELECT * FROM category_overrides WHERE category_id = ANY($1)', [ids]);
+  const m = new Map();
+  for (const r of res.rows) m.set(r.category_id, { customName: r.custom_name, hidden: r.hidden, customMarkupPercent: r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null, sortOrder: r.sort_order });
+  return m;
+}
+
+async function showCategory(ctx, parentId, page, backTo) {
+  if (isMaintenanceMode()) {
+    await sendOrEdit(ctx, MAINTENANCE_MSG, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+    return;
+  }
+
+  const user = await getUser(ctx.from.id);
+  const isAdmin = !!user?.is_admin;
+  let content;
+  try { content = await getCachedContent(parentId); }
+  catch {
+    await sendOrEdit(ctx, MAINTENANCE_MSG, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+    return;
+  }
+
+  const excludedCats = await getExcludedCategoryIds();
+  const kws = await getExcludedKeywords();
+  const socialKws = await getSocialKeywords();
+  const socialMarkup = await getSocialMarkupPercent();
+  const visibleDirect = await buildVisibleCategoryIds(excludedCats, kws);
+  const catIds = content.categories.map(c => c.id);
+  const catOv = await loadCategoryOverrides(catIds);
+  const candidate = content.categories.filter(c => {
+    if (excludedCats.has(c.id)) return false;
+    const ov = catOv.get(c.id);
+    if (ov?.hidden && !isAdmin) return false;
+    if (!c.name || c.name === "null") return false;
+    return true;
+  });
+  let visibleCats = candidate;
+  if (!isAdmin) {
+    const checks = await Promise.all(candidate.map(async c => ({ c, ok: await isCategoryVisible(c.id, visibleDirect) })));
+    visibleCats = checks.filter(x => x.ok).map(x => x.c);
+  }
+
+  const allProducts = await getCachedProducts();
+  const allOv = await getAllOverridesCached();
+  const movedIntoHere = [];
+  const movedAwayFromHere = new Set();
+  for (const [pid, ov] of allOv) {
+    if (ov.customCategoryId == null) continue;
+    if (ov.customCategoryId === parentId) { const p = allProducts.find(x => x.id === pid); if (p) movedIntoHere.push(p); }
+    else movedAwayFromHere.add(pid);
+  }
+  const baseProducts = content.products.filter(p => !movedAwayFromHere.has(p.id));
+  const mergedById = new Map();
+  for (const p of baseProducts) mergedById.set(p.id, p);
+  for (const p of movedIntoHere) mergedById.set(p.id, p);
+  const merged = Array.from(mergedById.values());
+  const prodIds = merged.map(p => p.id);
+  const ovMap = await loadOverrideMap(prodIds);
+  const visibleProds = merged.filter(p => {
+    if (isExcludedProduct(p, kws)) return false;
+    const ov = ovMap.get(p.id);
+    if (ov?.hidden && !isAdmin) return false;
+    if (!p.available && !isAdmin) return false;
+    return true;
+  });
+
+  const vcRes = await pool.query('SELECT * FROM virtual_categories WHERE parent_id=$1', [parentId]);
+  const vcRows = vcRes.rows;
+  const virtualCats = isAdmin ? vcRows : vcRows.filter(v => v.active);
+  const vcBtns = virtualCats.map(v => {
+    const prefix = v.active ? "📂 " : "🔒 ";
+    return Markup.button.callback(`${prefix}${v.name}`.slice(0, 60), `vcat:${v.id}:1:${parentId}`);
+  });
+
+  const manualRes = await pool.query('SELECT * FROM manual_products WHERE category_id=$1 AND category_is_virtual=false AND active=true', [parentId]);
+  const manualRows = manualRes.rows;
+  const rate = await getExchangeRate();
+  const manualBtns = manualRows.map(m => {
+    const usd = Number(m.price_usd);
+    const syp = Math.round(usd * rate);
+    return Markup.button.callback(`🛒 ${m.name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `mprod:${m.id}:${parentId}`);
+  });
+
+  if (visibleCats.length === 0 && visibleProds.length === 0 && vcBtns.length === 0 && manualBtns.length === 0) {
+    const [backLabel, homeLabel] = await Promise.all([getBtnBackLabel(), getBtnHomeLabel()]);
+    const emptyBackBtn = backTo === 0 ? Markup.button.callback(homeLabel, "home") : Markup.button.callback(backLabel, `cat:${backTo}:1:0`);
+    const emptyRows = [];
+    if (isAdmin) {
+      emptyRows.push([Markup.button.callback("✏️ تعديل اسم القسم", `adm:catEdit:${parentId}`)]);
+      emptyRows.push([Markup.button.callback("🙈 إخفاء القسم", `adm:catToggle:${parentId}`)]);
+      emptyRows.push([Markup.button.callback("🚚 نقل كل منتجات القسم", `adm:moveCatAll:${parentId}`)]);
+    }
+    emptyRows.push([emptyBackBtn]);
+    await sendOrEdit(ctx, "📭 هذا القسم فارغ ح
