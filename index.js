@@ -2208,7 +2208,7 @@ app.get("/", (_, res) => res.send("OK - متجر المروان Bot v2.0"));
 app.get("/health", (_, res) => res.json({ status: "ok", time: new Date().toISOString(), version: "2.0" }));
 
 // Webhook endpoint
-let _botRef = null;
+_botRef = null;
 app.post(/^\/bot.+/, (req, res) => {
   if (_botRef) {
     _botRef.handleUpdate(req.body, res).catch(err => { console.error("webhook error:", err); res.sendStatus(500); });
@@ -2217,7 +2217,18 @@ app.post(/^\/bot.+/, (req, res) => {
   }
 });
 
-app.listen(PORT, "0.0.0.0", () => console.log(`🌐 Health server: port ${PORT}`));
+
+app.use('/bot', (req, res) => {
+    if (_botRef) {
+        _botRef.handleUpdate(req.body, res).catch(err => { 
+            console.error("webhook error:", err); 
+            res.sendStatus(500); 
+        });
+    } else {
+        res.sendStatus(200);
+    }
+});
+
 
 // ── Start ──────────────────────────────────────────────────────
 startBot().then(bot => { _botRef = bot; }).catch(err => { console.error("Failed to start:", err); process.exit(1); });
