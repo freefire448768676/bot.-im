@@ -1,6 +1,6 @@
 // ============================================================
-//  متجر المروان — بوت تيليجرام
-//  ملف موحد للنشر على Railway (بدون drizzle-orm)
+//  متجر المروان — بوت تيليجرام v2.0
+//  محسّن: أداء عالٍ، لوحة إدارة مخفية، إصلاح كامل
 // ============================================================
 "use strict";
 
@@ -17,10 +17,17 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-// ── DB pool ──────────────────────────────────────────────────
+// ── DB pool محسّن ─────────────────────────────────────────────
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL.includes("railway") ? { rejectUnauthorized: false } : false,
+  ssl: process.env.DATABASE_URL.includes("railway") || process.env.DATABASE_URL.includes("neon") || process.env.DATABASE_URL.includes("supabase")
+    ? { rejectUnauthorized: false }
+    : false,
+  max: 20,                 // حد أقصى 20 اتصال متزامن
+  min: 2,                  // اتصالان دائمان جاهزان
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 5_000,
+  statement_timeout: 15_000,
 });
 
 // simple query helper
@@ -104,6 +111,7 @@ async function ensureTables() {
       hidden BOOLEAN NOT NULL DEFAULT false,
       custom_markup_percent NUMERIC(6,2),
       sort_order INTEGER,
+      custom_parent_id INTEGER,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE TABLE IF NOT EXISTS broadcasts (
@@ -155,6 +163,9 @@ async function ensureTables() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+
+  // إضافة العمود الجديد إذا لم يكن موجوداً
+  await q(`ALTER TABLE category_overrides ADD COLUMN IF NOT EXISTS custom_parent_id INTEGER`).catch(() => {});
 }
 
 // ============================================================
@@ -175,6 +186,7 @@ const DEFAULTS = {
   social_keywords: "سوشل,social,تواصل اجتماعي,اجتماعي,انستغرام,instagram,تيك توك,tiktok,فيسبوك,facebook,تويتر,twitter,يوتيوب,youtube,تليجرام,telegram,سناب,snap",
   ai_keywords: "ذكاء اصطناعي,chatgpt,gpt,openai,claude,gemini,midjourney,perplexity,ai ",
   admin_password: "0941408061@0941408061aM",
+  admin_login_command: "Abdulmalik Marai 1122334455",
   auto_ping_enabled: "off",
   auto_ping_interval_min: "5",
   auto_ping_target_user_id: "",
@@ -207,45 +219,32 @@ async function getSetting(key) {
 }
 
 async function setSetting(key, value) {
-  await q("INSERT INTO bot_settings(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=$2, updated_at=NOW()", [key, value]);
   settingsCache.set(key, value);
-}
-
-async function deleteSetting(key) {
-  await q("DELETE FROM bot_settings WHERE key=$1", [key]);
-  settingsCache.delete(key);
+  await q("INSERT INTO bot_settings(key,value,updated_at) VALUES($1,$2,NOW()) ON CONFLICT(key) DO UPDATE SET value=$2, updated_at=NOW()", [key, value]);
 }
 
 async function getMarkupPercent() { const n = Number(await getSetting("markup_percent")); return Number.isFinite(n) ? n : 3; }
 async function getExchangeRate() { const n = Number(await getSetting("exchange_rate")); return Number.isFinite(n) && n > 0 ? n : 132; }
-async function getBotStatus() { return (await getSetting("bot_status")) === "off" ? "off" : "on"; }
-async function getExcludedCategoryIds() { const v = await getSetting("excluded_category_ids"); return new Set(v.split(",").map(s => Number(s.trim())).filter(n => Number.isFinite(n) && n > 0)); }
-async function getExcludedKeywords() { const v = await getSetting("excluded_product_keywords"); return v.split(",").map(s => s.trim().toLowerCase()).filter(Boolean); }
-async function getSocialKeywords() { const v = await getSetting("social_keywords"); return v.split(",").map(s => s.trim().toLowerCase()).filter(Boolean); }
+async function getBotStatus() { return getSetting("bot_status"); }
+async function getExcludedKeywords() { const v = await getSetting("excluded_product_keywords"); return v.split(",").map(k => k.trim().toLowerCase()).filter(Boolean); }
+async function getSocialKeywords() { const v = await getSetting("social_keywords"); return v.split(",").map(k => k.trim().toLowerCase()).filter(Boolean); }
 async function getSocialMarkupPercent() { const n = Number(await getSetting("social_markup_percent")); return Number.isFinite(n) ? n : 3; }
 async function getSocialMinQty() { const n = Number(await getSetting("social_min_qty")); return Number.isFinite(n) && n > 0 ? n : 500; }
 async function getSocialMaxQty() { const n = Number(await getSetting("social_max_qty")); return Number.isFinite(n) && n > 0 ? n : 10000; }
 async function getAdminPassword() { return getSetting("admin_password"); }
-async function getBtnBackLabel() { return (await getSetting("btn_back_label")) || "⬅️ رجوع"; }
-async function getBtnHomeLabel() { return (await getSetting("btn_home_label")) || "🏠 الرئيسية"; }
-async function getBtnPrevLabel() { return (await getSetting("btn_prev_label")) || "⬅️ السابق"; }
-async function getBtnNextLabel() { return (await getSetting("btn_next_label")) || "التالي ➡️"; }
+async function getAdminLoginCommand() { return getSetting("admin_login_command"); }
+async function getBtnBackLabel() { return getSetting("btn_back_label"); }
+async function getBtnHomeLabel() { return getSetting("btn_home_label"); }
+async function getBtnPrevLabel() { return getSetting("btn_prev_label"); }
+async function getBtnNextLabel() { return getSetting("btn_next_label"); }
 
-function isSocialProduct(name, categoryName, keywords) {
-  const hay = `${name ?? ""} ${categoryName ?? ""}`.toLowerCase();
-  return keywords.some(k => k && hay.includes(k));
+function isSocialProduct(name, catName, kws) {
+  const n = ((name ?? "") + " " + (catName ?? "")).toLowerCase();
+  return kws.some(k => k && n.includes(k));
 }
 
 // ============================================================
-//  SESSION STATE
-// ============================================================
-const sessions = new Map();
-function getStep(userId) { return sessions.get(userId) ?? { kind: "idle" }; }
-function setStep(userId, step) { if (step.kind === "idle") sessions.delete(userId); else sessions.set(userId, step); }
-function clearStep(userId) { sessions.delete(userId); }
-
-// ============================================================
-//  USER FUNCTIONS
+//  USER CACHE
 // ============================================================
 const userCache = new Map();
 const USER_CACHE_TTL = 30_000;
@@ -387,7 +386,7 @@ const ORANOS_BASE = process.env.ORANOS_API_BASE ?? "https://api.oranosmarket.com
 const ORANOS_TOKEN = process.env.ORANOS_API_TOKEN ?? "";
 
 const oranosClient = axios.create({
-  baseURL: ORANOS_BASE, timeout: 15000,
+  baseURL: ORANOS_BASE, timeout: 20000,
   headers: { "api-token": ORANOS_TOKEN, Accept: "application/json" },
 });
 
@@ -503,32 +502,40 @@ function clearAiHistory(userId) { convHistory.delete(userId); }
 function hasAiKey() { return !!process.env.OPENAI_API_KEY; }
 
 function buildSmartFaq(msg) {
-  const q2 = msg.toLowerCase().trim();
-  if ((q2.includes("سعر") && q2.includes("صرف")) || q2.includes("ليرة"))
-    return `💱 *تعديل سعر الصرف:*\nالإدارة → ⚙️ الإعدادات → 💱 تعديل سعر الصرف`;
-  if (q2.includes("ربح") || q2.includes("markup"))
-    return `📈 *نسبة الربح:*\nالإدارة → ⚙️ الإعدادات → ✏️ تعديل الربح العام`;
-  if (q2.includes("رصيد"))
-    return `💰 *تعديل رصيد:*\nالإدارة → 🔍 بحث مستخدم → ➕ أو ➖`;
-  return `🤖 *مساعد متجر المروان*\n\nاكتب سؤالك وسأجيبك 💡\n${process.env.OPENAI_API_KEY ? "✅ الذكاء الاصطناعي مفعّل" : "⚠️ أضف OPENAI_API_KEY لتفعيل الذكاء الاصطناعي"}`;
+  const m = msg.toLowerCase();
+  if (m.includes("رصيد") || m.includes("balance")) return "💰 لمعرفة رصيدك استخدم زر *رصيدي* في القائمة الرئيسية.";
+  if (m.includes("إيداع") || m.includes("شحن") || m.includes("deposit")) return "💳 لشحن رصيدك اضغط زر *إيداع* في القائمة الرئيسية.";
+  if (m.includes("طلب") || m.includes("order")) return "📦 لمتابعة طلباتك اضغط زر *طلباتي* في القائمة الرئيسية.";
+  if (m.includes("سعر") || m.includes("price")) return "💱 *تعديل سعر الصرف:*\nالإدارة → ⚙️ الإعدادات → 💱 تعديل سعر الصرف";
+  if (m.includes("ربح") || m.includes("markup")) return "📈 *نسبة الربح:*\nالإدارة → ⚙️ الإعدادات → ✏️ تعديل الربح العام";
+  return "📞 للمساعدة تواصل مع الدعم عبر زر *الدعم* في القائمة.";
 }
 
 // ============================================================
-//  PRODUCT / CATEGORY CACHE
+//  PRODUCT CACHE
 // ============================================================
-const PAGE_SIZE = 8;
-let productsCache = null;
 const PRODUCTS_TTL = 5 * 60_000;
-const contentCache = new Map();
 const CONTENT_TTL = 5 * 60_000;
+const OVERRIDES_TTL = 3 * 60_000;
+const PAGE_SIZE = 8;
+
+let productsCache = null;
+const contentCache = new Map();
 let allOverridesCache = null;
-const OVERRIDES_TTL = 60_000;
 
 async function getCachedProducts() {
   if (productsCache && productsCache.expiry > Date.now()) return productsCache.products;
   const products = await fetchAllProducts();
   productsCache = { products, expiry: Date.now() + PRODUCTS_TTL };
   return products;
+}
+
+async function getCachedContent(parentId) {
+  const cached = contentCache.get(parentId);
+  if (cached && cached.expiry > Date.now()) return cached.content;
+  const content = await fetchContent(parentId);
+  contentCache.set(parentId, { content, expiry: Date.now() + CONTENT_TTL });
+  return content;
 }
 
 async function getAllOverridesCached() {
@@ -538,14 +545,10 @@ async function getAllOverridesCached() {
   return map;
 }
 
-function invalidateCaches() { productsCache = null; contentCache.clear(); allOverridesCache = null; }
-
-async function getCachedContent(parentId) {
-  const hit = contentCache.get(parentId);
-  if (hit && hit.expiry > Date.now()) return hit.content;
-  const content = await fetchContent(parentId);
-  contentCache.set(parentId, { content, expiry: Date.now() + CONTENT_TTL });
-  return content;
+function invalidateCaches() {
+  productsCache = null;
+  contentCache.clear();
+  allOverridesCache = null;
 }
 
 let refresherStarted = false;
@@ -568,7 +571,13 @@ async function loadCategoryOverrides(ids) {
   if (!ids.length) return new Map();
   const res = await q(`SELECT * FROM category_overrides WHERE category_id = ANY($1)`, [ids]);
   const m = new Map();
-  for (const r of res.rows) m.set(r.category_id, { customName: r.custom_name, hidden: r.hidden, sortOrder: r.sort_order, customMarkupPercent: r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null });
+  for (const r of res.rows) m.set(r.category_id, {
+    customName: r.custom_name,
+    hidden: r.hidden,
+    sortOrder: r.sort_order,
+    customMarkupPercent: r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null,
+    customParentId: r.custom_parent_id ?? null,
+  });
   return m;
 }
 
@@ -598,12 +607,48 @@ async function effectivePriceUsd(p, override, defaultMarkup, socialMarkup, socia
   else if (userMarkupPercent != null) m = Number(userMarkupPercent);
   else m = defaultMarkup;
   if (isSocialProduct(p.name, p.category_name, socialKws)) m = Math.max(m, socialMarkup);
-  const rawPrice = Number(p.price) || Number(p.base_price) || 0;
+  const rawPrice = Number(p.price) || Number(p.base_price) || Number(p.price_usd) || 0;
   return Number((rawPrice * (1 + m / 100)).toFixed(4));
 }
 
-const MAINTENANCE_MSG = "🔧 الموقع قيد الصيانة حالياً.\nسيعود البوت للعمل بأقرب وقت ممكن. شكراً لصبرك! 🙏";
+// ─── رسالة الصيانة (إزالة "الموقع") ─────────────────────────
+const BOT_MAINTENANCE_MSG = "🔧 البوت قيد الصيانة حالياً.\nسيعود للعمل بأقرب وقت ممكن. نشكر صبركم! 🙏";
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME ?? "admin").split(",")[0].trim();
+
+// ============================================================
+//  STEP STATE (per user)
+// ============================================================
+const stepMap = new Map();
+function getStep(uid) { return stepMap.get(uid) ?? { kind: "idle" }; }
+function setStep(uid, s) { stepMap.set(uid, s); }
+
+// ── مرجع البوت للاستخدام الداخلي ─────────────────────────────
+let _botRef = null;
+
+// ── مديرون موثّقون هذه الجلسة فقط (يُعاد ضبطه عند إعادة التشغيل)
+const authedAdminIds = new Set();
+
+// ── حالة التنقل: userId → Map<catId, page> ────────────────────
+const navState = new Map();
+function saveNavPage(uid, catId, page) {
+  if (!navState.has(uid)) navState.set(uid, new Map());
+  navState.get(uid).set(catId, page);
+}
+function getNavPage(uid, catId) { return navState.get(uid)?.get(catId) ?? 1; }
+
+// ── إشعارات الإيداع: depositId → [{adminId, messageId}] ───────
+const depositNotifications = new Map();
+async function clearDepositForOtherAdmins(processorId, depId, statusText) {
+  const list = depositNotifications.get(depId) ?? [];
+  depositNotifications.delete(depId);
+  for (const n of list) {
+    if (n.adminId === processorId) continue;
+    try {
+      await _botRef?.telegram.editMessageCaption(n.adminId, n.messageId, undefined,
+        `${statusText}\n(تمت المعالجة بواسطة مدير آخر)`);
+    } catch { /* ignore */ }
+  }
+}
 
 // ============================================================
 //  TG HELPERS
@@ -630,14 +675,24 @@ async function ensureUser(ctx) {
   return upsertUser({ id: f.id, username: f.username, first_name: f.first_name, last_name: f.last_name });
 }
 
-function mainMenu(isAdmin) {
+// ─── لوحة الإدارة مخفية - لا تظهر في القائمة الرئيسية ─────
+function mainMenu() {
   const rows = [
     [Markup.button.callback("🛒 المنتجات", "cat:0:1:0"), Markup.button.callback("💰 رصيدي", "balance")],
     [Markup.button.callback("💳 إيداع", "deposit"), Markup.button.callback("📦 طلباتي", "myorders:1")],
-    [Markup.button.callback("📞 الدعم", "support"), Markup.button.callback("🔄 /start", "home")],
+    [Markup.button.callback("📞 الدعم", "support"), Markup.button.callback("🔄 تحديث", "home")],
   ];
-  if (isAdmin) rows.push([Markup.button.callback("👑 لوحة الإدارة", "admin:menu")]);
-  else rows.push([Markup.button.callback("🔐 تسجيل دخول الإدارة", "admin:loginPrompt")]);
+  return Markup.inlineKeyboard(rows);
+}
+
+// لوحة الإدارة تظهر فقط للمدير بعد تسجيل الدخول
+function mainMenuAdmin() {
+  const rows = [
+    [Markup.button.callback("🛒 المنتجات", "cat:0:1:0"), Markup.button.callback("💰 رصيدي", "balance")],
+    [Markup.button.callback("💳 إيداع", "deposit"), Markup.button.callback("📦 طلباتي", "myorders:1")],
+    [Markup.button.callback("📞 الدعم", "support"), Markup.button.callback("🔄 تحديث", "home")],
+    [Markup.button.callback("👑 لوحة الإدارة", "admin:menu")],
+  ];
   return Markup.inlineKeyboard(rows);
 }
 
@@ -646,11 +701,15 @@ async function showMainMenu(ctx) {
   if (!user) return;
   setStep(user.id, { kind: "idle" });
   const status = await getBotStatus();
-  if (status === "off" && !user.is_admin) { await sendOrEdit(ctx, "🚫 البوت متوقف مؤقتاً للصيانة."); return; }
+  if (status === "off" && !authedAdminIds.has(user.id)) {
+    await sendOrEdit(ctx, "🔧 البوت قيد الصيانة. سيعود للعمل بأقرب وقت ممكن. نشكر صبركم! 🙏");
+    return;
+  }
   if (user.status === "banned") { await sendOrEdit(ctx, "🚫 تم حظرك من استخدام البوت."); return; }
   const rate = await getExchangeRate();
   const greeting = `أهلاً فيك في متجر المروان 🌟\nالاسم: ${user.first_name ?? "—"}${user.username ? ` (@${user.username})` : ""}\nالرقم: ${user.id}\nالرصيد: ${formatBalance(Number(user.balance), rate)}\n\nاختر من القائمة 👇`;
-  await sendOrEdit(ctx, greeting, mainMenu(user.is_admin));
+  // لوحة الإدارة تظهر فقط لمن سجّل الدخول هذه الجلسة عبر الأمر السري
+  await sendOrEdit(ctx, greeting, authedAdminIds.has(user.id) ? mainMenuAdmin() : mainMenu());
 }
 
 async function showContactLinks(ctx) {
@@ -671,81 +730,89 @@ async function showContactLinks(ctx) {
 async function ensureDefaultDepositMethods() {
   const res = await q("SELECT COUNT(*)::int AS c FROM deposit_methods");
   if (res.rows[0].c > 0) return;
+  // ملاحظة: إزالة "أرسل المبلغ والرقم الذي حولت منه" من التعليمات
   await q(`INSERT INTO deposit_methods(name,identifier,instructions) VALUES
-    ('شام كاش','02d7079d7229d8860c7d89467bfdc938','حول المبلغ إلى رقم شام كاش أعلاه ثم أرسل المبلغ والرقم الذي حولت منه وصورة الإشعار'),
-    ('سيريتل كاش','32820534','حول المبلغ إلى رقم سيريتل كاش أعلاه ثم أرسل المبلغ والرقم الذي حولت منه وصورة الإشعار')`);
+    ('شام كاش','02d7079d7229d8860c7d89467bfdc938','حول المبلغ إلى رقم شام كاش أعلاه ثم أرسل صورة الإشعار'),
+    ('سيريتل كاش','32820534','حول المبلغ إلى رقم سيريتل كاش أعلاه ثم أرسل صورة الإشعار')`);
 }
 
 async function showDepositMenu(ctx) {
   await ensureDefaultDepositMethods();
   const res = await q("SELECT * FROM deposit_methods WHERE active=true ORDER BY id");
   const methods = res.rows;
-  if (!methods.length) { await ctx.reply("لا توجد طرق إيداع متاحة."); return; }
-  const rows = methods.map(m => [Markup.button.callback(`💳 ${m.name}`, `dep:pick:${m.id}`)]);
+  if (!methods.length) {
+    await sendOrEdit(ctx, "❌ لا توجد طرق إيداع متاحة حالياً.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+    return;
+  }
+  const rows = methods.map(m => [Markup.button.callback(`💳 ${m.name}`, `dep:method:${m.id}`)]);
   rows.push([Markup.button.callback("🏠 الرئيسية", "home")]);
-  await ctx.reply("اختر طريقة الإيداع:", Markup.inlineKeyboard(rows));
+  await sendOrEdit(ctx, "💳 اختر طريقة الإيداع:", Markup.inlineKeyboard(rows));
 }
 
-async function notifyAdminsDeposit(ctx, depositId) {
-  const res = await q("SELECT * FROM deposit_requests WHERE id=$1", [depositId]);
-  const r = res.rows[0]; if (!r) return;
+async function showDepositMethod(ctx, methodId) {
+  const res = await q("SELECT * FROM deposit_methods WHERE id=$1 AND active=true", [methodId]);
+  const m = res.rows[0];
+  if (!m) { await ctx.reply("⚠️ الطريقة غير متاحة."); return; }
+  setStep(ctx.from.id, { kind: "deposit:number", methodId: m.id, methodName: m.name });
+  const text = `💳 ${m.name}\n🔑 الرقم: \`${m.identifier}\`\n\n📋 التعليمات:\n${m.instructions}\n\n📱 أرسل رقم هاتفك الذي حولت منه:`;
+  await ctx.reply(text, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "dep:cancel")]]) });
+}
+
+async function notifyAdminsDeposit(ctx, depositRow) {
+  const user = await getUser(ctx.from.id);
+  const text = `📥 طلب إيداع جديد #${depositRow.id}\n👤 ${user?.first_name ?? "—"}${user?.username ? " @" + user.username : ""} (${ctx.from.id})\n💳 ${depositRow.method_name}\n📱 ${depositRow.payer_number ?? "—"}`;
+  const kb = Markup.inlineKeyboard([[Markup.button.callback("✅ موافقة", `adm:dep:approve:${depositRow.id}`), Markup.button.callback("❌ رفض", `adm:dep:reject:${depositRow.id}`)]]);
   const admins = await listAdmins();
-  const text = `🔔 طلب إيداع جديد #${r.id}\nالمستخدم: ${ctx.from?.id} ${ctx.from?.username ? "@" + ctx.from.username : ""}\nالطريقة: ${r.method_name}\nرقم/تفاصيل المُحوِّل: ${r.payer_number ?? "—"}`;
-  const kb = Markup.inlineKeyboard([[Markup.button.callback("✅ موافقة", `adm:dep:approve:${r.id}`), Markup.button.callback("❌ رفض", `adm:dep:reject:${r.id}`)]]);
-  for (const a of admins) { try { await ctx.telegram.sendPhoto(a.id, r.screenshot_file_id, { caption: text, ...kb }); } catch { /* ignore */ } }
+  const notifications = [];
+  for (const a of admins) {
+    try {
+      const msg = await ctx.telegram.sendPhoto(a.id, depositRow.screenshot_file_id, { caption: text, ...kb });
+      notifications.push({ adminId: a.id, messageId: msg.message_id });
+    } catch { /* ignore */ }
+  }
+  if (notifications.length) depositNotifications.set(depositRow.id, notifications);
 }
 
 // ============================================================
-//  CATEGORY DISPLAY
+//  PRODUCTS & CATEGORIES
 // ============================================================
 async function showCategory(ctx, parentId, page, backTo) {
-  if (isMaintenanceMode()) { await sendOrEdit(ctx, MAINTENANCE_MSG, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
-  const user = await getUser(ctx.from.id);
-  const isAdmin = !!user?.is_admin;
-  let content;
-  try { content = await getCachedContent(parentId); }
-  catch { await sendOrEdit(ctx, MAINTENANCE_MSG, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
-
-  const excludedCats = await getExcludedCategoryIds();
+  const u = await getUser(ctx.from.id);
+  const isAdmin = !!u?.is_admin && authedAdminIds.has(ctx.from.id);
   const kws = await getExcludedKeywords();
+  const excludedStr = await getSetting("excluded_category_ids");
+  const excludedCats = new Set(excludedStr.split(",").map(s => Number(s.trim())).filter(Number.isFinite));
+  const content = await getCachedContent(parentId);
+  const catOv = await loadCategoryOverrides([...content.categories.map(c => c.id), parentId]);
   const socialKws = await getSocialKeywords();
   const socialMarkup = await getSocialMarkupPercent();
-  const visibleDirect = await buildVisibleCategoryIds(excludedCats, kws);
-  const catIds = content.categories.map(c => c.id);
-  const catOv = await loadCategoryOverrides(catIds);
-  const candidate = content.categories.filter(c => {
-    if (excludedCats.has(c.id)) return false;
-    const ov = catOv.get(c.id);
-    if (ov?.hidden && !isAdmin) return false;
-    if (!c.name || c.name === "null") return false;
-    return true;
-  });
-  let visibleCats = candidate;
-  if (!isAdmin) {
-    const checks = await Promise.all(candidate.map(async c => ({ c, ok: await isCategoryVisible(c.id, visibleDirect) })));
-    visibleCats = checks.filter(x => x.ok).map(x => x.c);
+  const markup = await getMarkupPercent();
+  const ovMap = await getAllOverridesCached();
+
+  // فلترة الأقسام - دعم نقل القسم إلى داخل قسم آخر
+  const movedToHere = [];
+  for (const [cid, ov] of catOv) {
+    if (ov.customParentId === parentId && cid !== parentId) movedToHere.push(cid);
   }
 
-  const allProducts = await getCachedProducts();
-  const allOv = await getAllOverridesCached();
-  const movedIntoHere = [];
-  const movedAwayFromHere = new Set();
-  for (const [pid, ov] of allOv) {
-    if (ov.customCategoryId == null) continue;
-    if (ov.customCategoryId === parentId) { const p = allProducts.find(x => x.id === pid); if (p) movedIntoHere.push(p); }
-    else movedAwayFromHere.add(pid);
+  const visibleCats = [];
+  for (const c of content.categories) {
+    if (excludedCats.has(c.id)) continue;
+    const ov = catOv.get(c.id);
+    if (ov?.hidden && !isAdmin) continue;
+    // تحقق إذا القسم نُقل إلى مكان آخر
+    if (ov?.customParentId != null && ov.customParentId !== parentId) continue;
+    const visible = await isCategoryVisible(c.id, await buildVisibleCategoryIds(excludedCats, kws));
+    if (!visible && !isAdmin) continue;
+    visibleCats.push(c);
   }
-  const baseProducts = content.products.filter(p => !movedAwayFromHere.has(p.id));
-  const mergedById = new Map();
-  for (const p of baseProducts) mergedById.set(p.id, p);
-  for (const p of movedIntoHere) mergedById.set(p.id, p);
-  const merged = Array.from(mergedById.values());
-  const ovMap = await loadOverrideMap(merged.map(p => p.id));
-  const visibleProds = merged.filter(p => {
+
+  const visibleProds = content.products.filter(p => {
+    if (!p.available && !isAdmin) return false;
     if (isExcludedProduct(p, kws)) return false;
     const ov = ovMap.get(p.id);
     if (ov?.hidden && !isAdmin) return false;
-    if (!p.available && !isAdmin) return false;
+    if (ov?.customCategoryId != null && ov.customCategoryId !== parentId) return false;
     return true;
   });
 
@@ -767,11 +834,11 @@ async function showCategory(ctx, parentId, page, backTo) {
       emptyRows.push([Markup.button.callback("✏️ تعديل اسم القسم", `adm:catEdit:${parentId}`)]);
       emptyRows.push([Markup.button.callback("🙈 إخفاء القسم", `adm:catToggle:${parentId}`)]);
     }
-    emptyRows.push([backTo === 0 ? Markup.button.callback(homeLabel, "home") : Markup.button.callback(backLabel, `cat:${backTo}:1:0`)]);
+    if (parentId === 0) emptyRows.push([Markup.button.callback(homeLabel, "home")]);
+    else { const bp = getNavPage(ctx.from.id, backTo); emptyRows.push([Markup.button.callback(backLabel, backTo === 0 ? "home" : `cat:${backTo}:${bp}:0`), Markup.button.callback(homeLabel, "home")]); }
     await sendOrEdit(ctx, "📭 هذا القسم فارغ حالياً.", Markup.inlineKeyboard(emptyRows)); return;
   }
 
-  const markup = await getMarkupPercent();
   visibleCats.sort((a, b) => (catOv.get(a.id)?.sortOrder ?? 9999) - (catOv.get(b.id)?.sortOrder ?? 9999));
   const catBtns = [
     ...vcBtns,
@@ -792,6 +859,7 @@ async function showCategory(ctx, parentId, page, backTo) {
   const all = [...catBtns, ...prodBtns, ...manualBtns];
   const totalPages = Math.max(1, Math.ceil(all.length / PAGE_SIZE));
   const safe = Math.min(Math.max(1, page), totalPages);
+  saveNavPage(ctx.from.id, parentId, safe); // حفظ الصفحة الحالية للرجوع الصحيح
   const slice = all.slice((safe - 1) * PAGE_SIZE, safe * PAGE_SIZE);
 
   const [backLabel, homeLabel, prevLabel, nextLabel] = await Promise.all([getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel()]);
@@ -800,7 +868,7 @@ async function showCategory(ctx, parentId, page, backTo) {
     const curOv = (await q("SELECT * FROM category_overrides WHERE category_id=$1", [parentId])).rows[0];
     rows.push([Markup.button.callback("✏️ تعديل اسم القسم", `adm:catEdit:${parentId}`), Markup.button.callback(curOv?.hidden ? "👁 إظهار" : "🙈 إخفاء", `adm:catToggle:${parentId}`)]);
     rows.push([Markup.button.callback("% نسبة ربح القسم", `adm:catMarkup:${parentId}`), Markup.button.callback("🔢 ترتيب القسم", `adm:catSort:${parentId}`)]);
-    rows.push([Markup.button.callback("🚚 نقل كل منتجات القسم", `adm:moveCatAll:${parentId}`)]);
+    rows.push([Markup.button.callback("🚚 نقل كل منتجات القسم", `adm:moveCatAll:${parentId}`), Markup.button.callback("📁 نقل القسم إلى قسم", `adm:moveCatToParent:${parentId}`)]);
   }
   for (const b of slice) rows.push([b]);
   const nav = [];
@@ -809,7 +877,10 @@ async function showCategory(ctx, parentId, page, backTo) {
   if (safe < totalPages) nav.push(Markup.button.callback(nextLabel, `cat:${parentId}:${safe + 1}:${backTo}`));
   if (nav.length > 1) rows.push(nav);
   if (parentId === 0) rows.push([Markup.button.callback(homeLabel, "home")]);
-  else rows.push([backTo === 0 ? Markup.button.callback(backLabel, "home") : Markup.button.callback(backLabel, `cat:${backTo}:1:0`), Markup.button.callback(homeLabel, "home")]);
+  else {
+    const backPage = getNavPage(ctx.from.id, backTo);
+    rows.push([Markup.button.callback(backLabel, backTo === 0 ? "home" : `cat:${backTo}:${backPage}:0`), Markup.button.callback(homeLabel, "home")]);
+  }
 
   const title = parentId === 0 ? "🛒 الأقسام الرئيسية" : `📂 ${catOv.get(parentId)?.customName ?? "محتويات القسم"}`;
   await sendOrEdit(ctx, title, Markup.inlineKeyboard(rows));
@@ -822,9 +893,10 @@ async function showProduct(ctx, productId, backTo) {
 
   async function resolveBackBtn(to) {
     if (to === 0) return Markup.button.callback(homeLabel, "home");
+    const page = getNavPage(ctx.from.id, to); // استخدم آخر صفحة زارها المستخدم
     const vc = (await q("SELECT id FROM virtual_categories WHERE id=$1", [to])).rows[0];
-    if (vc) return Markup.button.callback(backLabel, `vcat:${to}:1:0`);
-    return Markup.button.callback(backLabel, `cat:${to}:1:0`);
+    if (vc) return Markup.button.callback(backLabel, `vcat:${to}:${page}:0`);
+    return Markup.button.callback(backLabel, `cat:${to}:${page}:0`);
   }
 
   if (!p) { await sendOrEdit(ctx, "⚠️ المنتج غير موجود.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
@@ -866,14 +938,13 @@ async function showProduct(ctx, productId, backTo) {
     btns.push([Markup.button.callback("📝 تعديل الاسم", `adm:renameProd:${p.id}`), Markup.button.callback("🚚 نقل لقسم آخر", `adm:moveProd:${p.id}`)]);
     btns.push([Markup.button.callback(ov?.hidden ? "👁 إظهار" : "🙈 إخفاء", `adm:hideProd:${p.id}`)]);
   }
-  const effectiveBack = backTo === 0 ? Markup.button.callback(backLabel, "cat:0:1:0") : backBtnResolved;
-  btns.push([effectiveBack, Markup.button.callback(homeLabel, "home")]);
+  btns.push([backBtnResolved, Markup.button.callback(homeLabel, "home")]);
   await sendOrEdit(ctx, text, Markup.inlineKeyboard(btns));
 }
 
 async function showVirtualCategory(ctx, vcId, page, backTo) {
   const u = await getUser(ctx.from.id);
-  const isAdmin = !!u?.is_admin;
+  const isAdmin = !!u?.is_admin && authedAdminIds.has(ctx.from.id);
   const vcRes = await q("SELECT * FROM virtual_categories WHERE id=$1", [vcId]);
   const vc = vcRes.rows[0];
   if (!vc || (!vc.active && !isAdmin)) { await sendOrEdit(ctx, "⚠️ هذا القسم غير متاح.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
@@ -929,6 +1000,7 @@ async function showVirtualCategory(ctx, vcId, page, backTo) {
   const allBtns = [...subVcBtns, ...prodBtns, ...manualBtnsVc];
   const totalPages = Math.max(1, Math.ceil(allBtns.length / PAGE_SIZE));
   const safe = Math.min(Math.max(1, page), totalPages);
+  saveNavPage(ctx.from.id, vcId, safe);
   const slice = allBtns.slice((safe - 1) * PAGE_SIZE, safe * PAGE_SIZE);
 
   const rows = [];
@@ -964,17 +1036,12 @@ async function showManualProduct(ctx, mId, backTo) {
   const usd = Number(m.price_usd); const syp = Math.round(usd * rate);
   const balance = u ? Number(u.balance) : 0;
   const canAfford = balance >= usd;
-  const text = `🛒 ${m.name}\nالسعر: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س\n💳 رصيدك: ${balance.toFixed(2)}$${m.instructions ? `\n\n📋 تعليمات:\n${m.instructions}` : ""}`;
-  const btns = [];
-  if (m.api_product_id) btns.push([Markup.button.callback("🛒 طلب الآن", `buy:${m.api_product_id}:${backTo}`)]);
-  else if (canAfford) btns.push([Markup.button.callback("🛒 اطلب الآن (يدوي)", `mord:buy:${mId}:${backTo}`)]);
-  else btns.push([Markup.button.callback("💳 شحن رصيد", "deposit")]);
-  if (isAdmin) {
-    btns.push([Markup.button.callback("✏️ تعديل السعر", `adm:manualEditPrice:${mId}`), Markup.button.callback("🗑️ حذف", `adm:manualDel:${mId}`)]);
-    btns.push([Markup.button.callback(m.active ? "❌ تعطيل" : "✅ تفعيل", `adm:manualToggle:${mId}`)]);
-  }
-  if (backTo === 0) btns.push([backBtn]); else btns.push([backBtn, Markup.button.callback(homeLabel, "home")]);
-  await sendOrEdit(ctx, text, Markup.inlineKeyboard(btns));
+  const text = `🛒 ${m.name}\nالسعر: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س\nالرصيد: ${formatBalance(balance, rate)}${m.instructions ? `\n\n📋 ${m.instructions}` : ""}`;
+  const rows = [];
+  if (m.active && canAfford) rows.push([Markup.button.callback("🛒 طلب الآن", `mbuy:${m.id}`)]);
+  else if (m.active && !canAfford) rows.push([Markup.button.callback("💳 شحن رصيد", "deposit")]);
+  rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
+  await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
 }
 
 // ============================================================
@@ -990,18 +1057,28 @@ function extractOrderData(resp) {
   return resp.data;
 }
 
-function formatFullApiResponse(resp) {
+// إزالة "رد الموقع" - فقط محتوى الرد
+function formatApiResponseClean(resp) {
   const parts = [];
-  if (resp.message?.trim()) parts.push(resp.message.trim());
   const code = extractDeliveredCode(resp);
   if (code) parts.push(code);
+  if (resp.message?.trim() && resp.message.trim() !== "success") {
+    parts.push(resp.message.trim());
+  }
   const orderData = extractOrderData(resp);
   if (orderData?.status && typeof orderData.status === "string") {
     const raw = orderData.status;
     const label = statusLabel(raw);
-    if (!parts.some(p => p.includes(raw) || p.includes(label))) parts.push(`📊 الحالة: ${label}`);
+    if (!parts.some(p => p.includes(raw) || p.includes(label))) {
+      if (!ACCEPT_STATUSES.has(raw.toLowerCase())) parts.push(`📊 الحالة: ${label}`);
+    }
   }
   return [...new Set(parts)].filter(Boolean).join("\n\n").trim();
+}
+
+// للتوافق مع الكود القديم
+function formatFullApiResponse(resp) {
+  return formatApiResponseClean(resp);
 }
 
 function parseQtyValues(qv) {
@@ -1015,6 +1092,18 @@ function statusLabel(s) {
   if (ACCEPT_STATUSES.has(n) || n === "1" || n === "true") return "✅ مقبول";
   if (REJECT_STATUSES.has(n) || n === "0" || n === "false") return "❌ مرفوض";
   return "⏳ انتظار";
+}
+
+// إصلاح حساب السعر في عداد الكميات
+function formatPriceLabel(qty, unitPriceUsd) {
+  if (!unitPriceUsd || unitPriceUsd <= 0) return `${Number(qty).toLocaleString("en-US")}`;
+  const total = unitPriceUsd * qty;
+  if (total <= 0) return `${Number(qty).toLocaleString("en-US")}`;
+  const totalStr = total < 0.001 ? total.toFixed(6)
+    : total < 0.01 ? total.toFixed(4)
+    : total < 1 ? total.toFixed(3)
+    : total.toFixed(2);
+  return `${Number(qty).toLocaleString("en-US")} — ${totalStr}$`;
 }
 
 async function startOrderFlow(ctx, productId, backTo) {
@@ -1040,8 +1129,7 @@ async function startOrderFlow(ctx, productId, backTo) {
     if (parsedSocial.kind === "list" && parsedSocial.values.length > 0) {
       setStep(ctx.from.id, { kind: "order:qty", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: parsedSocial.values, backTo });
       const rows = parsedSocial.values.slice(0, 24).map(v => {
-        const total = unitPriceUsd * v;
-        const label = total === 0 ? `${v.toLocaleString("en-US")}` : `${v.toLocaleString("en-US")} — ${total < 0.005 ? total.toFixed(4) : total.toFixed(2)}$`;
+        const label = formatPriceLabel(v, unitPriceUsd);
         return [Markup.button.callback(label, `ord:qty:${v}`)];
       });
       rows.push([Markup.button.callback("❌ إلغاء", "ord:cancel")]);
@@ -1059,7 +1147,10 @@ async function startOrderFlow(ctx, productId, backTo) {
   if (parsed.kind === "fixed") { await askNextParam(ctx, p, unitPriceUsd, 1, paramKeys, {}, 0, backTo); return; }
   if (parsed.kind === "list") {
     setStep(ctx.from.id, { kind: "order:qty", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: parsed.values, backTo });
-    const rows = parsed.values.slice(0, 24).map(v => [Markup.button.callback(String(v), `ord:qty:${v}`)]);
+    const rows = parsed.values.slice(0, 24).map(v => {
+      const label = formatPriceLabel(v, unitPriceUsd);
+      return [Markup.button.callback(label, `ord:qty:${v}`)];
+    });
     rows.push([Markup.button.callback("❌ إلغاء", "ord:cancel")]);
     await sendOrEdit(ctx, `🛒 ${p.name}\nاختر الكمية:`, Markup.inlineKeyboard(rows)); return;
   }
@@ -1096,7 +1187,8 @@ async function executeOrder(ctx) {
   if (step.kind !== "order:params") return;
   let all = await getCachedProducts(); let p = all.find(x => x.id === step.productId);
   if (!p) { all = await fetchAllProducts(); p = all.find(x => x.id === step.productId); }
-  if (!p) { await ctx.reply("⚠️ المنتج غير موجود."); setStep(ctx.from.id, { kind: "idle" }); return; }
+  if (!p) { await ctx.reply("⚠️ المنتج غير موجود."); return; }
+
   const totalUsd = Number((step.priceUsd * step.qty).toFixed(4));
   const u = await getUser(ctx.from.id);
   const balance = u ? Number(u.balance) : 0;
@@ -1124,8 +1216,12 @@ async function executeOrder(ctx) {
     await adjustBalance(ctx.from.id, totalUsd);
     await q("UPDATE orders SET status='error', api_response=$1 WHERE id=$2", [JSON.stringify(resp), order.id]);
     setStep(ctx.from.id, { kind: "idle" });
-    const fullErrText = formatFullApiResponse(resp);
-    await ctx.reply(`❌ تعذّر تنفيذ الطلب #${order.id}.\nالسبب: ${resp.message ?? "خطأ غير معروف"}\n✅ تمت إعادة ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س إلى رصيدك.${fullErrText ? `\n\n📋 رد الموقع:\n${fullErrText}` : ""}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return;
+    const errText = formatApiResponseClean(resp);
+    const errMsg = resp.message && resp.message !== "Network error" ? resp.message : "تعذّر التنفيذ";
+    await ctx.reply(
+      `❌ تعذّر تنفيذ الطلب #${order.id}.\nالسبب: ${errMsg}\n✅ تمت إعادة ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س إلى رصيدك.${errText ? `\n\n${errText}` : ""}`,
+      Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])
+    ); return;
   }
   const deliveredCode = extractDeliveredCode(resp);
   const oranosOrderId = resp.data?.order_id ?? null;
@@ -1133,13 +1229,18 @@ async function executeOrder(ctx) {
   await q("UPDATE orders SET status=$1, oranos_order_id=$2, api_response=$3, delivered_code=$4 WHERE id=$5",
     [apiInnerStatus === "accept" ? "accept" : apiInnerStatus, oranosOrderId, JSON.stringify(resp), deliveredCode ?? null, order.id]);
   setStep(ctx.from.id, { kind: "idle" });
-  const fullRespText = formatFullApiResponse(resp);
+  const cleanResp = formatApiResponseClean(resp);
   const isWaiting = !ACCEPT_STATUSES.has(apiInnerStatus.toLowerCase()) && !REJECT_STATUSES.has(apiInnerStatus.toLowerCase());
   await ctx.reply(`✅ تم استلام طلبك #${order.id}\nالحالة: ${statusLabel(apiInnerStatus)}\n🛒 ${p.name} × ${step.qty}\n💰 ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س`);
-  if (deliveredCode) { await ctx.reply(`🔑 تفاصيل الطلب:\n\n${deliveredCode}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); }
-  else if (fullRespText) { await ctx.reply(`📋 رد الموقع:\n\n${fullRespText}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); }
-  else if (isWaiting) { await ctx.reply("⏳ طلبك قيد المعالجة. سيتم إخطارك تلقائياً عند اكتماله.", Markup.inlineKeyboard([[Markup.button.callback("🔄 تحديث الحالة", `ord:check:${order.id}`)], [Markup.button.callback("🏠 الرئيسية", "home")]])); }
-  else { await ctx.reply("شكراً لاستخدامك متجرنا! 🌟", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); }
+  if (deliveredCode) {
+    await ctx.reply(`🔑 تفاصيل الطلب:\n\n${deliveredCode}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+  } else if (cleanResp && !isWaiting) {
+    await ctx.reply(cleanResp, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+  } else if (isWaiting) {
+    await ctx.reply("⏳ طلبك قيد المعالجة. سيتم إخطارك تلقائياً عند اكتماله. نشكر صبركم! 🙏", Markup.inlineKeyboard([[Markup.button.callback("🔄 تحديث الحالة", `ord:check:${order.id}`)], [Markup.button.callback("🏠 الرئيسية", "home")]]));
+  } else {
+    await ctx.reply("شكراً لاستخدامك متجرنا! 🌟", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+  }
 }
 
 async function showMyOrders(ctx, page) {
@@ -1172,9 +1273,9 @@ async function checkOrderStatus(ctx, orderId) {
       await q("UPDATE orders SET status=$1, api_response=$2" + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3"),
         code ? [finalStatus, JSON.stringify(resp), code, row.id] : [finalStatus, JSON.stringify(resp), row.id]);
       if (isRejected && !REJECT_STATUSES.has(row.status)) await adjustBalance(ctx.from.id, Number(row.price_usd));
-      const fullText = formatFullApiResponse(resp);
+      const cleanText = formatApiResponseClean(resp);
       if (code && !row.delivered_code) await ctx.reply(`🔑 تفاصيل الطلب #${row.id}:\n\n${code}`);
-      else if (fullText) await ctx.reply(`📋 رد الموقع للطلب #${row.id}:\n\n${fullText}`);
+      else if (cleanText) await ctx.reply(`📋 طلب #${row.id}:\n\n${cleanText}`);
     }
     await ctx.reply(`الحالة الحالية للطلب #${row.id}: ${statusLabel(finalStatus)}`);
   } catch { await ctx.reply("⚠️ تعذّر فحص الحالة الآن."); }
@@ -1195,18 +1296,19 @@ async function pollOneOrder(bot, order) {
   const finalStatus = isRejected ? "reject" : isAccepted ? "accept" : rawNew;
   await q("UPDATE orders SET status=$1, api_response=$2" + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3"),
     code ? [finalStatus, JSON.stringify(resp), code, order.id] : [finalStatus, JSON.stringify(resp), order.id]);
-  const fullText = formatFullApiResponse(resp);
+  const cleanText = formatApiResponseClean(resp);
   const priceUsd = Number(order.price_usd); const rate = await getExchangeRate();
   if (isRejected) {
     if (!prevRejected) await adjustBalance(order.user_id, priceUsd);
     const refundSyp = Math.round(priceUsd * rate);
     const msgLines = [`❌ تم رفض الطلب #${order.id}`, `🛒 المنتج: ${order.product_name}`, `💰 تمت إعادة ${priceUsd.toFixed(2)}$ | ${refundSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`];
-    if (fullText) msgLines.push(`\n📋 رد الموقع:\n${fullText}`);
+    if (cleanText) msgLines.push(`\n${cleanText}`);
     await bot.telegram.sendMessage(order.user_id, msgLines.join("\n")).catch(() => {});
   } else if (isAccepted) {
     const priceSyp = Math.round(priceUsd * rate);
     const msgLines = [`✅ تم تنفيذ طلبك #${order.id} بنجاح!`, `🛒 المنتج: ${order.product_name}`, `💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`];
-    if (fullText) msgLines.push(`\n📋 رد الموقع:\n${fullText}`);
+    if (code) msgLines.push(`\n🔑 التفاصيل:\n${code}`);
+    else if (cleanText) msgLines.push(`\n${cleanText}`);
     await bot.telegram.sendMessage(order.user_id, msgLines.join("\n")).catch(() => {});
   }
 }
@@ -1231,14 +1333,24 @@ function startOrderPoller(bot) {
 //  ADMIN
 // ============================================================
 async function requireAdmin(ctx) {
+  if (!authedAdminIds.has(ctx.from.id)) { await ctx.reply("⛔ هذا القسم للإدارة فقط."); return false; }
   const u = await getUser(ctx.from.id);
   if (!u?.is_admin) { await ctx.reply("⛔ هذا القسم للإدارة فقط."); return false; }
+  return true;
+}
+
+async function requireSuperAdmin(ctx) {
+  if (!authedAdminIds.has(ctx.from.id)) { await ctx.reply("⛔ هذا الإجراء للمدير الأعلى فقط."); return false; }
+  const u = await getUser(ctx.from.id);
+  if (!u?.is_super_admin) { await ctx.reply("⛔ هذا الإجراء للمدير الأعلى فقط."); return false; }
   return true;
 }
 
 async function showAdminMenu(ctx) {
   if (!(await requireAdmin(ctx))) return;
   const status = await getBotStatus();
+  const u = await getUser(ctx.from.id);
+  const isSA = !!u?.is_super_admin;
   const rows = [
     [Markup.button.callback("📥 طلبات الإيداع", "adm:depList:1"), Markup.button.callback("👥 المستخدمون", "adm:users:1")],
     [Markup.button.callback("🔍 بحث مستخدم", "adm:findUser"), Markup.button.callback("📦 كل الطلبات", "adm:allOrders:1")],
@@ -1247,23 +1359,30 @@ async function showAdminMenu(ctx) {
     [Markup.button.callback("📞 وسائل التواصل", "adm:contacts"), Markup.button.callback("📁 أقسام مخصصة", "adm:vcList")],
     [Markup.button.callback("➕ منتج يدوي", "adm:manualProds"), Markup.button.callback("🛠️ مساعد الإدارة", "adm:aiSupport")],
     [Markup.button.callback("🔄 بينج تلقائي", "adm:ping"), Markup.button.callback(status === "on" ? "🟢 البوت: شغال" : "🔴 البوت: متوقف", "adm:toggleStatus")],
-    [Markup.button.callback("🏠 الرئيسية", "home")],
+    [Markup.button.callback("🚪 تسجيل خروج", "adm:logout"), Markup.button.callback("🏠 الرئيسية", "home")],
   ];
-  await sendOrEdit(ctx, "👑 لوحة الإدارة", Markup.inlineKeyboard(rows));
+  await sendOrEdit(ctx, `👑 لوحة الإدارة${isSA ? " (مدير أعلى)" : ""}`, Markup.inlineKeyboard(rows));
 }
 
 async function showSettingsMenu(ctx) {
   if (!(await requireAdmin(ctx))) return;
   const [m, sm, r] = await Promise.all([getMarkupPercent(), getSocialMarkupPercent(), getExchangeRate()]);
-  await sendOrEdit(ctx, `⚙️ الإعدادات\n\nالربح العام: ${m}%\nربح السوشل: ${sm}%\nسعر الصرف: ${r} ل.س/$`,
-    Markup.inlineKeyboard([
-      [Markup.button.callback("✏️ تعديل الربح العام", "adm:setMarkup")],
-      [Markup.button.callback("✏️ تعديل ربح السوشل", "adm:setSocialMarkup")],
-      [Markup.button.callback("💱 تعديل سعر الصرف", "adm:setRate")],
-      [Markup.button.callback("🔑 تغيير كلمة المرور", "adm:newPass")],
-      [Markup.button.callback("🔘 تعديل أزرار التنقل", "adm:btnLabels")],
-      [Markup.button.callback("⬅️ رجوع", "admin:menu")],
-    ]));
+  const loginCmd = await getAdminLoginCommand();
+  const u = await getUser(ctx.from.id);
+  const isSA = !!u?.is_super_admin;
+  const rows = [
+    [Markup.button.callback("✏️ تعديل الربح العام", "adm:setMarkup")],
+    [Markup.button.callback("✏️ تعديل ربح السوشل", "adm:setSocialMarkup")],
+    [Markup.button.callback("💱 تعديل سعر الصرف", "adm:setRate")],
+    [Markup.button.callback("🔑 تغيير كلمة المرور", "adm:newPass")],
+    [Markup.button.callback("🔘 تعديل أزرار التنقل", "adm:btnLabels")],
+  ];
+  if (isSA) {
+    rows.push([Markup.button.callback("🔐 تغيير أمر الدخول السري", "adm:changeLoginCmd")]);
+  }
+  rows.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
+  await sendOrEdit(ctx, `⚙️ الإعدادات\n\nالربح العام: ${m}%\nربح السوشل: ${sm}%\nسعر الصرف: ${r} ل.س/$\nأمر الدخول: \`${loginCmd}\``,
+    Markup.inlineKeyboard(rows));
 }
 
 async function showDepList(ctx, page) {
@@ -1303,8 +1422,11 @@ async function approveDeposit(ctx, depId) {
 
 async function rejectDeposit(ctx, depId) {
   if (!(await requireAdmin(ctx))) return;
-  const res = await q("UPDATE deposit_requests SET status='rejected', processed_by=$1, processed_at=NOW() WHERE id=$2 RETURNING *", [ctx.from.id, depId]);
+  // تحقق ذري: يُحدَّث فقط إذا كان "pending"
+  const res = await q("UPDATE deposit_requests SET status='rejected', processed_by=$1, processed_at=NOW() WHERE id=$2 AND status='pending' RETURNING *", [ctx.from.id, depId]);
+  if (!res.rows.length) { await ctx.reply("⚠️ تمت معالجة هذا الطلب مسبقاً بواسطة مدير آخر."); return; }
   const d = res.rows[0];
+  await clearDepositForOtherAdmins(ctx.from.id, depId, `❌ طلب إيداع #${depId} — تم الرفض`);
   await ctx.reply(`❌ تم رفض طلب الإيداع #${depId}.`);
   if (d) { try { await ctx.telegram.sendMessage(d.user_id, `❌ تم رفض طلب الإيداع #${d.id}. للاستفسار راسل @${ADMIN_USERNAME}.`); } catch { /* ignore */ } }
 }
@@ -1312,15 +1434,21 @@ async function rejectDeposit(ctx, depId) {
 async function showUserCard(ctx, uid) {
   if (!(await requireAdmin(ctx))) return;
   const u = await getUser(uid); if (!u) { await ctx.reply("⚠️ غير موجود."); return; }
+  const me = await getUser(ctx.from.id);
+  const isMeSA = !!me?.is_super_admin;
   const statsRes = await q("SELECT COUNT(*)::int AS c, COALESCE(SUM(price_usd),0)::text AS s FROM orders WHERE user_id=$1", [uid]);
   const oc = statsRes.rows[0]?.c ?? 0; const sum = Number(statsRes.rows[0]?.s ?? 0);
-  const text = `👤 ${u.first_name ?? "—"}${u.username ? " @" + u.username : ""}\nID: ${u.id}\nالرصيد: ${Number(u.balance).toFixed(2)}$\nالحالة: ${u.status}\nإداري؟ ${u.is_admin ? "نعم" : "لا"}\nعدد الطلبات: ${oc} • إجمالي: ${sum.toFixed(2)}$`;
+  const text = `👤 ${u.first_name ?? "—"}${u.username ? " @" + u.username : ""}\nID: ${u.id}\nالرصيد: ${Number(u.balance).toFixed(2)}$\nالحالة: ${u.status}\nإداري؟ ${u.is_admin ? "نعم" : "لا"}${u.is_super_admin ? " (أعلى)" : ""}\nعدد الطلبات: ${oc} • إجمالي: ${sum.toFixed(2)}$`;
   const kb = [
     [Markup.button.callback("➕ شحن رصيد", `adm:userAdd:${uid}`), Markup.button.callback("➖ خصم رصيد", `adm:userSub:${uid}`)],
     [Markup.button.callback(u.status === "banned" ? "✅ رفع الحظر" : "🚫 حظر", `adm:userBan:${uid}`), Markup.button.callback(u.is_admin ? "👤 إلغاء إداري" : "👑 جعله إداري", `adm:userAdmin:${uid}`)],
     [Markup.button.callback("📦 طلباته", `adm:userOrders:${uid}:1`), Markup.button.callback("% ربح خاص", `adm:userMarkup:${uid}`)],
-    [Markup.button.callback("⬅️ رجوع", "adm:users:1")],
   ];
+  // المدير الأعلى يستطيع تعيين مدير أعلى آخر
+  if (isMeSA && uid !== ctx.from.id) {
+    kb.push([Markup.button.callback(u.is_super_admin ? "⬇️ إلغاء المدير الأعلى" : "🌟 جعله مديراً أعلى", `adm:userSA:${uid}`)]);
+  }
+  kb.push([Markup.button.callback("⬅️ رجوع", "adm:users:1")]);
   await sendOrEdit(ctx, text, Markup.inlineKeyboard(kb));
 }
 
@@ -1349,154 +1477,228 @@ async function startBot() {
   await ensureDefaults();
   await ensureDefaultDepositMethods();
 
-  const bot = new Telegraf(token, { handlerTimeout: 60_000 });
+  const bot = new Telegraf(token, { handlerTimeout: 90_000 });
 
-  // Rate limiter
+  // ── Rate limiter محسّن ─────────────────────────────────────
   const _rateMap = new Map();
+  // تنظيف دوري للـ rate map
+  setInterval(() => {
+    const now = Date.now();
+    for (const [uid, times] of _rateMap) {
+      if (times.every(t => now - t > 5_000)) _rateMap.delete(uid);
+    }
+  }, 60_000).unref();
+
   bot.use((ctx, next) => {
     const uid = ctx.from?.id; if (!uid) return next();
     const now = Date.now();
-    const times = (_rateMap.get(uid) ?? []).filter(t => now - t < 3_000);
-    if (times.length >= 4) { if (ctx.callbackQuery) ctx.answerCbQuery("⏱️ الرجاء الانتظار...").catch(() => {}); return; }
+    const times = (_rateMap.get(uid) ?? []).filter(t => now - t < 2_000);
+    if (times.length >= 5) {
+      if (ctx.callbackQuery) ctx.answerCbQuery("⏱️ الرجاء الانتظار...").catch(() => {});
+      return;
+    }
     times.push(now); _rateMap.set(uid, times);
     return next();
   });
 
-  // Commands
-  bot.start(async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
+  // ── Commands ───────────────────────────────────────────────
+  bot.start(async ctx => {
+    const txt = ctx.message?.text ?? "";
+    setStep(ctx.from.id, { kind: "idle" });
+    // تحقق من أمر الدخول السري في start param
+    const startParam = txt.replace("/start", "").trim();
+    if (startParam) {
+      const loginCmd = await getAdminLoginCommand();
+      if (startParam === loginCmd) {
+        setStep(ctx.from.id, { kind: "admin:login" });
+        await ctx.reply("🔑 أرسل كلمة المرور:");
+        return;
+      }
+    }
+    await showMainMenu(ctx);
+  });
   bot.command("menu", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
   bot.command("balance", async ctx => { const u = await ensureUser(ctx); if (!u) return; await ctx.reply(`💰 رصيدك: ${formatBalance(Number(u.balance), await getExchangeRate())}`); });
-  bot.command("support", async ctx => showContactLinks(ctx));
-  bot.command("contact", async ctx => showContactLinks(ctx));
+  bot.command("deposit", async ctx => { await ensureUser(ctx); setStep(ctx.from.id, { kind: "idle" }); await showDepositMenu(ctx); });
   bot.command("orders", async ctx => { await ensureUser(ctx); await showMyOrders(ctx, 1); });
-  bot.command("deposit", async ctx => { await ensureUser(ctx); await showDepositMenu(ctx); });
-  bot.command("admin", async ctx => {
-    await ensureUser(ctx); const u = await getUser(ctx.from.id);
-    if (u?.is_admin) await showAdminMenu(ctx);
-    else { setStep(ctx.from.id, { kind: "admin:login" }); await ctx.reply("🔐 أرسل كلمة مرور الإدارة:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "home")]])); }
-  });
+  bot.command("support", async ctx => { await ensureUser(ctx); await showContactLinks(ctx); });
+  // أمر الإدارة محذوف من القائمة العامة
 
-  // Basic actions
-  bot.action("noop", async ctx => ctx.answerCbQuery());
-  bot.action("home", async ctx => { ctx.answerCbQuery().catch(() => {}); await showMainMenu(ctx); });
-  bot.action("balance", async ctx => { ctx.answerCbQuery().catch(() => {}); const u = await ensureUser(ctx); if (!u) return; await sendOrEdit(ctx, `💰 رصيدك: ${formatBalance(Number(u.balance), await getExchangeRate())}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); });
-  bot.action("support", async ctx => { ctx.answerCbQuery().catch(() => {}); await showContactLinks(ctx); });
-  bot.action("deposit", async ctx => { ctx.answerCbQuery().catch(() => {}); await ensureUser(ctx); await showDepositMenu(ctx); });
-
-  // Categories
-  bot.action(/^cat:(\d+):(\d+):(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await showCategory(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3])); });
-  bot.action(/^prod:(\d+):(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await showProduct(ctx, Number(ctx.match[1]), Number(ctx.match[2])); });
-  bot.action(/^buy:(\d+):(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await startOrderFlow(ctx, Number(ctx.match[1]), Number(ctx.match[2])); });
-  bot.action(/^vcat:(\d+):(\d+):(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await showVirtualCategory(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3])); });
-  bot.action(/^mprod:(\d+):(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await showManualProduct(ctx, Number(ctx.match[1]), Number(ctx.match[2])); });
-
-  // Manual orders
-  bot.action(/^mord:buy:(\d+):(\d+)$/, async ctx => {
-    ctx.answerCbQuery().catch(() => {}); await ensureUser(ctx);
-    const mId = Number(ctx.match[1]); const backTo = Number(ctx.match[2]);
-    const mRes = await q("SELECT * FROM manual_products WHERE id=$1", [mId]);
-    const m = mRes.rows[0]; if (!m || !m.active) { await ctx.reply("⚠️ المنتج غير متاح."); return; }
-    const u = await getUser(ctx.from.id); const balance = u ? Number(u.balance) : 0;
-    const usd = Number(m.price_usd); const rate = await getExchangeRate(); const syp = Math.round(usd * rate);
-    if (balance < usd) { await sendOrEdit(ctx, `❌ رصيدك غير كافٍ.\n🛒 ${m.name}\n💰 ${usd.toFixed(2)}$\n💳 رصيدك: ${balance.toFixed(2)}$`, Markup.inlineKeyboard([[Markup.button.callback("💳 شحن رصيد", "deposit")], [Markup.button.callback("❌ إلغاء", "home")]])); return; }
-    await sendOrEdit(ctx, `🧾 تأكيد الطلب اليدوي\n\n🛒 ${m.name}\n💰 ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س\n💳 رصيدك: ${balance.toFixed(2)}$`, Markup.inlineKeyboard([[Markup.button.callback("✅ تأكيد", `mord:confirm:${mId}:${backTo}`)], [Markup.button.callback("❌ إلغاء", `mprod:${mId}:${backTo}`)]]));
-  });
-  bot.action(/^mord:confirm:(\d+):(\d+)$/, async ctx => {
-    ctx.answerCbQuery().catch(() => {}); await ensureUser(ctx);
-    const mId = Number(ctx.match[1]);
-    const mRes = await q("SELECT * FROM manual_products WHERE id=$1", [mId]);
-    const m = mRes.rows[0]; if (!m || !m.active) { await ctx.reply("⚠️ المنتج غير متاح."); return; }
-    const u = await getUser(ctx.from.id); const balance = u ? Number(u.balance) : 0; const usd = Number(m.price_usd);
-    if (balance < usd) { await ctx.reply("❌ ليس لديك رصيد كافٍ."); return; }
-    await clearInlineKeyboard(ctx).catch(() => {});
-    await adjustBalance(ctx.from.id, -usd);
-    const oRes = await q("INSERT INTO manual_orders(user_id,product_id,product_name,price_usd,status) VALUES($1,$2,$3,$4,'pending') RETURNING *", [ctx.from.id, mId, m.name, String(usd)]);
-    const order = oRes.rows[0];
-    const rate = await getExchangeRate(); const syp = Math.round(usd * rate);
-    await ctx.reply(`✅ تم استلام طلبك #M${order.id}\n🛒 ${m.name}\n💰 تم خصم ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س\n⏳ سيقوم الأدمن بمعالجة طلبك قريباً.`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
-    const admins = await listAdmins();
-    for (const admin of admins) await ctx.telegram.sendMessage(admin.id, `🆕 طلب يدوي #M${order.id}\n👤 ${ctx.from.id}${ctx.from.username ? ` (@${ctx.from.username})` : ""}\n🛒 ${m.name}\n💰 ${usd.toFixed(2)}$`, Markup.inlineKeyboard([[Markup.button.callback("📋 عرض", `adm:mord:${order.id}`)]]).reply_markup).catch(() => {});
-  });
-
-  // Deposit flow
-  bot.action(/^dep:pick:(\d+)$/, async ctx => {
+  // ── Callback Query ─────────────────────────────────────────
+  bot.action("home", async ctx => { ctx.answerCbQuery().catch(() => {}); setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
+  bot.action("balance", async ctx => {
     ctx.answerCbQuery().catch(() => {});
-    const mRes = await q("SELECT * FROM deposit_methods WHERE id=$1", [Number(ctx.match[1])]);
-    const m = mRes.rows[0]; if (!m) { await ctx.reply("⚠️ غير موجود."); return; }
-    setStep(ctx.from.id, { kind: "deposit:number", methodId: m.id, methodName: m.name });
-    await ctx.reply(`💳 ${m.name}\nالرقم/المعرف: \`${m.identifier}\`\n\n${m.instructions}\n\nأرسل المبلغ والرقم الذي حولت منه`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "dep:cancel")]]) });
+    const u = await ensureUser(ctx); if (!u) return;
+    const rate = await getExchangeRate();
+    await sendOrEdit(ctx, `💰 رصيدك: ${formatBalance(Number(u.balance), rate)}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
   });
-  bot.action("dep:cancel", async ctx => { ctx.answerCbQuery("تم الإلغاء").catch(() => {}); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("تم إلغاء عملية الإيداع."); });
-
-  // Orders
+  bot.action("deposit", async ctx => { ctx.answerCbQuery().catch(() => {}); await ensureUser(ctx); await showDepositMenu(ctx); });
+  bot.action("support", async ctx => { ctx.answerCbQuery().catch(() => {}); await ensureUser(ctx); await showContactLinks(ctx); });
+  bot.action("myorders:1", async ctx => { ctx.answerCbQuery().catch(() => {}); await showMyOrders(ctx, 1); });
   bot.action(/^myorders:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await showMyOrders(ctx, Number(ctx.match[1])); });
-  bot.action("ord:cancel", async ctx => { ctx.answerCbQuery("تم الإلغاء").catch(() => {}); setStep(ctx.from.id, { kind: "idle" }); await sendOrEdit(ctx, "تم إلغاء الطلب.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); });
-  bot.action("ord:confirm", async ctx => { ctx.answerCbQuery().catch(() => {}); await executeOrder(ctx); });
-  bot.action(/^ord:qty:([\d.]+)$/, async ctx => {
-    ctx.answerCbQuery().catch(() => {}); const step = getStep(ctx.from.id);
-    if (step.kind !== "order:qty") return; const qty = Number(ctx.match[1]);
-    if (!Number.isFinite(qty) || qty <= 0) return;
+  bot.action("noop", async ctx => { ctx.answerCbQuery().catch(() => {}); });
+
+  // ── Admin auth ──────────────────────────────────────────────
+  bot.action("admin:menu", async ctx => { ctx.answerCbQuery().catch(() => {}); await showAdminMenu(ctx); });
+  bot.action("admin:loginPrompt", async ctx => {
+    ctx.answerCbQuery().catch(() => {});
+    setStep(ctx.from.id, { kind: "admin:login" });
+    await ctx.reply("🔑 أرسل كلمة المرور:");
+  });
+
+  // تسجيل خروج من لوحة الإدارة
+  bot.action("adm:logout", async ctx => {
+    ctx.answerCbQuery().catch(() => {});
+    const u = await getUser(ctx.from.id);
+    if (!u?.is_admin) { await ctx.reply("⚠️ أنت لست مسجلاً."); return; }
+    // إخفاء صلاحية الإدارة (المؤقتة) - لكن keep is_super_admin في الDB
+    await q("UPDATE users SET is_admin=false WHERE id=$1", [ctx.from.id]);
+    invalidateUserCache(ctx.from.id);
+    setStep(ctx.from.id, { kind: "idle" });
+    await ctx.reply("👋 تم تسجيل الخروج من لوحة الإدارة.");
+    await showMainMenu(ctx);
+  });
+
+  // ── Deposit flow ────────────────────────────────────────────
+  bot.action(/^dep:method:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await showDepositMethod(ctx, Number(ctx.match[1])); });
+  bot.action("dep:cancel", async ctx => { ctx.answerCbQuery().catch(() => {}); setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
+
+  // ── Category / Product navigation ──────────────────────────
+  bot.action(/^cat:(\d+):(\d+):(\d+)$/, async ctx => {
+    ctx.answerCbQuery().catch(() => {});
+    await ensureUser(ctx);
+    await showCategory(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3]));
+  });
+  bot.action(/^prod:(\d+):(\d+)$/, async ctx => {
+    ctx.answerCbQuery().catch(() => {});
+    await ensureUser(ctx);
+    await showProduct(ctx, Number(ctx.match[1]), Number(ctx.match[2]));
+  });
+  bot.action(/^vcat:(\d+):(\d+):(\d+)$/, async ctx => {
+    ctx.answerCbQuery().catch(() => {});
+    await ensureUser(ctx);
+    await showVirtualCategory(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3]));
+  });
+  bot.action(/^mprod:(\d+):(\d+)$/, async ctx => {
+    ctx.answerCbQuery().catch(() => {});
+    await ensureUser(ctx);
+    await showManualProduct(ctx, Number(ctx.match[1]), Number(ctx.match[2]));
+  });
+
+  // ── Buy flow ───────────────────────────────────────────────
+  bot.action(/^buy:(\d+):(\d+)$/, async ctx => {
+    ctx.answerCbQuery().catch(() => {});
+    await ensureUser(ctx);
+    await startOrderFlow(ctx, Number(ctx.match[1]), Number(ctx.match[2]));
+  });
+  bot.action(/^ord:qty:(\d+\.?\d*)$/, async ctx => {
+    ctx.answerCbQuery().catch(() => {});
+    const step = getStep(ctx.from.id);
+    if (step.kind !== "order:qty") return;
+    const qty = Number(ctx.match[1]);
     let all = await getCachedProducts(); let p = all.find(x => x.id === step.productId);
     if (!p) { all = await fetchAllProducts(); p = all.find(x => x.id === step.productId); }
     if (!p) return;
     await askNextParam(ctx, p, step.priceUsd, qty, step.paramKeys, {}, 0, step.backTo);
   });
+  bot.action("ord:confirm", async ctx => { ctx.answerCbQuery().catch(() => {}); await executeOrder(ctx); });
+  bot.action("ord:cancel", async ctx => { ctx.answerCbQuery().catch(() => {}); setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
   bot.action(/^ord:check:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await checkOrderStatus(ctx, Number(ctx.match[1])); });
 
-  // Admin menu
-  bot.action("admin:menu", async ctx => { ctx.answerCbQuery().catch(() => {}); await showAdminMenu(ctx); });
-  bot.action("admin:loginPrompt", async ctx => { ctx.answerCbQuery().catch(() => {}); setStep(ctx.from.id, { kind: "admin:login" }); await ctx.reply("🔐 أرسل كلمة مرور الإدارة:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "home")]])); });
-  bot.action("adm:settings", async ctx => { ctx.answerCbQuery().catch(() => {}); await showSettingsMenu(ctx); });
-  bot.action("adm:setMarkup", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setMarkup" }); await ctx.reply("📈 أرسل نسبة الربح العام:"); });
-  bot.action("adm:setSocialMarkup", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setSocialMarkup" }); await ctx.reply("📈 أرسل نسبة ربح السوشل:"); });
-  bot.action("adm:setRate", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setRate" }); await ctx.reply("💱 أرسل سعر الصرف (ل.س/$):"); });
-  bot.action("adm:newPass", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:newPassword" }); await ctx.reply("🔑 أرسل كلمة المرور الجديدة:"); });
-  bot.action("adm:toggleStatus", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const cur = await getBotStatus(); await setSetting("bot_status", cur === "on" ? "off" : "on"); await showAdminMenu(ctx); });
+  // ── Manual product buy ──────────────────────────────────────
+  bot.action(/^mbuy:(\d+)$/, async ctx => {
+    ctx.answerCbQuery().catch(() => {});
+    const mid = Number(ctx.match[1]);
+    const m = (await q("SELECT * FROM manual_products WHERE id=$1 AND active=true", [mid])).rows[0];
+    if (!m) { await ctx.reply("⚠️ المنتج غير متاح."); return; }
+    const u = await getUser(ctx.from.id);
+    const priceUsd = Number(m.price_usd);
+    if (!u || Number(u.balance) < priceUsd) { await ctx.reply("❌ رصيد غير كافٍ.", Markup.inlineKeyboard([[Markup.button.callback("💳 شحن رصيد", "deposit")]])); return; }
+    setStep(ctx.from.id, { kind: "order:manualNote", productId: mid, priceUsd });
+    await ctx.reply(`📝 أرسل ملاحظة للطلب أو اكتب "skip":`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]]));
+  });
+
+  // ── Admin: deposit management ──────────────────────────────
   bot.action(/^adm:depList:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await showDepList(ctx, Number(ctx.match[1])); });
   bot.action(/^adm:depShow:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await showDepDetails(ctx, Number(ctx.match[1])); });
-  bot.action(/^adm:dep:approve:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await clearInlineKeyboard(ctx); await approveDeposit(ctx, Number(ctx.match[1])); });
-  bot.action(/^adm:dep:reject:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await clearInlineKeyboard(ctx); await rejectDeposit(ctx, Number(ctx.match[1])); });
+  bot.action(/^adm:dep:approve:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await approveDeposit(ctx, Number(ctx.match[1])); });
+  bot.action(/^adm:dep:reject:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await rejectDeposit(ctx, Number(ctx.match[1])); });
+
+  // ── Admin: users ──────────────────────────────────────────
   bot.action(/^adm:users:(\d+)$/, async ctx => {
     ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
-    const limit = 10; const page = Number(ctx.match[1]); const offset = (page - 1) * limit;
-    const rows = await listUsers(offset, limit); const total = await countUsers();
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-    if (!rows.length) { await sendOrEdit(ctx, "👥 لا يوجد مستخدمون.", Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "admin:menu")]])); return; }
-    const kb = rows.map(u => [Markup.button.callback(`${u.is_admin ? "👑 " : u.status === "banned" ? "🚫 " : "👤 "}${u.first_name ?? "—"}${u.username ? " @" + u.username : ""} • ${Number(u.balance).toFixed(2)}$`, `adm:user:${u.id}`)]);
-    const nav = []; if (page > 1) nav.push(Markup.button.callback("⬅️ السابق", `adm:users:${page - 1}`)); nav.push(Markup.button.callback(`${page}/${totalPages}`, "noop")); if (page < totalPages) nav.push(Markup.button.callback("التالي ➡️", `adm:users:${page + 1}`));
-    kb.push(nav); kb.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
-    await sendOrEdit(ctx, `👥 المستخدمون (${total})`, Markup.inlineKeyboard(kb));
+    const page = Number(ctx.match[1]); const limit = 10; const offset = (page - 1) * limit;
+    const users = await listUsers(offset, limit + 1);
+    const hasNext = users.length > limit; const slice = users.slice(0, limit);
+    const total = await countUsers();
+    const kb = slice.map(u => [Markup.button.callback(`${u.first_name ?? "—"}${u.username ? " @" + u.username : ""} • ${Number(u.balance).toFixed(2)}$${u.is_super_admin ? " 🌟" : u.is_admin ? " 👑" : ""}`, `adm:user:${u.id}`)]);
+    const nav = [];
+    if (page > 1) nav.push(Markup.button.callback("⬅️ السابق", `adm:users:${page - 1}`));
+    if (hasNext) nav.push(Markup.button.callback("التالي ➡️", `adm:users:${page + 1}`));
+    if (nav.length) kb.push(nav);
+    kb.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
+    await sendOrEdit(ctx, `👥 المستخدمون (${total}):`, Markup.inlineKeyboard(kb));
   });
-  bot.action("adm:findUser", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:findUser" }); await ctx.reply("🔍 أرسل اسم المستخدم أو الرقم التعريفي:"); });
   bot.action(/^adm:user:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); await showUserCard(ctx, Number(ctx.match[1])); });
-  bot.action(/^adm:userAdd:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "add" }); await ctx.reply(`💵 أرسل المبلغ بالدولار لإضافته:`); });
-  bot.action(/^adm:userSub:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "deduct" }); await ctx.reply(`💵 أرسل المبلغ بالدولار لخصمه:`); });
-  bot.action(/^adm:userBan:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const uid = Number(ctx.match[1]); const u = await getUser(uid); if (!u) return; await setStatus(uid, u.status === "banned" ? "active" : "banned"); await showUserCard(ctx, uid); });
-  bot.action(/^adm:userAdmin:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const me = await getUser(ctx.from.id); if (!me?.is_super_admin) { await ctx.reply("⛔ يحتاج صلاحيات المدير الأعلى."); return; } const uid = Number(ctx.match[1]); const u = await getUser(uid); if (!u) return; await setAdmin(uid, !u.is_admin); await showUserCard(ctx, uid); });
+  bot.action(/^adm:userBan:(\d+)$/, async ctx => {
+    ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
+    const uid = Number(ctx.match[1]); const u = await getUser(uid);
+    const newStatus = u?.status === "banned" ? "active" : "banned";
+    await setStatus(uid, newStatus); await ctx.reply(newStatus === "banned" ? "🚫 تم الحظر." : "✅ تم رفع الحظر.");
+    await showUserCard(ctx, uid);
+  });
+  bot.action(/^adm:userAdmin:(\d+)$/, async ctx => {
+    ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
+    const me = await getUser(ctx.from.id);
+    if (!me?.is_super_admin) { await ctx.reply("⛔ المدير الأعلى فقط يستطيع تعيين المديرين."); return; }
+    const uid = Number(ctx.match[1]); const u = await getUser(uid);
+    const newAdmin = !u?.is_admin;
+    await setAdmin(uid, newAdmin, newAdmin ? false : undefined);
+    await ctx.reply(newAdmin ? "👑 تم التعيين إداريًا." : "👤 تم إلغاء الإداري.");
+    await showUserCard(ctx, uid);
+  });
+  // تعيين مدير أعلى آخر (للمدير الأعلى فقط)
+  bot.action(/^adm:userSA:(\d+)$/, async ctx => {
+    ctx.answerCbQuery().catch(() => {}); if (!(await requireSuperAdmin(ctx))) return;
+    const uid = Number(ctx.match[1]); const u = await getUser(uid);
+    const newSA = !u?.is_super_admin;
+    await setAdmin(uid, newSA ? true : u?.is_admin ?? false, newSA);
+    await ctx.reply(newSA ? "🌟 تم تعيينه مديراً أعلى." : "⬇️ تم إلغاء صلاحية المدير الأعلى.");
+    await showUserCard(ctx, uid);
+  });
+  bot.action(/^adm:userAdd:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "add" }); await ctx.reply("💵 أرسل المبلغ بالدولار للإضافة:"); });
+  bot.action(/^adm:userSub:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "sub" }); await ctx.reply("💵 أرسل المبلغ بالدولار للخصم:"); });
+  bot.action("adm:findUser", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:findUser" }); await ctx.reply("🔍 أرسل اسم المستخدم أو ID:"); });
   bot.action(/^adm:userOrders:(\d+):(\d+)$/, async ctx => {
     ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
-    const uid = Number(ctx.match[1]); const page = Number(ctx.match[2]); const limit = 10; const offset = (page - 1) * limit;
+    const uid = Number(ctx.match[1]); const page = Number(ctx.match[2]); const limit = 8; const offset = (page - 1) * limit;
     const res = await q("SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3", [uid, limit + 1, offset]);
     const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
     if (!slice.length) { await sendOrEdit(ctx, "📭 لا توجد طلبات.", Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", `adm:user:${uid}`)]])); return; }
-    const lines = slice.map(r => `#${r.id} • ${r.product_name} ×${r.qty} • ${Number(r.price_usd).toFixed(2)}$ • ${r.status}`);
+    const lines = slice.map(r => `#${r.id} • ${r.product_name} ×${r.qty} • ${Number(r.price_usd).toFixed(2)}$ • ${statusLabel(r.status)}`);
     const nav = []; if (page > 1) nav.push(Markup.button.callback("⬅️ السابق", `adm:userOrders:${uid}:${page - 1}`)); if (hasNext) nav.push(Markup.button.callback("التالي ➡️", `adm:userOrders:${uid}:${page + 1}`));
     const kb = []; if (nav.length) kb.push(nav); kb.push([Markup.button.callback("⬅️ رجوع", `adm:user:${uid}`)]);
     await sendOrEdit(ctx, `📦 طلبات ${uid}\n\n${lines.join("\n")}`, Markup.inlineKeyboard(kb));
   });
   bot.action(/^adm:userMarkup:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const uid = Number(ctx.match[1]); const u = await getUser(uid); setStep(ctx.from.id, { kind: "admin:setUserMarkup", userId: uid }); await ctx.reply(`% نسبة ربح ${u?.first_name ?? uid}\nالحالية: ${u?.custom_markup_percent ?? "غير محددة"}\nأرسل النسبة أو reset:`); });
+
+  // ── Admin: orders ─────────────────────────────────────────
   bot.action(/^adm:allOrders:(\d+)$/, async ctx => {
     ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
     const page = Number(ctx.match[1]); const limit = 8; const offset = (page - 1) * limit;
     const res = await q(`SELECT o.*, u.username AS uname, u.first_name AS ufirst FROM orders o LEFT JOIN users u ON u.id=o.user_id ORDER BY o.created_at DESC LIMIT $1 OFFSET $2`, [limit + 1, offset]);
     const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
     if (!slice.length) { await sendOrEdit(ctx, "📭 لا توجد طلبات.", Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "admin:menu")]])); return; }
-    const lines = slice.map(r => `#${r.id} • ${r.ufirst ?? "—"}${r.uname ? " @" + r.uname : ""}\n   ${r.product_name} ×${r.qty} • ${Number(r.price_usd).toFixed(2)}$ • ${r.status}`);
+    const lines = slice.map(r => `#${r.id} • ${r.ufirst ?? "—"}${r.uname ? " @" + r.uname : ""}\n   ${r.product_name} ×${r.qty} • ${Number(r.price_usd).toFixed(2)}$ • ${statusLabel(r.status)}`);
     const nav = []; if (page > 1) nav.push(Markup.button.callback("⬅️ السابق", `adm:allOrders:${page - 1}`)); if (hasNext) nav.push(Markup.button.callback("التالي ➡️", `adm:allOrders:${page + 1}`));
     const kb = []; if (nav.length) kb.push(nav); kb.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
     await sendOrEdit(ctx, `📦 كل الطلبات\n\n${lines.join("\n\n")}`, Markup.inlineKeyboard(kb));
   });
+
+  // ── Admin: broadcast ──────────────────────────────────────
   bot.action("adm:broadcast", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:broadcast" }); await ctx.reply("📣 أرسل نص الرسالة الجماعية:"); });
+
+  // ── Admin: deposit methods ─────────────────────────────────
   bot.action("adm:methods", async ctx => {
     ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
     const res = await q("SELECT * FROM deposit_methods ORDER BY id"); const rows = res.rows;
@@ -1514,6 +1716,8 @@ async function startBot() {
   bot.action(/^adm:methodToggle:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const id = Number(ctx.match[1]); const cur = (await q("SELECT active FROM deposit_methods WHERE id=$1", [id])).rows[0]; if (!cur) return; await q("UPDATE deposit_methods SET active=$1 WHERE id=$2", [!cur.active, id]); await ctx.answerCbQuery(cur.active ? "تم التعطيل" : "تم التفعيل"); });
   bot.action(/^adm:methodInstr:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editMethodInstructions", methodId: Number(ctx.match[1]) }); await ctx.reply("📋 أرسل التعليمات الجديدة:"); });
   bot.action(/^adm:methodDel:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; await q("DELETE FROM deposit_methods WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("🗑️ تم الحذف."); });
+
+  // ── Admin: product management ──────────────────────────────
   bot.action(/^adm:editPrice:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editPrice", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`✏️ سعر: ${p?.name ?? pid}\nأرسل: \`%5\` ربح أو \`$2.5\` تثبيت أو \`reset\``, { parse_mode: "Markdown" }); });
   bot.action(/^adm:editInstr:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editProductInstructions", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`📋 أرسل تعليمات ${p?.name ?? pid} أو clear للمسح:`); });
   bot.action(/^adm:renameProd:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:renameProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`📝 الاسم الجديد لـ "${p?.name ?? pid}" أو reset:`); });
@@ -1525,6 +1729,8 @@ async function startBot() {
     await q("INSERT INTO product_overrides(product_id,hidden) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET hidden=$2, updated_at=NOW()", [pid, nextHidden]);
     invalidateCaches(); await ctx.reply(nextHidden ? "🙈 تم إخفاء المنتج." : "👁 تم إظهار المنتج.");
   });
+
+  // ── Admin: category management ─────────────────────────────
   bot.action(/^adm:catEdit:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editCategoryName", categoryId: Number(ctx.match[1]) }); await ctx.reply("✏️ أرسل الاسم الجديد للقسم (أو reset):"); });
   bot.action(/^adm:catToggle:(\d+)$/, async ctx => {
     ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
@@ -1536,41 +1742,79 @@ async function startBot() {
   bot.action(/^adm:catMarkup:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); const cur = (await q("SELECT custom_markup_percent FROM category_overrides WHERE category_id=$1", [cid])).rows[0]; setStep(ctx.from.id, { kind: "admin:setCatMarkup", categoryId: cid }); await ctx.reply(`% نسبة ربح القسم ${cid}\nالحالية: ${cur?.custom_markup_percent ?? "غير محددة"}\nأرسل النسبة أو reset:`); });
   bot.action(/^adm:catSort:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); setStep(ctx.from.id, { kind: "admin:setCatSort", categoryId: cid }); await ctx.reply(`🔢 ترتيب القسم ${cid}\nأرسل رقم الترتيب أو reset:`); });
   bot.action(/^adm:moveCatAll:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:moveCatAll", sourceCategoryId: Number(ctx.match[1]) }); await ctx.reply(`🚚 نقل جميع منتجات القسم #${ctx.match[1]}\nأرسل رقم القسم الهدف أو cancel:`); });
+
+  // نقل قسم كامل إلى داخل قسم آخر (ميزة جديدة)
+  bot.action(/^adm:moveCatToParent:(\d+)$/, async ctx => {
+    ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
+    const cid = Number(ctx.match[1]);
+    setStep(ctx.from.id, { kind: "admin:moveCatToParent", categoryId: cid });
+    await ctx.reply(`📁 نقل القسم #${cid} إلى داخل قسم آخر\nأرسل رقم القسم الهدف أو "0" للرجوع للجذر أو "cancel" للإلغاء:`);
+  });
+
+  // ── Admin: settings ──────────────────────────────────────
+  bot.action("adm:settings", async ctx => { ctx.answerCbQuery().catch(() => {}); await showSettingsMenu(ctx); });
+  bot.action("adm:setMarkup", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setMarkup" }); await ctx.reply("✏️ أرسل نسبة الربح العام (مثال: 5):"); });
+  bot.action("adm:setSocialMarkup", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setSocialMarkup" }); await ctx.reply("✏️ أرسل نسبة ربح السوشل:"); });
+  bot.action("adm:setRate", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setRate" }); await ctx.reply("💱 أرسل سعر الصرف (ل.س/$):"); });
+  bot.action("adm:newPass", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:newPassword" }); await ctx.reply("🔑 أرسل كلمة المرور الجديدة (4 أحرف على الأقل):"); });
+  bot.action("adm:changeLoginCmd", async ctx => {
+    ctx.answerCbQuery().catch(() => {}); if (!(await requireSuperAdmin(ctx))) return;
+    const cur = await getAdminLoginCommand();
+    setStep(ctx.from.id, { kind: "admin:changeLoginCmd" });
+    await ctx.reply(`🔐 الأمر الحالي: \`${cur}\`\nأرسل الأمر الجديد:`, { parse_mode: "Markdown" });
+  });
+  bot.action("adm:toggleStatus", async ctx => {
+    ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
+    const cur = await getBotStatus(); const next = cur === "on" ? "off" : "on";
+    await setSetting("bot_status", next);
+    await ctx.reply(next === "on" ? "🟢 البوت الآن شغال." : "🔴 البوت متوقف الآن.");
+    await showAdminMenu(ctx);
+  });
+
+  // ── Admin: ping ───────────────────────────────────────────
+  bot.action("adm:ping", async ctx => {
+    ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
+    const [enabled, target, interval] = await Promise.all([getSetting("auto_ping_enabled"), getSetting("auto_ping_target_user_id"), getSetting("auto_ping_interval_min")]);
+    await sendOrEdit(ctx, `🔄 البينج التلقائي\nالحالة: ${enabled === "on" ? "✅ مفعّل" : "❌ موقوف"}\nالمستهدف: ${target || "غير محدد"}\nالفاصل: ${interval} دقيقة`,
+      Markup.inlineKeyboard([[Markup.button.callback(enabled === "on" ? "❌ إيقاف" : "✅ تفعيل", "adm:pingToggle")], [Markup.button.callback("🎯 تعيين المستهدف", "adm:pingTarget")], [Markup.button.callback("⏱ تعيين الفاصل", "adm:pingInterval")], [Markup.button.callback("⬅️ رجوع", "admin:menu")]]));
+  });
+  bot.action("adm:pingToggle", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const cur = await getSetting("auto_ping_enabled"); await setSetting("auto_ping_enabled", cur === "on" ? "off" : "on"); await ctx.reply(cur === "on" ? "❌ تم إيقاف البينج." : "✅ تم تفعيل البينج."); });
+  bot.action("adm:pingTarget", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:pingTarget" }); await ctx.reply("🎯 أرسل ID المستخدم الهدف:"); });
+  bot.action("adm:pingInterval", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:pingInterval" }); await ctx.reply("⏱ أرسل الفاصل الزمني بالدقائق:"); });
+
+  // ── Admin: contacts ───────────────────────────────────────
   bot.action("adm:contacts", async ctx => {
     ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
-    const res = await q("SELECT * FROM contact_links ORDER BY id"); const links = res.rows;
-    const rows = links.map(l => [Markup.button.callback(`${l.active ? "✅" : "❌"} ${l.name}`, `adm:contactEdit:${l.id}`)]);
+    const links = (await q("SELECT * FROM contact_links ORDER BY id")).rows;
+    const rows = links.map(l => [Markup.button.callback(`${l.active ? "🟢" : "🔴"} ${l.name}`, `adm:contactEdit:${l.id}`)]);
     rows.push([Markup.button.callback("➕ إضافة", "adm:addContact")]); rows.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
     await sendOrEdit(ctx, "📞 وسائل التواصل:", Markup.inlineKeyboard(rows));
   });
-  bot.action("adm:addContact", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addContact:name" }); await ctx.reply("📝 أرسل اسم وسيلة التواصل:"); });
+  bot.action("adm:addContact", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addContact:name" }); await ctx.reply("📞 أرسل اسم وسيلة التواصل:"); });
   bot.action(/^adm:contactEdit:(\d+)$/, async ctx => {
     ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
-    const cid = Number(ctx.match[1]); const c = (await q("SELECT * FROM contact_links WHERE id=$1", [cid])).rows[0]; if (!c) return;
-    await sendOrEdit(ctx, `📞 ${c.name}\nالرابط: ${c.link}\nالحالة: ${c.active ? "✅ مفعل" : "❌ معطل"}`,
-      Markup.inlineKeyboard([[Markup.button.callback(c.active ? "❌ تعطيل" : "✅ تفعيل", `adm:contactToggle:${cid}`)], [Markup.button.callback("✏️ تعديل الرابط", `adm:contactLink:${cid}`)], [Markup.button.callback("🗑️ حذف", `adm:contactDel:${cid}`)], [Markup.button.callback("⬅️ رجوع", "adm:contacts")]]));
+    const id = Number(ctx.match[1]); const l = (await q("SELECT * FROM contact_links WHERE id=$1", [id])).rows[0]; if (!l) return;
+    await sendOrEdit(ctx, `📞 ${l.name}\n${l.link}`,
+      Markup.inlineKeyboard([[Markup.button.callback(l.active ? "🔴 إخفاء" : "🟢 إظهار", `adm:contactToggle:${id}`), Markup.button.callback("🗑️ حذف", `adm:contactDel:${id}`)], [Markup.button.callback("⬅️ رجوع", "adm:contacts")]]));
   });
-  bot.action(/^adm:contactToggle:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); const c = (await q("SELECT active FROM contact_links WHERE id=$1", [cid])).rows[0]; if (!c) return; await q("UPDATE contact_links SET active=$1, updated_at=NOW() WHERE id=$2", [!c.active, cid]); await ctx.reply(!c.active ? "✅ تم التفعيل." : "❌ تم التعطيل."); });
-  bot.action(/^adm:contactLink:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editContactLink", contactId: Number(ctx.match[1]) }); await ctx.reply("🔗 أرسل الرابط الجديد:"); });
+  bot.action(/^adm:contactToggle:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const id = Number(ctx.match[1]); const l = (await q("SELECT active FROM contact_links WHERE id=$1", [id])).rows[0]; if (!l) return; await q("UPDATE contact_links SET active=$1 WHERE id=$2", [!l.active, id]); await ctx.answerCbQuery(l.active ? "تم الإخفاء" : "تم الإظهار"); });
   bot.action(/^adm:contactDel:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; await q("DELETE FROM contact_links WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("🗑️ تم الحذف."); });
+
+  // ── Admin: virtual categories ─────────────────────────────
   bot.action("adm:vcList", async ctx => {
     ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
-    const res = await q("SELECT * FROM virtual_categories ORDER BY id"); const vcs = res.rows;
-    const rows = vcs.map(v => [Markup.button.callback(`${v.active ? "📂" : "🔒"} ${v.name}`, `adm:vcInfo:${v.id}`)]);
-    rows.push([Markup.button.callback("➕ إضافة قسم مخصص", "adm:addVCat")]); rows.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
+    const vcs = (await q("SELECT * FROM virtual_categories WHERE parent_id=0 ORDER BY position")).rows;
+    const rows = vcs.map(v => [Markup.button.callback(`${v.active ? "📂" : "🔒"} ${v.name}`, `vcat:${v.id}:1:0`)]);
+    rows.push([Markup.button.callback("➕ إضافة قسم", "adm:addVCat")]); rows.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
     await sendOrEdit(ctx, "📁 الأقسام المخصصة:", Markup.inlineKeyboard(rows));
   });
-  bot.action("adm:addVCat", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addVirtualCategory:name", parentId: 0 }); await ctx.reply("📁 أرسل اسم القسم المخصص الجديد:"); });
-  bot.action(/^adm:vcInfo:(\d+)$/, async ctx => {
-    ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
-    const vcId = Number(ctx.match[1]); const vc = (await q("SELECT * FROM virtual_categories WHERE id=$1", [vcId])).rows[0]; if (!vc) return;
-    await sendOrEdit(ctx, `📁 ${vc.name}\nالحالة: ${vc.active ? "✅ مرئي" : "❌ مخفي"}\nلإضافة منتجات: افتح المنتج ← 🚚 نقل ← ID: ${vcId}`,
-      Markup.inlineKeyboard([[Markup.button.callback("✏️ تعديل الاسم", `adm:vcEdit:${vcId}`)], [Markup.button.callback(vc.active ? "🙈 إخفاء" : "👁 إظهار", `adm:vcToggle:${vcId}`)], [Markup.button.callback("🗑️ حذف", `adm:vcDel:${vcId}`)], [Markup.button.callback("⬅️ رجوع", "adm:vcList")]]));
-  });
-  bot.action(/^adm:vcEdit:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editVirtualCategory", vcId: Number(ctx.match[1]) }); await ctx.reply("✏️ أرسل الاسم الجديد:"); });
-  bot.action(/^adm:vcToggle:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const vcId = Number(ctx.match[1]); const vc = (await q("SELECT active FROM virtual_categories WHERE id=$1", [vcId])).rows[0]; if (!vc) return; await q("UPDATE virtual_categories SET active=$1, updated_at=NOW() WHERE id=$2", [!vc.active, vcId]); invalidateCaches(); await ctx.reply(!vc.active ? "👁 تم الإظهار." : "🙈 تم الإخفاء."); });
-  bot.action(/^adm:vcDel:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; await q("DELETE FROM virtual_categories WHERE id=$1", [Number(ctx.match[1])]); invalidateCaches(); await ctx.reply("🗑️ تم الحذف."); });
+  bot.action("adm:addVCat", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addVirtualCategory:name", parentId: 0 }); await ctx.reply("📁 أرسل اسم القسم المخصص:"); });
   bot.action(/^adm:addVCatSub:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const pv = (await q("SELECT name FROM virtual_categories WHERE id=$1", [pid])).rows[0]; setStep(ctx.from.id, { kind: "admin:addVirtualCategory:name", parentId: pid }); await ctx.reply(`📁 أرسل اسم القسم الفرعي داخل "${pv?.name ?? pid}":`); });
+  bot.action(/^adm:vcEdit:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editVCatName", vcId: Number(ctx.match[1]) }); await ctx.reply("✏️ أرسل الاسم الجديد للقسم:"); });
+  bot.action(/^adm:vcToggle:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const id = Number(ctx.match[1]); const v = (await q("SELECT active FROM virtual_categories WHERE id=$1", [id])).rows[0]; if (!v) return; await q("UPDATE virtual_categories SET active=$1, updated_at=NOW() WHERE id=$2", [!v.active, id]); await ctx.reply(!v.active ? "👁 تم الإظهار." : "🙈 تم الإخفاء."); });
+  bot.action(/^adm:vcDel:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; await q("DELETE FROM virtual_categories WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("🗑️ تم حذف القسم."); });
+
+  // ── Admin: manual products ────────────────────────────────
   bot.action("adm:manualProds", async ctx => {
     ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
     const prods = (await q("SELECT * FROM manual_products ORDER BY id")).rows;
@@ -1587,7 +1831,6 @@ async function startBot() {
     await sendOrEdit(ctx, `🛒 ${p.name}\nالسعر: ${Number(p.price_usd).toFixed(2)}$\nالحالة: ${p.active ? "✅" : "❌"}`,
       Markup.inlineKeyboard([[Markup.button.callback(p.active ? "❌ تعطيل" : "✅ تفعيل", `adm:manualToggle:${pid}`)], [Markup.button.callback("🗑️ حذف", `adm:manualDel:${pid}`)], [Markup.button.callback("⬅️ رجوع", "adm:manualProds")]]));
   });
-  bot.action(/^adm:manualEditPrice:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editManualPrice", productId: Number(ctx.match[1]) }); await ctx.reply("💵 أرسل السعر الجديد بالدولار:"); });
   bot.action(/^adm:manualToggle:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const p = (await q("SELECT active FROM manual_products WHERE id=$1", [pid])).rows[0]; if (!p) return; await q("UPDATE manual_products SET active=$1, updated_at=NOW() WHERE id=$2", [!p.active, pid]); await ctx.reply(!p.active ? "✅ تم التفعيل." : "❌ تم التعطيل."); });
   bot.action(/^adm:manualDel:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; await q("DELETE FROM manual_products WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("🗑️ تم الحذف."); });
   bot.action("adm:manualOrders", async ctx => {
@@ -1617,47 +1860,60 @@ async function startBot() {
     await ctx.telegram.sendMessage(o.user_id, `❌ تم رفض طلبك #M${oid}\n🛒 ${o.product_name}\n💰 تمت إعادة ${Number(o.price_usd).toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
   });
   bot.action(/^adm:mordMsg:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const oid = Number(ctx.match[1]); const o = (await q("SELECT user_id FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o) return; setStep(ctx.from.id, { kind: "admin:manualOrderMsg", orderId: oid, userId: Number(o.user_id) }); await ctx.reply(`💬 أرسل الرسالة للمستخدم ${o.user_id}:`); });
+
+  // ── Admin: nav buttons ────────────────────────────────────
   bot.action("adm:btnLabels", async ctx => {
     ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
     const [b, h, p2, n] = await Promise.all([getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel()]);
     await sendOrEdit(ctx, `🔘 أزرار التنقل:\nرجوع: ${b}\nالرئيسية: ${h}\nالسابق: ${p2}\nالتالي: ${n}`,
       Markup.inlineKeyboard([[Markup.button.callback("✏️ زر الرجوع", "adm:btnEdit:btn_back_label:رجوع")], [Markup.button.callback("✏️ زر الرئيسية", "adm:btnEdit:btn_home_label:الرئيسية")], [Markup.button.callback("✏️ زر السابق", "adm:btnEdit:btn_prev_label:السابق")], [Markup.button.callback("✏️ زر التالي", "adm:btnEdit:btn_next_label:التالي")], [Markup.button.callback("🔄 إعادة الافتراضي", "adm:btnReset")], [Markup.button.callback("⬅️ رجوع", "adm:settings")]]));
   });
-  bot.action(/^adm:btnEdit:([^:]+):(.+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editBtnLabel", settingKey: ctx.match[1], labelName: ctx.match[2] }); await ctx.reply(`✏️ النص الجديد لزر "${ctx.match[2]}" (أو reset):`); });
-  bot.action("adm:btnReset", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; await Promise.all(["btn_back_label","btn_home_label","btn_prev_label","btn_next_label"].map(k => deleteSetting(k))); await ctx.reply("✅ تمت إعادة نصوص الأزرار للافتراضية."); });
-  bot.action("adm:aiSupport", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:aiSupport" }); await sendOrEdit(ctx, `🛠️ مساعد الإدارة\n\n${hasAiKey() ? "✅ الذكاء الاصطناعي مفعّل\n\n" : ""}اكتب سؤالك الآن:`, Markup.inlineKeyboard([[Markup.button.callback("🗑️ مسح المحادثة", "adm:aiClear")], [Markup.button.callback("⬅️ رجوع", "admin:menu")]])); });
-  bot.action("adm:aiClear", async ctx => { ctx.answerCbQuery("🗑️ تم المسح").catch(() => {}); clearAiHistory(ctx.from.id); setStep(ctx.from.id, { kind: "idle" }); });
-  bot.action("adm:ping", async ctx => {
+  bot.action(/^adm:btnEdit:([^:]+):(.+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const key = ctx.match[1]; setStep(ctx.from.id, { kind: "admin:editBtnLabel", key }); await ctx.reply(`✏️ أرسل النص الجديد للزر:`); });
+  bot.action("adm:btnReset", async ctx => {
     ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
-    const enabled = (await getSetting("auto_ping_enabled")) === "on"; const intervalMin = Number(await getSetting("auto_ping_interval_min")) || 5; const targetId = await getSetting("auto_ping_target_user_id");
-    await sendOrEdit(ctx, `🔄 البينج التلقائي\nالحالة: ${enabled ? "🟢 مفعّل" : "🔴 موقوف"}\nالفترة: كل ${intervalMin} دقيقة\nالمستلم: ${targetId ? `#${targetId}` : "غير محدد"}`,
-      Markup.inlineKeyboard([[Markup.button.callback(enabled ? "🔴 إيقاف" : "🟢 تفعيل", "adm:pingToggle")], [Markup.button.callback(`⏱️ تغيير الفترة`, "adm:pingSetInterval")], [Markup.button.callback("⬅️ رجوع", "admin:menu")]]));
+    await Promise.all(["btn_back_label", "btn_home_label", "btn_prev_label", "btn_next_label"].map(k => setSetting(k, DEFAULTS[k])));
+    await ctx.reply("✅ تمت إعادة الأزرار للافتراضي.");
   });
-  bot.action("adm:pingToggle", async ctx => {
-    ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
-    const enabled = (await getSetting("auto_ping_enabled")) === "on";
-    if (!enabled) { await setSetting("auto_ping_enabled", "on"); await setSetting("auto_ping_target_user_id", String(ctx.from.id)); await setSetting("auto_ping_last_sent", "0"); }
-    else await setSetting("auto_ping_enabled", "off");
-    await ctx.answerCbQuery(enabled ? "🔴 تم الإيقاف" : "🟢 تم التفعيل");
-  });
-  bot.action("adm:pingSetInterval", async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setPingInterval" }); await ctx.reply("⏱️ أرسل الفترة بالدقائق (1-1440):"); });
 
-  // Photo handler
-  bot.on("photo", async (ctx, next) => {
+  // ── Admin: AI support ─────────────────────────────────────
+  bot.action("adm:aiSupport", async ctx => {
+    ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
+    clearAiHistory(ctx.from.id);
+    setStep(ctx.from.id, { kind: "admin:aiSupport" });
+    await ctx.reply(`🛠️ مساعد الإدارة${hasAiKey() ? "" : " (وضع FAQ)"}\nأرسل سؤالك أو "خروج" للإنهاء:`);
+  });
+
+  // ── Photo handler (deposit screenshots) ───────────────────
+  bot.on("photo", async ctx => {
     const step = getStep(ctx.from.id);
-    if (step.kind !== "deposit:photo") return next();
-    const photos = ctx.message.photo; const fileId = photos[photos.length - 1].file_id;
-    const res = await q("INSERT INTO deposit_requests(user_id,method_id,method_name,payer_number,screenshot_file_id) VALUES($1,$2,$3,$4,$5) RETURNING *", [ctx.from.id, step.methodId, step.methodName, step.payerNumber, fileId]);
-    setStep(ctx.from.id, { kind: "idle" });
+    if (step.kind !== "deposit:photo") return;
+    const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+    const res = await q(
+      "INSERT INTO deposit_requests(user_id,method_id,method_name,payer_number,screenshot_file_id) VALUES($1,$2,$3,$4,$5) RETURNING *",
+      [ctx.from.id, step.methodId, step.methodName, step.payerNumber, fileId]
+    );
     const dep = res.rows[0];
-    await ctx.reply(`✅ تم استلام طلب الإيداع #${dep.id}.\nسيتم مراجعته قريباً.`);
-    await notifyAdminsDeposit(ctx, dep.id);
+    setStep(ctx.from.id, { kind: "idle" });
+    await ctx.reply(`✅ تم استلام طلب الإيداع #${dep.id}.\nسيتم مراجعته وإضافة الرصيد في أقرب وقت.`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+    await notifyAdminsDeposit(ctx, dep);
   });
 
-  // Text router
+  // ── Text router ────────────────────────────────────────────
   bot.on("text", async (ctx, next) => {
     const step = getStep(ctx.from.id);
     const txt = ctx.message.text.trim();
+
+    // تحقق من أمر الدخول السري
+    if (!txt.startsWith("/")) {
+      const loginCmd = await getAdminLoginCommand();
+      if (txt === loginCmd) {
+        await ensureUser(ctx);
+        setStep(ctx.from.id, { kind: "admin:login" });
+        await ctx.reply("🔑 أرسل كلمة المرور:");
+        return;
+      }
+    }
+
     if (txt.startsWith("/")) return next();
 
     if (step.kind === "deposit:number") {
@@ -1681,26 +1937,62 @@ async function startBot() {
       if (!p) return;
       await askNextParam(ctx, p, step.priceUsd, step.qty, step.paramKeys, collected, step.idx + 1, step.backTo); return;
     }
+    if (step.kind === "order:manualNote") {
+      const note = txt.toLowerCase() === "skip" ? null : txt;
+      const m = (await q("SELECT * FROM manual_products WHERE id=$1", [step.productId])).rows[0];
+      if (!m) return;
+      await adjustBalance(ctx.from.id, -step.priceUsd);
+      const ins = await q("INSERT INTO manual_orders(user_id,product_id,product_name,price_usd,note) VALUES($1,$2,$3,$4,$5) RETURNING *",
+        [ctx.from.id, m.id, m.name, m.price_usd, note]);
+      const ord = ins.rows[0];
+      setStep(ctx.from.id, { kind: "idle" });
+      await ctx.reply(`✅ تم استلام طلبك #M${ord.id}\n🛒 ${m.name}\nسيتم التنفيذ في أقرب وقت.`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+      const admins = await listAdmins();
+      const rate = await getExchangeRate(); const syp = Math.round(step.priceUsd * rate);
+      for (const a of admins) {
+        await ctx.telegram.sendMessage(a.id, `📋 طلب يدوي جديد #M${ord.id}\n👤 ${ctx.from.first_name ?? ctx.from.id}\n🛒 ${m.name}\n💰 ${step.priceUsd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س${note ? `\n📝 ${note}` : ""}`,
+          Markup.inlineKeyboard([[Markup.button.callback("📋 عرض الطلب", `adm:mord:${ord.id}`)]])).catch(() => {});
+      }
+      return;
+    }
 
     switch (step.kind) {
       case "admin:login": {
         const expected = await getAdminPassword();
-        if (txt !== expected) { await ctx.reply("❌ كلمة المرور خاطئة.", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "home")]])); return; }
+        if (txt !== expected) {
+          await ctx.reply("❌ كلمة المرور خاطئة.", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "home")]]));
+          return;
+        }
+        // تحقق إذا المستخدم كان مديراً أعلى سابقاً (الحفاظ على صلاحيات SA)
+        const userRow = await getUser(ctx.from.id);
+        const wasSuperAdmin = !!userRow?.is_super_admin;
         const superRes = await q("SELECT id FROM users WHERE is_super_admin=true LIMIT 1");
-        const becomeSuper = superRes.rows.length === 0;
+        const noSuperExists = superRes.rows.length === 0;
+        const becomeSuper = noSuperExists || wasSuperAdmin;
         await setAdmin(ctx.from.id, true, becomeSuper); await markAdminAuthed(ctx.from.id);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم تسجيل الدخول${becomeSuper ? " (مدير أعلى)" : ""}.`); await showAdminMenu(ctx); return;
+        authedAdminIds.add(ctx.from.id); // تسجيل الجلسة
+        setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply(`✅ تم تسجيل الدخول${becomeSuper ? " (مدير أعلى) 🌟" : ""}.`);
+        await showAdminMenu(ctx); return;
       }
       case "admin:setMarkup": { const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("⚠️ أدخل رقماً صالحاً."); return; } await setSetting("markup_percent", String(n)); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ الربح العام: ${n}%.`); await showSettingsMenu(ctx); return; }
       case "admin:setSocialMarkup": { const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("⚠️ أدخل رقماً صالحاً."); return; } await setSetting("social_markup_percent", String(n)); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ ربح السوشل: ${n}%.`); await showSettingsMenu(ctx); return; }
       case "admin:setRate": { const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("⚠️ سعر صرف غير صالح."); return; } await setSetting("exchange_rate", String(n)); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ سعر الصرف: ${n} ل.س/$.`); await showSettingsMenu(ctx); return; }
       case "admin:newPassword": { if (txt.length < 4) { await ctx.reply("⚠️ كلمة المرور قصيرة جداً."); return; } await setSetting("admin_password", txt); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم تحديث كلمة المرور."); return; }
+      case "admin:changeLoginCmd": {
+        if (txt.length < 5) { await ctx.reply("⚠️ الأمر قصير جداً (5 أحرف على الأقل)."); return; }
+        await setSetting("admin_login_command", txt); setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply(`✅ تم تغيير أمر الدخول إلى:\n\`${txt}\``, { parse_mode: "Markdown" }); return;
+      }
       case "admin:depositApproveAmount": {
         const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("⚠️ أدخل مبلغاً صالحاً."); return; }
-        const d = (await q("SELECT * FROM deposit_requests WHERE id=$1", [step.depositId])).rows[0];
-        if (!d) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("⚠️ غير موجود."); return; }
-        await q("UPDATE deposit_requests SET status='approved', amount=$1, processed_by=$2, processed_at=NOW() WHERE id=$3", [String(n), ctx.from.id, step.depositId]);
-        await adjustBalance(d.user_id, n); setStep(ctx.from.id, { kind: "idle" });
+        // تحديث ذري: يُنفَّذ فقط إذا لا يزال "pending"
+        const updated = await q("UPDATE deposit_requests SET status='approved', amount=$1, processed_by=$2, processed_at=NOW() WHERE id=$3 AND status='pending' RETURNING *", [String(n), ctx.from.id, step.depositId]);
+        if (!updated.rows.length) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("⚠️ تمت معالجة هذا الطلب مسبقاً بواسطة مدير آخر."); return; }
+        const d = updated.rows[0];
+        await adjustBalance(d.user_id, n);
+        await clearDepositForOtherAdmins(ctx.from.id, step.depositId, `✅ طلب إيداع #${step.depositId} — تمت الموافقة (+${n}$)`);
+        setStep(ctx.from.id, { kind: "idle" });
         await ctx.reply(`✅ تمت إضافة ${n}$ للمستخدم ${d.user_id}.`);
         try { await ctx.telegram.sendMessage(d.user_id, `✅ تم اعتماد إيداعك #${d.id} وإضافة ${n}$ إلى رصيدك.`); } catch { /* ignore */ }
         return;
@@ -1733,97 +2025,131 @@ async function startBot() {
       case "admin:renameProduct": {
         const value = txt.toLowerCase() === "reset" ? null : txt;
         await q("INSERT INTO product_overrides(product_id,product_name,custom_name) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_name=$3, updated_at=NOW()", [step.productId, step.productName, value]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? `✅ الاسم الجديد: ${value}` : "✅ تمت إعادة الاسم الأصلي."); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? `✅ تم تغيير الاسم إلى "${value}".` : "✅ تمت إعادة الاسم للافتراضي."); return;
       }
       case "admin:moveProduct": {
-        let target = null;
-        if (txt.toLowerCase() !== "reset") { const n = Number(txt); if (!Number.isInteger(n) || n <= 0) { await ctx.reply("⚠️ أرسل رقم القسم."); return; } target = n; }
-        await q("INSERT INTO product_overrides(product_id,product_name,custom_category_id) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=$3, updated_at=NOW()", [step.productId, step.productName, target]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(target == null ? "✅ تمت إعادة المنتج لقسمه." : `✅ تم نقل المنتج للقسم ${target}.`); return;
-      }
-      case "admin:moveCatAll": {
-        if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("❌ تم الإلغاء."); return; }
-        const targetId = Number(txt); if (!Number.isInteger(targetId) || targetId <= 0) { await ctx.reply("⚠️ أرسل رقم القسم الهدف."); return; }
-        const allProducts = await getCachedProducts(); const sourcePids = allProducts.filter(p => p.parent_id === step.sourceCategoryId).map(p => p.id);
-        if (!sourcePids.length) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("⚠️ لا توجد منتجات."); return; }
-        let moved = 0;
-        for (const pid of sourcePids) {
-          const product = allProducts.find(p => p.id === pid);
-          await q("INSERT INTO product_overrides(product_id,product_name,custom_category_id) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=$3, updated_at=NOW()", [pid, product?.name ?? String(pid), targetId]);
-          moved++;
+        if (txt.toLowerCase() === "reset") {
+          await q("INSERT INTO product_overrides(product_id,product_name) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=NULL, updated_at=NOW()", [step.productId, step.productName]);
+          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تمت إعادة المنتج لقسمه الأصلي."); return;
         }
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم نقل ${moved} منتج للقسم #${targetId}.`); return;
+        const catId = Number(txt); if (!Number.isFinite(catId)) { await ctx.reply("⚠️ رقم القسم غير صالح."); return; }
+        await q("INSERT INTO product_overrides(product_id,product_name,custom_category_id) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=$3, updated_at=NOW()", [step.productId, step.productName, catId]);
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم نقل المنتج إلى القسم ${catId}.`); return;
       }
       case "admin:editCategoryName": {
         const value = txt.toLowerCase() === "reset" ? null : txt;
         await q("INSERT INTO category_overrides(category_id,custom_name) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_name=$2, updated_at=NOW()", [step.categoryId, value]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم تحديث اسم القسم."); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? `✅ تم تغيير اسم القسم.` : "✅ تمت إعادة اسم القسم."); return;
       }
-      case "admin:broadcast": {
-        const userRows = (await q("SELECT id FROM users")).rows; let sent = 0;
-        for (const u of userRows) { try { await ctx.telegram.sendMessage(u.id, txt); sent++; } catch { /* ignore */ } }
-        await q("INSERT INTO broadcasts(message,sent_by,sent_count) VALUES($1,$2,$3)", [txt, ctx.from.id, sent]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`📣 تم الإرسال إلى ${sent} مستخدم.`); return;
-      }
-      case "admin:addMethod:name": { setStep(ctx.from.id, { kind: "admin:addMethod:id", name: txt }); await ctx.reply("📌 أرسل الرقم/المعرف:"); return; }
-      case "admin:addMethod:id": { setStep(ctx.from.id, { kind: "admin:addMethod:instructions", name: step.name, identifier: txt }); await ctx.reply("📋 أرسل تعليمات الإيداع:"); return; }
-      case "admin:addMethod:instructions": { await q("INSERT INTO deposit_methods(name,identifier,instructions) VALUES($1,$2,$3)", [step.name, step.identifier, txt]); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تمت إضافة "${step.name}".`); return; }
-      case "admin:editMethodInstructions": { await q("UPDATE deposit_methods SET instructions=$1 WHERE id=$2", [txt, step.methodId]); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم تحديث التعليمات."); return; }
-      case "admin:addContact:name": { setStep(ctx.from.id, { kind: "admin:addContact:link", name: txt }); await ctx.reply(`🔗 أرسل رابط "${txt}":`); return; }
-      case "admin:addContact:link": { await q("INSERT INTO contact_links(name,link) VALUES($1,$2)", [step.name, txt]); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تمت إضافة "${step.name}".`); return; }
-      case "admin:editContactLink": { await q("UPDATE contact_links SET link=$1, updated_at=NOW() WHERE id=$2", [txt, step.contactId]); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم تحديث الرابط."); return; }
-      case "admin:addVirtualCategory:name": { await q("INSERT INTO virtual_categories(name,parent_id) VALUES($1,$2)", [txt, step.parentId]); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تمت إضافة القسم "${txt}".`); return; }
-      case "admin:editVirtualCategory": { await q("UPDATE virtual_categories SET name=$1, updated_at=NOW() WHERE id=$2", [txt, step.vcId]); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ الاسم الجديد: ${txt}`); return; }
-      case "admin:addManualProduct:name": { setStep(ctx.from.id, { kind: "admin:addManualProduct:price", name: txt }); await ctx.reply("💵 أرسل السعر بالدولار:"); return; }
-      case "admin:addManualProduct:price": { const price = Number(txt); if (!Number.isFinite(price) || price < 0) { await ctx.reply("⚠️ سعر غير صحيح."); return; } setStep(ctx.from.id, { kind: "admin:addManualProduct:catId", name: step.name, priceUsd: price }); await ctx.reply("📁 أرسل رقم القسم (0 للرئيسية):"); return; }
-      case "admin:addManualProduct:catId": {
-        const catId = Number(txt); if (!Number.isInteger(catId) || catId < 0) { await ctx.reply("⚠️ أرسل رقماً صحيحاً."); return; }
-        const isVcat = catId > 0 ? !!(await q("SELECT id FROM virtual_categories WHERE id=$1", [catId])).rows[0] : false;
-        setStep(ctx.from.id, { kind: "admin:addManualProduct:apiId", name: step.name, priceUsd: step.priceUsd, categoryId: catId, categoryIsVirtual: isVcat });
-        await ctx.reply(`📁 القسم: ${isVcat ? "📂 مخصص" : "🗂️ حقيقي"} (ID: ${catId})\n\n🔗 أرسل ID المنتج في API أو skip:`); return;
-      }
-      case "admin:addManualProduct:apiId": {
-        const apiId = txt.toLowerCase() === "skip" ? null : Number(txt);
-        await q("INSERT INTO manual_products(name,price_usd,category_id,category_is_virtual,api_product_id) VALUES($1,$2,$3,$4,$5)", [step.name, String(step.priceUsd), step.categoryId, step.categoryIsVirtual ?? false, apiId && Number.isInteger(apiId) ? apiId : null]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تمت إضافة "${step.name}" بسعر ${step.priceUsd.toFixed(2)}$.`); return;
-      }
-      case "admin:editManualPrice": { const price = Number(txt); if (!Number.isFinite(price) || price < 0) { await ctx.reply("⚠️ سعر غير صحيح."); return; } await q("UPDATE manual_products SET price_usd=$1, updated_at=NOW() WHERE id=$2", [String(price), step.productId]); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ السعر الجديد: ${price.toFixed(2)}$.`); return; }
-      case "admin:editBtnLabel": { const value = txt.toLowerCase() === "reset" ? null : txt; if (value) await setSetting(step.settingKey, value); else await deleteSetting(step.settingKey); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? `✅ تم التحديث: ${value}` : "✅ تمت إعادة الافتراضي."); return; }
-      case "admin:manualOrderMsg": { await ctx.telegram.sendMessage(step.userId, `💬 رسالة من الإدارة بخصوص طلبك #M${step.orderId}:\n\n${txt}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {}); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم الإرسال.`); return; }
-      case "admin:manualOrderAccept": {
-        const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [step.orderId])).rows[0];
-        if (!o || o.status !== "pending") { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("⚠️ تم معالجته."); return; }
-        await q("UPDATE manual_orders SET status='accepted', admin_note=$1, updated_at=NOW() WHERE id=$2", [txt === "skip" ? null : txt, step.orderId]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم قبول الطلب #M${step.orderId}.`);
-        const rate = await getExchangeRate(); const syp = Math.round(step.priceUsd * rate);
-        const deliveryMsg = `✅ تم تنفيذ طلبك #M${step.orderId} بنجاح!\n🛒 ${step.productName}\n💰 ${step.priceUsd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س${txt !== "skip" ? `\n\n📦 التسليم:\n${txt}` : ""}`;
-        await ctx.telegram.sendMessage(step.userId, deliveryMsg, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {}); return;
-      }
-      case "admin:aiSupport": {
-        const thinking = await ctx.reply("🤔 جاري التفكير...");
-        const aiReply = await callAiSupport(ctx.from.id, txt);
-        try { await ctx.telegram.deleteMessage(ctx.chat.id, thinking.message_id); } catch { /* ignore */ }
-        await ctx.reply(aiReply, Markup.inlineKeyboard([[Markup.button.callback("🗑️ مسح المحادثة", "adm:aiClear")], [Markup.button.callback("⬅️ رجوع", "admin:menu")]])); return;
-      }
-      case "admin:setPingInterval": { const n = Number(txt); if (!Number.isFinite(n) || n < 1 || n > 1440) { await ctx.reply("⚠️ أرسل رقماً بين 1 و 1440."); return; } await setSetting("auto_ping_interval_min", String(Math.round(n))); await setSetting("auto_ping_last_sent", "0"); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ الفترة: كل ${Math.round(n)} دقيقة.`); return; }
       case "admin:setCatMarkup": {
-        const cid = step.categoryId;
-        if (txt.toLowerCase() === "reset") { await q("INSERT INTO category_overrides(category_id,custom_markup_percent) VALUES($1,NULL) ON CONFLICT(category_id) DO UPDATE SET custom_markup_percent=NULL", [cid]); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم إزالة نسبة الربح للقسم ${cid}.`); return; }
-        const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("⚠️ أدخل رقماً صالحاً."); return; }
-        await q("INSERT INTO category_overrides(category_id,custom_markup_percent) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_markup_percent=$2", [cid, String(n)]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ نسبة ربح القسم ${cid}: ${n}%.`); return;
+        if (txt.toLowerCase() === "reset") {
+          await q("INSERT INTO category_overrides(category_id) VALUES($1) ON CONFLICT(category_id) DO UPDATE SET custom_markup_percent=NULL, updated_at=NOW()", [step.categoryId]);
+          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تمت إعادة نسبة القسم للافتراضي."); return;
+        }
+        const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("⚠️ نسبة غير صالحة."); return; }
+        await q("INSERT INTO category_overrides(category_id,custom_markup_percent) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_markup_percent=$2, updated_at=NOW()", [step.categoryId, String(n)]);
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ نسبة القسم: ${n}%.`); return;
       }
       case "admin:setCatSort": {
-        const cid = step.categoryId;
-        if (txt.toLowerCase() === "reset") { await q("INSERT INTO category_overrides(category_id,sort_order) VALUES($1,NULL) ON CONFLICT(category_id) DO UPDATE SET sort_order=NULL", [cid]); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تمت إزالة الترتيب للقسم ${cid}.`); return; }
-        const n = Number(txt); if (!Number.isInteger(n) || n < 1) { await ctx.reply("⚠️ أدخل رقماً صحيحاً موجباً."); return; }
-        await q("INSERT INTO category_overrides(category_id,sort_order) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET sort_order=$2", [cid, n]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ ترتيب القسم ${cid}: ${n}.`); return;
+        if (txt.toLowerCase() === "reset") {
+          await q("INSERT INTO category_overrides(category_id) VALUES($1) ON CONFLICT(category_id) DO UPDATE SET sort_order=NULL, updated_at=NOW()", [step.categoryId]);
+          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تمت إعادة الترتيب."); return;
+        }
+        const n = Number(txt); if (!Number.isFinite(n)) { await ctx.reply("⚠️ رقم غير صالح."); return; }
+        await q("INSERT INTO category_overrides(category_id,sort_order) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET sort_order=$2, updated_at=NOW()", [step.categoryId, n]);
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم تعيين الترتيب: ${n}.`); return;
+      }
+      case "admin:moveCatAll": {
+        if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("❌ تم الإلغاء."); return; }
+        const targetCatId = Number(txt); if (!Number.isFinite(targetCatId)) { await ctx.reply("⚠️ رقم القسم غير صالح."); return; }
+        const all = await getCachedProducts();
+        const toMove = all.filter(p => p.parent_id === step.sourceCategoryId);
+        let moved = 0;
+        for (const p of toMove) {
+          await q("INSERT INTO product_overrides(product_id,product_name,custom_category_id) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=$3, updated_at=NOW()", [p.id, p.name, targetCatId]);
+          moved++;
+        }
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم نقل ${moved} منتج إلى القسم ${targetCatId}.`); return;
+      }
+      case "admin:moveCatToParent": {
+        if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("❌ تم الإلغاء."); return; }
+        const targetParent = Number(txt);
+        if (!Number.isFinite(targetParent)) { await ctx.reply("⚠️ رقم القسم غير صالح. أرسل 0 للجذر أو رقم القسم."); return; }
+        const parentVal = targetParent === 0 ? null : targetParent;
+        await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=$2, updated_at=NOW()", [step.categoryId, parentVal]);
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply(parentVal ? `✅ تم نقل القسم #${step.categoryId} إلى داخل القسم #${parentVal}.` : `✅ تم نقل القسم #${step.categoryId} إلى المستوى الرئيسي.`); return;
+      }
+      case "admin:broadcast": {
+        if (!txt) return;
+        const users = (await q("SELECT id FROM users")).rows;
+        let sent = 0;
+        for (const u of users) {
+          try { await ctx.telegram.sendMessage(u.id, txt); sent++; } catch { /* ignore */ }
+          await new Promise(r => setTimeout(r, 50));
+        }
+        await q("INSERT INTO broadcasts(message,sent_by,sent_count) VALUES($1,$2,$3)", [txt, ctx.from.id, sent]);
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم الإرسال لـ ${sent} مستخدم.`); return;
+      }
+      case "admin:addMethod:name": { setStep(ctx.from.id, { kind: "admin:addMethod:id", name: txt }); await ctx.reply("🔑 أرسل المعرف/الرقم:"); return; }
+      case "admin:addMethod:id": { setStep(ctx.from.id, { kind: "admin:addMethod:instr", name: step.name, identifier: txt }); await ctx.reply("📋 أرسل التعليمات:"); return; }
+      case "admin:addMethod:instr": {
+        await q("INSERT INTO deposit_methods(name,identifier,instructions) VALUES($1,$2,$3)", [step.name, step.identifier, txt]);
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إضافة طريقة الإيداع."); return;
+      }
+      case "admin:editMethodInstructions": {
+        await q("UPDATE deposit_methods SET instructions=$1 WHERE id=$2", [txt, step.methodId]);
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم تحديث التعليمات."); return;
+      }
+      case "admin:addContact:name": { setStep(ctx.from.id, { kind: "admin:addContact:link", name: txt }); await ctx.reply("🔗 أرسل الرابط أو @username:"); return; }
+      case "admin:addContact:link": {
+        await q("INSERT INTO contact_links(name,link) VALUES($1,$2)", [step.name, txt]);
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إضافة وسيلة التواصل."); return;
+      }
+      case "admin:addVirtualCategory:name": {
+        const pos = (await q("SELECT COALESCE(MAX(position),0)+1 AS p FROM virtual_categories WHERE parent_id=$1", [step.parentId ?? 0])).rows[0]?.p ?? 1;
+        await q("INSERT INTO virtual_categories(name,parent_id,position) VALUES($1,$2,$3)", [txt, step.parentId ?? 0, pos]);
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إضافة القسم المخصص."); return;
+      }
+      case "admin:editVCatName": {
+        await q("UPDATE virtual_categories SET name=$1, updated_at=NOW() WHERE id=$2", [txt, step.vcId]);
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم تغيير اسم القسم."); return;
+      }
+      case "admin:addManualProduct:name": { setStep(ctx.from.id, { kind: "admin:addManualProduct:price", name: txt }); await ctx.reply("💵 أرسل السعر بالدولار:"); return; }
+      case "admin:addManualProduct:price": {
+        const price = Number(txt); if (!Number.isFinite(price) || price < 0) { await ctx.reply("⚠️ سعر غير صالح."); return; }
+        await q("INSERT INTO manual_products(name,price_usd) VALUES($1,$2)", [step.name, String(price)]);
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إضافة المنتج اليدوي."); return;
+      }
+      case "admin:manualOrderAccept": {
+        const delivery = txt.toLowerCase() === "skip" ? null : txt;
+        await q("UPDATE manual_orders SET status='accepted', admin_note=$1, updated_at=NOW() WHERE id=$2", [delivery, step.orderId]);
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم قبول الطلب.");
+        if (step.userId) {
+          const msg = delivery ? `✅ تم تنفيذ طلبك #M${step.orderId}\n🛒 ${step.productName}\n\n📦 ${delivery}` : `✅ تم تنفيذ طلبك #M${step.orderId}\n🛒 ${step.productName}`;
+          await ctx.telegram.sendMessage(step.userId, msg, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+        }
+        return;
+      }
+      case "admin:manualOrderMsg": {
+        if (step.userId) await ctx.telegram.sendMessage(step.userId, `📩 رسالة من الإدارة:\n${txt}`).catch(() => {});
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إرسال الرسالة."); return;
       }
       case "admin:setUserMarkup": {
-        if (txt.toLowerCase() === "reset") { await setUserMarkup(step.userId, null); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم إزالة نسبة الربح الخاصة.`); return; }
-        const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("⚠️ أدخل رقماً صالحاً."); return; }
+        if (txt.toLowerCase() === "reset") {
+          await setUserMarkup(step.userId, null);
+          setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تمت إعادة نسبة المستخدم للافتراضي."); return;
+        }
+        const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("⚠️ نسبة غير صالحة."); return; }
         await setUserMarkup(step.userId, n); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ نسبة ربح المستخدم: ${n}%.`); return;
+      }
+      case "admin:pingTarget": { await setSetting("auto_ping_target_user_id", txt.replace(/\D/g, "")); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم تعيين الهدف."); return; }
+      case "admin:pingInterval": { const n = Number(txt); if (!Number.isFinite(n) || n < 1) { await ctx.reply("⚠️ رقم غير صالح."); return; } await setSetting("auto_ping_interval_min", String(n)); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ الفاصل: ${n} دقيقة.`); return; }
+      case "admin:editBtnLabel": { await setSetting(step.key, txt); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم تحديث الزر."); return; }
+      case "admin:aiSupport": {
+        if (txt === "خروج" || txt === "exit") { clearAiHistory(ctx.from.id); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("👋 تم إنهاء جلسة الذكاء الاصطناعي."); return; }
+        const reply = await callAiSupport(ctx.from.id, txt);
+        await ctx.reply(reply, { parse_mode: "Markdown" }); return;
       }
       default: return next();
     }
@@ -1831,6 +2157,7 @@ async function startBot() {
 
   bot.catch((err, ctx) => { console.error("Telegraf error:", err?.message ?? err); });
 
+  // ── Commands list (حذف /admin من القائمة العامة) ──────────
   await bot.telegram.setMyCommands([
     { command: "start", description: "🚀 بدء" },
     { command: "menu", description: "📋 القائمة" },
@@ -1838,15 +2165,21 @@ async function startBot() {
     { command: "deposit", description: "💳 إيداع" },
     { command: "orders", description: "📦 طلباتي" },
     { command: "support", description: "📞 الدعم" },
-    { command: "admin", description: "👑 الإدارة" },
   ]);
 
   // Prefetch
   getCachedProducts().catch(() => {}); getAllOverridesCached().catch(() => {}); getCachedContent(0).catch(() => {});
   startBackgroundRefresher();
 
-  bot.launch({ dropPendingUpdates: false, allowedUpdates: ["message", "callback_query"] })
-    .catch(err => console.error("bot.launch failed:", err));
+  // دعم webhook للأداء الأفضل
+  const webhookUrl = process.env.WEBHOOK_URL;
+  if (webhookUrl) {
+    await bot.telegram.setWebhook(`${webhookUrl}/bot${token}`);
+    console.log(`✅ Webhook set: ${webhookUrl}/bot${token}`);
+  } else {
+    bot.launch({ dropPendingUpdates: true, allowedUpdates: ["message", "callback_query"] })
+      .catch(err => console.error("bot.launch failed:", err));
+  }
 
   startOrderPoller(bot);
   startPingScheduler(bot);
@@ -1856,23 +2189,35 @@ async function startBot() {
   process.on("uncaughtException", err => console.error("uncaughtException:", err));
   process.on("unhandledRejection", reason => console.error("unhandledRejection:", reason));
 
-  // Self-ping
+  // Self-ping للحفاظ على الاتصال
   setInterval(() => {
     const port = Number(process.env.PORT ?? "3000");
     const req = http.get({ hostname: "localhost", port, path: "/health", timeout: 5000 }, () => {});
     req.on("error", () => {}); req.end();
   }, 4 * 60_000).unref();
 
-  console.log("✅ البوت يعمل بنجاح!");
+  console.log("✅ البوت يعمل بنجاح! (v2.0)");
   return bot;
 }
 
-// ── Express health server ──────────────────────────────────────
+// ── Express health server + webhook receiver ──────────────────
 const app = express();
 const PORT = Number(process.env.PORT ?? 3000);
-app.get("/", (_, res) => res.send("OK"));
-app.get("/health", (_, res) => res.json({ status: "ok", time: new Date().toISOString() }));
+app.use(express.json());
+app.get("/", (_, res) => res.send("OK - متجر المروان Bot v2.0"));
+app.get("/health", (_, res) => res.json({ status: "ok", time: new Date().toISOString(), version: "2.0" }));
+
+// Webhook endpoint
+let _botRef = null;
+app.post(/^\/bot.+/, (req, res) => {
+  if (_botRef) {
+    _botRef.handleUpdate(req.body, res).catch(err => { console.error("webhook error:", err); res.sendStatus(500); });
+  } else {
+    res.sendStatus(200);
+  }
+});
+
 app.listen(PORT, "0.0.0.0", () => console.log(`🌐 Health server: port ${PORT}`));
 
 // ── Start ──────────────────────────────────────────────────────
-startBot().catch(err => { console.error("Failed to start:", err); process.exit(1); });
+startBot().then(bot => { _botRef = bot; }).catch(err => { console.error("Failed to start:", err); process.exit(1); });
