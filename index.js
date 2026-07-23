@@ -63,6 +63,7 @@ async function ensureTables() {
       name TEXT NOT NULL,
       identifier TEXT NOT NULL,
       instructions TEXT NOT NULL,
+      image_file_id TEXT,
       active BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
@@ -164,8 +165,9 @@ async function ensureTables() {
     );
   `);
 
-  // إضافة العمود الجديد إذا لم يكن موجوداً
+  // إضافة الأعمدة الجديدة إذا لم تكن موجودة
   await q(`ALTER TABLE category_overrides ADD COLUMN IF NOT EXISTS custom_parent_id INTEGER`).catch(() => {});
+  await q(`ALTER TABLE deposit_methods ADD COLUMN IF NOT EXISTS image_file_id TEXT`).catch(() => {});
 }
 
 // ============================================================
@@ -753,9 +755,15 @@ async function showDepositMethod(ctx, methodId) {
   const res = await q("SELECT * FROM deposit_methods WHERE id=$1 AND active=true", [methodId]);
   const m = res.rows[0];
   if (!m) { await ctx.reply("⚠️ الطريقة غير متاحة."); return; }
-  setStep(ctx.from.id, { kind: "deposit:number", methodId: m.id, methodName: m.name });
-  const text = `💳 ${m.name}\n🔑 الرقم: \`${m.identifier}\`\n\n📋 التعليمات:\n${m.instructions}\n\n📱 أرسل رقم هاتفك الذي حولت منه:`;
-  await ctx.reply(text, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "dep:cancel")]]) });
+  // الانتقال مباشرة لإرسال الصورة بدون طلب رقم الهاتف
+  setStep(ctx.from.id, { kind: "deposit:photo", methodId: m.id, methodName: m.name, payerNumber: null });
+  const text = `💳 ${m.name}\n🔑 الرقم: \`${m.identifier}\`\n\n📋 التعليمات:\n${m.instructions}\n\n📸 أرسل صورة إشعار التحويل:`;
+  const kb = Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "dep:cancel")]]);
+  if (m.image_file_id) {
+    await ctx.replyWithPhoto(m.image_file_id, { caption: text, parse_mode: "Markdown", ...kb });
+  } else {
+    await ctx.reply(text, { parse_mode: "Markdown", ...kb });
+  }
 }
 
 async function notifyAdminsDeposit(ctx, depositRow) {
@@ -1094,15 +1102,18 @@ function statusLabel(s) {
   return "⏳ انتظار";
 }
 
-// إصلاح حساب السعر في عداد الكميات
+// إصلاح حساب السعر في عداد الكميات (بدون 0.000)
 function formatPriceLabel(qty, unitPriceUsd) {
   if (!unitPriceUsd || unitPriceUsd <= 0) return `${Number(qty).toLocaleString("en-US")}`;
   const total = unitPriceUsd * qty;
   if (total <= 0) return `${Number(qty).toLocaleString("en-US")}`;
-  const totalStr = total < 0.001 ? total.toFixed(6)
-    : total < 0.01 ? total.toFixed(4)
-    : total < 1 ? total.toFixed(3)
-    : total.toFixed(2);
+  let totalStr;
+  if (total >= 1) totalStr = total.toFixed(2);
+  else if (total >= 0.01) totalStr = total.toFixed(3);
+  else if (total >= 0.001) totalStr = total.toFixed(4);
+  else totalStr = total.toFixed(6);
+  // إذا ظهر صفر بعد التقريب نعرض أرقاماً أكثر
+  if (parseFloat(totalStr) === 0) totalStr = total.toFixed(8);
   return `${Number(qty).toLocaleString("en-US")} — ${totalStr}$`;
 }
 
@@ -1326,7 +1337,7 @@ function startOrderPoller(bot) {
         await Promise.allSettled(res.rows.slice(i, i + CHUNK).map(order => pollOneOrder(bot, order).catch(() => {})));
       }
     } catch { /* silent */ }
-  }, 90_000).unref();
+  }, 30_000).unref(); // كل 30 ثانية بدلاً من 90
 }
 
 // ============================================================
@@ -1549,10 +1560,7 @@ async function startBot() {
   // تسجيل خروج من لوحة الإدارة
   bot.action("adm:logout", async ctx => {
     ctx.answerCbQuery().catch(() => {});
-    const u = await getUser(ctx.from.id);
-    if (!u?.is_admin) { await ctx.reply("⚠️ أنت لست مسجلاً."); return; }
-    // إخفاء صلاحية الإدارة (المؤقتة) - لكن keep is_super_admin في الDB
-    await q("UPDATE users SET is_admin=false WHERE id=$1", [ctx.from.id]);
+    authedAdminIds.delete(ctx.from.id); // ← إزالة الجلسة: هذا هو الإصلاح الأساسي
     invalidateUserCache(ctx.from.id);
     setStep(ctx.from.id, { kind: "idle" });
     await ctx.reply("👋 تم تسجيل الخروج من لوحة الإدارة.");
@@ -1710,12 +1718,27 @@ async function startBot() {
   bot.action(/^adm:methodEdit:(\d+)$/, async ctx => {
     ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
     const id = Number(ctx.match[1]); const res = await q("SELECT * FROM deposit_methods WHERE id=$1", [id]); const m = res.rows[0]; if (!m) return;
-    await sendOrEdit(ctx, `💳 ${m.name}\nالمعرف: ${m.identifier}\nالحالة: ${m.active ? "مفعّل" : "موقوف"}\n\n${m.instructions}`,
-      Markup.inlineKeyboard([[Markup.button.callback(m.active ? "🔴 تعطيل" : "🟢 تفعيل", `adm:methodToggle:${id}`), Markup.button.callback("✏️ التعليمات", `adm:methodInstr:${id}`)], [Markup.button.callback("🗑️ حذف", `adm:methodDel:${id}`)], [Markup.button.callback("⬅️ رجوع", "adm:methods")]]));
+    await sendOrEdit(ctx, `💳 ${m.name}\nالمعرف: ${m.identifier}\nالحالة: ${m.active ? "مفعّل" : "موقوف"}\n🖼 صورة: ${m.image_file_id ? "✅ موجودة" : "❌ لا يوجد"}\n\n${m.instructions}`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback(m.active ? "🔴 تعطيل" : "🟢 تفعيل", `adm:methodToggle:${id}`), Markup.button.callback("✏️ التعليمات", `adm:methodInstr:${id}`)],
+        [Markup.button.callback("🖼 رفع/تغيير الصورة", `adm:methodImg:${id}`), Markup.button.callback("🗑️ حذف الصورة", `adm:methodImgDel:${id}`)],
+        [Markup.button.callback("🗑️ حذف الطريقة", `adm:methodDel:${id}`)],
+        [Markup.button.callback("⬅️ رجوع", "adm:methods")]
+      ]));
   });
   bot.action(/^adm:methodToggle:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const id = Number(ctx.match[1]); const cur = (await q("SELECT active FROM deposit_methods WHERE id=$1", [id])).rows[0]; if (!cur) return; await q("UPDATE deposit_methods SET active=$1 WHERE id=$2", [!cur.active, id]); await ctx.answerCbQuery(cur.active ? "تم التعطيل" : "تم التفعيل"); });
   bot.action(/^adm:methodInstr:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editMethodInstructions", methodId: Number(ctx.match[1]) }); await ctx.reply("📋 أرسل التعليمات الجديدة:"); });
   bot.action(/^adm:methodDel:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; await q("DELETE FROM deposit_methods WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("🗑️ تم الحذف."); });
+  bot.action(/^adm:methodImg:(\d+)$/, async ctx => {
+    ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
+    setStep(ctx.from.id, { kind: "admin:setMethodImage", methodId: Number(ctx.match[1]) });
+    await ctx.reply("🖼 أرسل الصورة التي تريد إضافتها لطريقة الإيداع (مثلاً: QR code أو صورة الحساب):");
+  });
+  bot.action(/^adm:methodImgDel:(\d+)$/, async ctx => {
+    ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return;
+    await q("UPDATE deposit_methods SET image_file_id=NULL WHERE id=$1", [Number(ctx.match[1])]);
+    await ctx.reply("✅ تم حذف الصورة.");
+  });
 
   // ── Admin: product management ──────────────────────────────
   bot.action(/^adm:editPrice:(\d+)$/, async ctx => { ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editPrice", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`✏️ سعر: ${p?.name ?? pid}\nأرسل: \`%5\` ربح أو \`$2.5\` تثبيت أو \`reset\``, { parse_mode: "Markdown" }); });
@@ -1883,14 +1906,32 @@ async function startBot() {
     await ctx.reply(`🛠️ مساعد الإدارة${hasAiKey() ? "" : " (وضع FAQ)"}\nأرسل سؤالك أو "خروج" للإنهاء:`);
   });
 
-  // ── Photo handler (deposit screenshots) ───────────────────
+  // ── Photo handler (deposit screenshots + admin method image) ──
   bot.on("photo", async ctx => {
     const step = getStep(ctx.from.id);
-    if (step.kind !== "deposit:photo") return;
     const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+
+    // معالجة رفع صورة طريقة الإيداع من قِبل الإدارة (تحديث موجود)
+    if (step.kind === "admin:setMethodImage") {
+      await q("UPDATE deposit_methods SET image_file_id=$1 WHERE id=$2", [fileId, step.methodId]);
+      setStep(ctx.from.id, { kind: "idle" });
+      await ctx.reply("✅ تم حفظ الصورة. ستظهر للمستخدمين عند اختيار هذه الطريقة.");
+      return;
+    }
+
+    // معالجة رفع صورة أثناء إنشاء طريقة إيداع جديدة
+    if (step.kind === "admin:addMethod:photo") {
+      await q("INSERT INTO deposit_methods(name,identifier,instructions,image_file_id) VALUES($1,$2,$3,$4)",
+        [step.name, step.identifier, step.instructions, fileId]);
+      setStep(ctx.from.id, { kind: "idle" });
+      await ctx.reply("✅ تم إضافة طريقة الإيداع مع الصورة.");
+      return;
+    }
+
+    if (step.kind !== "deposit:photo") return;
     const res = await q(
       "INSERT INTO deposit_requests(user_id,method_id,method_name,payer_number,screenshot_file_id) VALUES($1,$2,$3,$4,$5) RETURNING *",
-      [ctx.from.id, step.methodId, step.methodName, step.payerNumber, fileId]
+      [ctx.from.id, step.methodId, step.methodName, step.payerNumber ?? null, fileId]
     );
     const dep = res.rows[0];
     setStep(ctx.from.id, { kind: "idle" });
@@ -1916,10 +1957,6 @@ async function startBot() {
 
     if (txt.startsWith("/")) return next();
 
-    if (step.kind === "deposit:number") {
-      setStep(ctx.from.id, { kind: "deposit:photo", methodId: step.methodId, methodName: step.methodName, payerNumber: txt });
-      await ctx.reply("📸 أرسل صورة إشعار التحويل.", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "dep:cancel")]])); return;
-    }
     if (step.kind === "order:qty") {
       const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("⚠️ أدخل رقم صحيح موجب."); return; }
       const qv = step.qtyValues; const qty = Array.isArray(qv) ? n : Math.floor(n);
@@ -2094,8 +2131,17 @@ async function startBot() {
       case "admin:addMethod:name": { setStep(ctx.from.id, { kind: "admin:addMethod:id", name: txt }); await ctx.reply("🔑 أرسل المعرف/الرقم:"); return; }
       case "admin:addMethod:id": { setStep(ctx.from.id, { kind: "admin:addMethod:instr", name: step.name, identifier: txt }); await ctx.reply("📋 أرسل التعليمات:"); return; }
       case "admin:addMethod:instr": {
-        await q("INSERT INTO deposit_methods(name,identifier,instructions) VALUES($1,$2,$3)", [step.name, step.identifier, txt]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إضافة طريقة الإيداع."); return;
+        // الانتقال لخطوة الصورة الاختيارية
+        setStep(ctx.from.id, { kind: "admin:addMethod:photo", name: step.name, identifier: step.identifier, instructions: txt });
+        await ctx.reply("🖼 أرسل صورة لطريقة الإيداع (QR code أو صورة الحساب) أو اكتب *skip* لتخطّي الخطوة:", { parse_mode: "Markdown" }); return;
+      }
+      case "admin:addMethod:photo": {
+        // المستخدم كتب "skip" لتخطي الصورة
+        if (txt.toLowerCase() === "skip") {
+          await q("INSERT INTO deposit_methods(name,identifier,instructions) VALUES($1,$2,$3)", [step.name, step.identifier, step.instructions]);
+          setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إضافة طريقة الإيداع بدون صورة."); return;
+        }
+        await ctx.reply("⚠️ أرسل صورة أو اكتب *skip* لتخطّي الخطوة.", { parse_mode: "Markdown" }); return;
       }
       case "admin:editMethodInstructions": {
         await q("UPDATE deposit_methods SET instructions=$1 WHERE id=$2", [txt, step.methodId]);
