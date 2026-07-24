@@ -2183,7 +2183,7 @@ async function startBot() {
         await clearDepositForOtherAdmins(ctx.from.id, step.depositId, `✅ طلب إيداع #${step.depositId} — تمت الموافقة (+${n}$)`);
         setStep(ctx.from.id, { kind: "idle" });
         await ctx.reply(`✅ تمت إضافة ${n}$ للمستخدم ${d.user_id}.`);
-        try { await ctx.telegram.sendMessage(d.user_id, `✅ تم اعتماد إيداعك #${d.id} وإضافة ${n}$ إلى رصيدك.`); } catch { /* ignore */ }
+        try { await ctx.telegram.sendMessage(d.user_id, `✅ تم اعتماد إيداعك #${�d.id} وإضافة ${n}$ إلى رصيدك.`); } catch { /* ignore */ }
         return;
       }
       case "admin:userBalance": {
@@ -2267,7 +2267,7 @@ async function startBot() {
         const parentVal = targetParent === 0 ? null : targetParent;
         await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=$2, updated_at=NOW()", [step.categoryId, parentVal]);
         invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
-        await ctx.reply(parentVal ? `✅ تم نقل القسم #${step.categoryId} إلى داخل القسم #${parentVal}.` : `✅ تم نقل القسم #${step.categoryId} إلى المستوى الرئيسي.`); return;
+        await ctx.reply(parentVal ? `✅ تم نقل القسم #${step.categoryId} إلى داخل القسم #${parentVal}.` : `✅ تم نقل القسم #${step.categoryId} إلى ا�لمستوى الرئيسي.`); return;
       }
       case "admin:broadcast": {
         if (!txt) return;
@@ -2403,7 +2403,7 @@ app.get("/health", (_, res) => res.json({ status: "ok", time: new Date().toISOSt
 _botRef = null;
 app.post(/^\/bot.+/, (req, res) => {
   if (_botRef) {
-    _botRef.handleUpdate(req.body, res).catch(err => { console.error("webhook error:", err); res.sendStatus(500); });
+    _botRef.handleUpdate(req.body, r�es).catch(err => { console.error("webhook error:", err); res.sendStatus(500); });
   } else {
     res.sendStatus(200);
   }
