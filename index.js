@@ -23,7 +23,7 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL.includes("railway") || process.env.DATABASE_URL.includes("neon") || process.env.DATABASE_URL.includes("supabase")
     ? { rejectUnauthorized: false }
     : false,
-  max: 20,                 // حد أقصى 20 اتصال متزامن
+  max: 10,                 // حد أقصى 10 اتصال متزامن (Railway free = 25 max)
   min: 2,                  // اتصالان دائمان جاهزان
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
@@ -168,6 +168,8 @@ async function ensureTables() {
   // إضافة الأعمدة الجديدة إذا لم تكن موجودة
   await q(`ALTER TABLE category_overrides ADD COLUMN IF NOT EXISTS custom_parent_id INTEGER`).catch(() => {});
   await q(`ALTER TABLE deposit_methods ADD COLUMN IF NOT EXISTS image_file_id TEXT`).catch(() => {});
+  // ➕ عمود جلسة الإدارة الدائمة
+  await q(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_session_active BOOLEAN NOT NULL DEFAULT false`).catch(() => {});
 }
 
 // ============================================================
@@ -304,6 +306,17 @@ async function setAdmin(id, isAdmin, isSuperAdmin) {
 async function markAdminAuthed(id) {
   invalidateUserCache(id);
   await q("UPDATE users SET admin_authed_at=NOW() WHERE id=$1", [id]);
+}
+
+// ➕ تخزين جلسة الإدارة بشكل دائم في DB
+async function setAdminSession(id, active) {
+  invalidateUserCache(id);
+  await q("UPDATE users SET admin_session_active=$1 WHERE id=$2", [active, id]);
+}
+
+async function isAdminSessionActive(id) {
+  const u = await getUser(id);
+  return !!u?.admin_session_active && !!u?.is_admin;
 }
 
 async function listUsers(offset = 0, limit = 20) {
@@ -693,7 +706,7 @@ function mainMenuAdmin() {
     [Markup.button.callback("🛒 المنتجات", "cat:0:1:0"), Markup.button.callback("💰 رصيدي", "balance")],
     [Markup.button.callback("💳 إيداع", "deposit"), Markup.button.callback("📦 طلباتي", "myorders:1")],
     [Markup.button.callback("📞 الدعم", "support"), Markup.button.callback("🔄 تحديث", "home")],
-    [Markup.button.callback("👑 لوحة الإدارة", "admin:menu")],
+    [Markup.button.callback("👑 الدخول للوحة الإدارة", "admin:menu")],
   ];
   return Markup.inlineKeyboard(rows);
 }
@@ -710,8 +723,9 @@ async function showMainMenu(ctx) {
   if (user.status === "banned") { await sendOrEdit(ctx, "🚫 تم حظرك من استخدام البوت."); return; }
   const rate = await getExchangeRate();
   const greeting = `أهلاً فيك في متجر المروان 🌟\nالاسم: ${user.first_name ?? "—"}${user.username ? ` (@${user.username})` : ""}\nالرقم: ${user.id}\nالرصيد: ${formatBalance(Number(user.balance), rate)}\n\nاختر من القائمة 👇`;
-  // لوحة الإدارة تظهر فقط لمن سجّل الدخول هذه الجلسة عبر الأمر السري
-  await sendOrEdit(ctx, greeting, authedAdminIds.has(user.id) ? mainMenuAdmin() : mainMenu());
+  // لوحة الإدارة تظهر فقط لمن سجّل الدخول (جلسة ذاكرة أو DB)
+  const adminSessionActive = await isAdminSessionActive(user.id);
+  await sendOrEdit(ctx, greeting, (adminSessionActive || authedAdminIds.has(user.id)) ? mainMenuAdmin() : mainMenu());
 }
 
 async function showContactLinks(ctx) {
@@ -1193,6 +1207,21 @@ async function showOrderConfirmation(ctx, p, unitPriceUsd, qty, collected, backT
   await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
 }
 
+// ➕ دالة الانتظار حتى اكتمال الطلب (تُضاف قبل executeOrder)
+async function waitForOrderCompletion(orderUuid, maxAttempts = 30, delayMs = 5000) {
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise(r => setTimeout(r, delayMs));
+    const resp = await checkOrder(orderUuid, true).catch(() => null);
+    if (!resp) continue;
+    const orderData = extractOrderData(resp);
+    const status = (orderData?.status ?? "").toString().toLowerCase();
+    if (ACCEPT_STATUSES.has(status) || REJECT_STATUSES.has(status)) {
+      return { resp, finalStatus: status, completed: true };
+    }
+  }
+  return { resp: null, finalStatus: "timeout", completed: false };
+}
+
 async function executeOrder(ctx) {
   const step = getStep(ctx.from.id);
   if (step.kind !== "order:params") return;
@@ -1219,36 +1248,73 @@ async function executeOrder(ctx) {
   const order = insRes.rows[0];
   await ctx.reply(`⏳ جاري تنفيذ طلبك #${order.id}...\n💸 تم خصم ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س من رصيدك.`);
   let resp;
-  try { resp = await placeOrder(p.id, params, orderUuid); }
-  catch { resp = { status: "ERR", message: "خطأ شبكة" }; }
-  const apiStatus = (resp.status ?? "").toLowerCase();
-  const success = apiStatus === "success" || apiStatus === "ok" || apiStatus === "accept";
-  if (!success) {
+  let finalApiStatus;
+
+  try {
+    resp = await placeOrder(p.id, params, orderUuid);
+    const initialStatus = (resp?.status ?? "").toLowerCase();
+
+    // إذا كان الرد فوري (accept/reject)
+    if (ACCEPT_STATUSES.has(initialStatus) || REJECT_STATUSES.has(initialStatus)) {
+      finalApiStatus = initialStatus;
+    } else {
+      // ⏳ انتظار حتى يكتمل الطلب
+      await ctx.reply("⏳ الطلب قيد المعالجة في الموقع... سأخبرك بالنتيجة خلال دقيقة.");
+      const waitResult = await waitForOrderCompletion(orderUuid, 30, 5000); // 30 × 5ث = 2.5 دقيقة
+      if (waitResult.completed) {
+        resp = waitResult.resp;
+        finalApiStatus = waitResult.finalStatus;
+      } else {
+        finalApiStatus = "pending";
+      }
+    }
+  } catch {
+    resp = { status: "ERR", message: "خطأ شبكة" };
+    finalApiStatus = "err";
+  }
+
+  const success = ACCEPT_STATUSES.has(finalApiStatus);
+  const isRejected = REJECT_STATUSES.has(finalApiStatus);
+  const isPending = !success && !isRejected && finalApiStatus !== "err";
+
+  // ── حالة الرفض ────────────────────────────────────────────
+  if (isRejected || finalApiStatus === "err") {
     await adjustBalance(ctx.from.id, totalUsd);
-    await q("UPDATE orders SET status='error', api_response=$1 WHERE id=$2", [JSON.stringify(resp), order.id]);
+    await q("UPDATE orders SET status='reject', api_response=$1 WHERE id=$2", [JSON.stringify(resp), order.id]);
     setStep(ctx.from.id, { kind: "idle" });
     const errText = formatApiResponseClean(resp);
-    const errMsg = resp.message && resp.message !== "Network error" ? resp.message : "تعذّر التنفيذ";
+    const errMsg = resp?.message && resp.message !== "Network error" ? resp.message : "تم رفض الطلب من الموقع";
     await ctx.reply(
-      `❌ تعذّر تنفيذ الطلب #${order.id}.\nالسبب: ${errMsg}\n✅ تمت إعادة ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س إلى رصيدك.${errText ? `\n\n${errText}` : ""}`,
+      `❌ تم رفض الطلب #${order.id}.\nالسبب: ${errMsg}\n✅ تمت إعادة ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س إلى رصيدك.${errText ? `\n\n${errText}` : ""}`,
       Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])
-    ); return;
+    );
+    return;
   }
+
+  // ── حالة انتهاء الوقت / قيد المعالجة ─────────────────────
+  if (isPending) {
+    await q("UPDATE orders SET status='pending', api_response=$1 WHERE id=$2", [JSON.stringify(resp), order.id]);
+    setStep(ctx.from.id, { kind: "idle" });
+    await ctx.reply(
+      `⏳ طلبك #${order.id} قيد المعالجة في الموقع.\n🛒 ${p.name} × ${step.qty}\n💰 ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س\n\nسأُعلمك تلقائياً عند اكتماله.`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback("🔄 تحديث الحالة", `ord:check:${order.id}`)],
+        [Markup.button.callback("🏠 الرئيسية", "home")]
+      ])
+    );
+    return;
+  }
+
+  // ── حالة النجاح ───────────────────────────────────────────
   const deliveredCode = extractDeliveredCode(resp);
-  const oranosOrderId = resp.data?.order_id ?? null;
-  const apiInnerStatus = (resp.data?.status ?? apiStatus).toString();
-  await q("UPDATE orders SET status=$1, oranos_order_id=$2, api_response=$3, delivered_code=$4 WHERE id=$5",
-    [apiInnerStatus === "accept" ? "accept" : apiInnerStatus, oranosOrderId, JSON.stringify(resp), deliveredCode ?? null, order.id]);
+  const oranosOrderId = resp?.data?.order_id ?? null;
+  await q("UPDATE orders SET status='accept', oranos_order_id=$1, api_response=$2, delivered_code=$3 WHERE id=$4",
+    [oranosOrderId, JSON.stringify(resp), deliveredCode ?? null, order.id]);
   setStep(ctx.from.id, { kind: "idle" });
-  const cleanResp = formatApiResponseClean(resp);
-  const isWaiting = !ACCEPT_STATUSES.has(apiInnerStatus.toLowerCase()) && !REJECT_STATUSES.has(apiInnerStatus.toLowerCase());
-  await ctx.reply(`✅ تم استلام طلبك #${order.id}\nالحالة: ${statusLabel(apiInnerStatus)}\n🛒 ${p.name} × ${step.qty}\n💰 ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س`);
+  await ctx.reply(`✅ تم تنفيذ طلبك #${order.id} بنجاح!\n🛒 ${p.name} × ${step.qty}\n💰 ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س`);
   if (deliveredCode) {
-    await ctx.reply(`🔑 تفاصيل الطلب:\n\n${deliveredCode}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
-  } else if (cleanResp && !isWaiting) {
-    await ctx.reply(cleanResp, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
-  } else if (isWaiting) {
-    await ctx.reply("⏳ طلبك قيد المعالجة. سيتم إخطارك تلقائياً عند اكتماله. نشكر صبركم! 🙏", Markup.inlineKeyboard([[Markup.button.callback("🔄 تحديث الحالة", `ord:check:${order.id}`)], [Markup.button.callback("🏠 الرئيسية", "home")]]));
+    await ctx.reply(`🔑 تفاصيل الطلب:\n\`\`\`\n${deliveredCode}\n\`\`\``,
+      { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]) });
   } else {
     await ctx.reply("شكراً لاستخدامك متجرنا! 🌟", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
   }
@@ -1297,30 +1363,66 @@ async function pollOneOrder(bot, order) {
   if (order.oranos_order_id) resp = await checkOrder(order.oranos_order_id).catch(() => null);
   if (!resp && order.oranos_uuid) resp = await checkOrder(order.oranos_uuid, true).catch(() => null);
   if (!resp) return;
+
   const orderData = extractOrderData(resp);
   const rawNew = ((orderData?.status ?? "").toString().toLowerCase());
   if (!rawNew || rawNew === order.status) return;
-  const isRejected = REJECT_STATUSES.has(rawNew); const isAccepted = ACCEPT_STATUSES.has(rawNew);
-  const prevRejected = REJECT_STATUSES.has(order.status); const prevAccepted = ACCEPT_STATUSES.has(order.status);
-  if (isRejected && prevRejected) return; if (isAccepted && prevAccepted) return;
+
+  const isRejected = REJECT_STATUSES.has(rawNew);
+  const isAccepted = ACCEPT_STATUSES.has(rawNew);
+  const prevRejected = REJECT_STATUSES.has(order.status);
+  const prevAccepted = ACCEPT_STATUSES.has(order.status);
+
+  if (isRejected && prevRejected) return;
+  if (isAccepted && prevAccepted) return;
+
   const code = extractDeliveredCode(resp);
   const finalStatus = isRejected ? "reject" : isAccepted ? "accept" : rawNew;
+
+  // ➕ تحديث قاعدة البيانات
   await q("UPDATE orders SET status=$1, api_response=$2" + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3"),
     code ? [finalStatus, JSON.stringify(resp), code, order.id] : [finalStatus, JSON.stringify(resp), order.id]);
+
   const cleanText = formatApiResponseClean(resp);
-  const priceUsd = Number(order.price_usd); const rate = await getExchangeRate();
+  const priceUsd = Number(order.price_usd);
+  const rate = await getExchangeRate();
+
   if (isRejected) {
     if (!prevRejected) await adjustBalance(order.user_id, priceUsd);
     const refundSyp = Math.round(priceUsd * rate);
-    const msgLines = [`❌ تم رفض الطلب #${order.id}`, `🛒 المنتج: ${order.product_name}`, `💰 تمت إعادة ${priceUsd.toFixed(2)}$ | ${refundSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`];
-    if (cleanText) msgLines.push(`\n${cleanText}`);
-    await bot.telegram.sendMessage(order.user_id, msgLines.join("\n")).catch(() => {});
+    const msgLines = [
+      `❌ تم رفض الطلب #${order.id}`,
+      `🛒 المنتج: ${order.product_name}`,
+      `💰 تمت إعادة ${priceUsd.toFixed(2)}$ | ${refundSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`
+    ];
+    // ➕ إضافة تفاصيل الرد إن وجدت
+    if (code) msgLines.push(`\n🔑 التفاصيل:\n${code}`);
+    else if (cleanText) msgLines.push(`\n📋 تفاصيل إضافية:\n${cleanText}`);
+
+    await bot.telegram.sendMessage(order.user_id, msgLines.join("\n"),
+      Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+
   } else if (isAccepted) {
     const priceSyp = Math.round(priceUsd * rate);
-    const msgLines = [`✅ تم تنفيذ طلبك #${order.id} بنجاح!`, `🛒 المنتج: ${order.product_name}`, `💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`];
-    if (code) msgLines.push(`\n🔑 التفاصيل:\n${code}`);
-    else if (cleanText) msgLines.push(`\n${cleanText}`);
-    await bot.telegram.sendMessage(order.user_id, msgLines.join("\n")).catch(() => {});
+    const msgLines = [
+      `✅ تم تنفيذ طلبك #${order.id} بنجاح!`,
+      `🛒 المنتج: ${order.product_name}`,
+      `💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`
+    ];
+
+    // ➕ إرسال الرد/الكود في رسالة واضحة
+    if (code) {
+      msgLines.push(`\n🔑 تفاصيل الطلب:\n\`\`\`\n${code}\n\`\`\``);
+      await bot.telegram.sendMessage(order.user_id, msgLines.join("\n"),
+        { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]) }).catch(() => {});
+    } else if (cleanText) {
+      msgLines.push(`\n📋 تفاصيل الطلب:\n\`\`\`\n${cleanText}\n\`\`\``);
+      await bot.telegram.sendMessage(order.user_id, msgLines.join("\n"),
+        { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]) }).catch(() => {});
+    } else {
+      await bot.telegram.sendMessage(order.user_id, msgLines.join("\n"),
+        Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+    }
   }
 }
 
@@ -1344,7 +1446,11 @@ function startOrderPoller(bot) {
 //  ADMIN
 // ============================================================
 async function requireAdmin(ctx) {
-  if (!authedAdminIds.has(ctx.from.id)) { await ctx.reply("⛔ هذا القسم للإدارة فقط."); return false; }
+  const sessionActive = await isAdminSessionActive(ctx.from.id);
+  if (!sessionActive && !authedAdminIds.has(ctx.from.id)) {
+    await ctx.reply("⛔ انتهت جلستك. أرسل أمر الدخول السري مجدداً.");
+    return false;
+  }
   const u = await getUser(ctx.from.id);
   if (!u?.is_admin) { await ctx.reply("⛔ هذا القسم للإدارة فقط."); return false; }
   return true;
@@ -1533,7 +1639,22 @@ async function startBot() {
   bot.command("deposit", async ctx => { await ensureUser(ctx); setStep(ctx.from.id, { kind: "idle" }); await showDepositMenu(ctx); });
   bot.command("orders", async ctx => { await ensureUser(ctx); await showMyOrders(ctx, 1); });
   bot.command("support", async ctx => { await ensureUser(ctx); await showContactLinks(ctx); });
-  // أمر الإدارة محذوف من القائمة العامة
+
+  // ➕ أمر /admin للمديرين - مخفي من القائمة العامة
+  bot.command("admin", async ctx => {
+    const user = await ensureUser(ctx);
+    if (!user?.is_admin) {
+      await ctx.reply("⛔ هذا الأمر للإدارة فقط.");
+      return;
+    }
+    const sessionActive = await isAdminSessionActive(ctx.from.id);
+    if (!sessionActive && !authedAdminIds.has(ctx.from.id)) {
+      setStep(ctx.from.id, { kind: "admin:login" });
+      await ctx.reply("🔑 أرسل كلمة المرور:");
+      return;
+    }
+    await showAdminMenu(ctx);
+  });
 
   // ── Callback Query ─────────────────────────────────────────
   bot.action("home", async ctx => { ctx.answerCbQuery().catch(() => {}); setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
@@ -1560,7 +1681,8 @@ async function startBot() {
   // تسجيل خروج من لوحة الإدارة
   bot.action("adm:logout", async ctx => {
     ctx.answerCbQuery().catch(() => {});
-    authedAdminIds.delete(ctx.from.id); // ← إزالة الجلسة: هذا هو الإصلاح الأساسي
+    authedAdminIds.delete(ctx.from.id);
+    await setAdminSession(ctx.from.id, false); // ➕ تحديث DB
     invalidateUserCache(ctx.from.id);
     setStep(ctx.from.id, { kind: "idle" });
     await ctx.reply("👋 تم تسجيل الخروج من لوحة الإدارة.");
@@ -2007,7 +2129,8 @@ async function startBot() {
         const noSuperExists = superRes.rows.length === 0;
         const becomeSuper = noSuperExists || wasSuperAdmin;
         await setAdmin(ctx.from.id, true, becomeSuper); await markAdminAuthed(ctx.from.id);
-        authedAdminIds.add(ctx.from.id); // تسجيل الجلسة
+        authedAdminIds.add(ctx.from.id); // تسجيل الجلسة في الذاكرة
+        await setAdminSession(ctx.from.id, true); // ➕ تخزين دائم في DB
         setStep(ctx.from.id, { kind: "idle" });
         await ctx.reply(`✅ تم تسجيل الدخول${becomeSuper ? " (مدير أعلى) 🌟" : ""}.`);
         await showAdminMenu(ctx); return;
