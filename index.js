@@ -453,12 +453,14 @@ async function checkOrder(orderId, byUuid = false) {
 }
 
 function extractDeliveredCode(resp) {
-  const d = resp?.data;
+  const rawD = resp?.data;
+  // checkOrder يُرجع data كـ array — نأخذ العنصر الأول
+  const d = Array.isArray(rawD) ? rawD[0] : rawD;
   if (!d && !resp?.replay_api) return null;
   const candidates = [];
   if (d?.data) candidates.push(d.data);
   if (d?.replay_api) candidates.push(d.replay_api);
-  if (resp?.replay_api) candidates.push(resp.replay_api); // حقل على مستوى الجذر
+  if (resp?.replay_api) candidates.push(resp.replay_api); // مستوى الجذر
   if (d?.response) candidates.push(d.response);
   if (d?.result) candidates.push(d.result);
   if (d?.note) candidates.push(d.note);
@@ -1284,12 +1286,17 @@ async function executeOrder(ctx) {
   // ── حالة الرفض ────────────────────────────────────────────
   if (isRejected || finalApiStatus === "err") {
     await adjustBalance(ctx.from.id, totalUsd);
-    await q("UPDATE orders SET status='reject', api_response=$1 WHERE id=$2", [JSON.stringify(resp), order.id]);
+    // جلب تفاصيل الطلب من الموقع للحصول على "الرد" الحقيقي
+    const checkResp = await checkOrder(orderUuid, true).catch(() => null);
+    const detailedResp = checkResp ?? resp;
+    await q("UPDATE orders SET status='reject', api_response=$1 WHERE id=$2", [JSON.stringify(detailedResp), order.id]);
     setStep(ctx.from.id, { kind: "idle" });
-    const errText = formatApiResponseClean(resp);
-    const errMsg = resp?.message && resp.message !== "Network error" ? resp.message : "تم رفض الطلب من الموقع";
+    const rejectReason = extractDeliveredCode(detailedResp) ||
+      (detailedResp?.message && detailedResp.message !== "Network error" ? detailedResp.message : null);
     await ctx.reply(
-      `❌ تم رفض الطلب #${order.id}.\nالسبب: ${errMsg}\n✅ تمت إعادة ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س إلى رصيدك.${errText ? `\n\n${errText}` : ""}`,
+      `❌ تم رفض الطلب #${order.id}.\n` +
+      (rejectReason ? `📋 الرد: ${rejectReason}\n` : "") +
+      `✅ تمت إعادة ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`,
       Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])
     );
     return;
@@ -1394,14 +1401,13 @@ async function pollOneOrder(bot, order) {
   if (isRejected) {
     if (!prevRejected) await adjustBalance(order.user_id, priceUsd);
     const refundSyp = Math.round(priceUsd * rate);
+    const rejectReply = code || cleanText || null;
     const msgLines = [
       `❌ تم رفض الطلب #${order.id}`,
       `🛒 المنتج: ${order.product_name}`,
+      ...(rejectReply ? [`📋 الرد: ${rejectReply}`] : []),
       `💰 تمت إعادة ${priceUsd.toFixed(2)}$ | ${refundSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`
     ];
-    // ➕ إضافة تفاصيل الرد إن وجدت
-    if (code) msgLines.push(`\n🔑 التفاصيل:\n${code}`);
-    else if (cleanText) msgLines.push(`\n📋 تفاصيل إضافية:\n${cleanText}`);
 
     await bot.telegram.sendMessage(order.user_id, msgLines.join("\n"),
       Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
