@@ -623,9 +623,19 @@ async function effectivePriceUsd(p, override, defaultMarkup, socialMarkup, socia
   else if (categoryMarkupPercent != null) m = Number(categoryMarkupPercent);
   else if (userMarkupPercent != null) m = Number(userMarkupPercent);
   else m = defaultMarkup;
-  if (isSocialProduct(p.name, p.category_name, socialKws)) m = Math.max(m, socialMarkup);
-  const rawPrice = Number(p.price) || Number(p.base_price) || Number(p.price_usd) || 0;
-  return Number((rawPrice * (1 + m / 100)).toFixed(4));
+  const isSocial = isSocialProduct(p.name, p.category_name, socialKws);
+  if (isSocial) m = Math.max(m, socialMarkup);
+  // السعر الأساسي: تحقق من عدة حقول (price, base_price, price_usd)
+  // للسوشال ميديا: Oranos قد يرجع السعر في حقل rate أو cost (سعر لكل 1000 وحدة)
+  let rawPrice = Number(p.price) || Number(p.base_price) || Number(p.price_usd) || 0;
+  if (rawPrice === 0) {
+    const rateVal = Number(p.rate) || Number(p.cost) || 0;
+    if (rateVal > 0) {
+      // السوشال ميديا: rate هو السعر لكل 1000 وحدة → نقسم على 1000 للحصول على سعر الوحدة
+      rawPrice = isSocial ? rateVal / 1000 : rateVal;
+    }
+  }
+  return Number((rawPrice * (1 + m / 100)).toFixed(6));
 }
 
 const BOT_MAINTENANCE_MSG = "🔧 البوت قيد الصيانة حالياً.\nسيعود للعمل بأقرب وقت ممكن. نشكر صبركم! 🙏";
@@ -2183,7 +2193,7 @@ async function startBot() {
         await clearDepositForOtherAdmins(ctx.from.id, step.depositId, `✅ طلب إيداع #${step.depositId} — تمت الموافقة (+${n}$)`);
         setStep(ctx.from.id, { kind: "idle" });
         await ctx.reply(`✅ تمت إضافة ${n}$ للمستخدم ${d.user_id}.`);
-        try { await ctx.telegram.sendMessage(d.user_id, `✅ تم اعتماد إيداعك #${�d.id} وإضافة ${n}$ إلى رصيدك.`); } catch { /* ignore */ }
+        try { await ctx.telegram.sendMessage(d.user_id, `✅ تم اعتماد إيداعك #${d.id} وإضافة ${n}$ إلى رصيدك.`); } catch { /* ignore */ }
         return;
       }
       case "admin:userBalance": {
@@ -2267,7 +2277,7 @@ async function startBot() {
         const parentVal = targetParent === 0 ? null : targetParent;
         await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=$2, updated_at=NOW()", [step.categoryId, parentVal]);
         invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
-        await ctx.reply(parentVal ? `✅ تم نقل القسم #${step.categoryId} إلى داخل القسم #${parentVal}.` : `✅ تم نقل القسم #${step.categoryId} إلى ا�لمستوى الرئيسي.`); return;
+        await ctx.reply(parentVal ? `✅ تم نقل القسم #${step.categoryId} إلى داخل القسم #${parentVal}.` : `✅ تم نقل القسم #${step.categoryId} إلى المستوى الرئيسي.`); return;
       }
       case "admin:broadcast": {
         if (!txt) return;
@@ -2403,7 +2413,7 @@ app.get("/health", (_, res) => res.json({ status: "ok", time: new Date().toISOSt
 _botRef = null;
 app.post(/^\/bot.+/, (req, res) => {
   if (_botRef) {
-    _botRef.handleUpdate(req.body, r�es).catch(err => { console.error("webhook error:", err); res.sendStatus(500); });
+    _botRef.handleUpdate(req.body, res).catch(err => { console.error("webhook error:", err); res.sendStatus(500); });
   } else {
     res.sendStatus(200);
   }
