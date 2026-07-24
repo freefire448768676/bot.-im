@@ -454,10 +454,15 @@ async function checkOrder(orderId, byUuid = false) {
 
 function extractDeliveredCode(resp) {
   const d = resp?.data;
-  if (!d) return null;
+  if (!d && !resp?.replay_api) return null;
   const candidates = [];
-  if (d.data) candidates.push(d.data);
-  if (d.replay_api) candidates.push(d.replay_api);
+  if (d?.data) candidates.push(d.data);
+  if (d?.replay_api) candidates.push(d.replay_api);
+  if (resp?.replay_api) candidates.push(resp.replay_api); // حقل على مستوى الجذر
+  if (d?.response) candidates.push(d.response);
+  if (d?.result) candidates.push(d.result);
+  if (d?.note) candidates.push(d.note);
+  if (d?.notes) candidates.push(d.notes);
   const lines = [];
   const visit = v => {
     if (v == null) return;
@@ -1246,7 +1251,7 @@ async function executeOrder(ctx) {
     [ctx.from.id, p.id, p.name, String(step.qty), JSON.stringify(step.collected), String(totalUsd), orderUuid]
   );
   const order = insRes.rows[0];
-  await ctx.reply(`⏳ جاري تنفيذ طلبك #${order.id}...\n💸 تم خصم ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س من رصيدك.`);
+  await ctx.reply("⏳ جاري تنفيذ طلبك...");
   let resp;
   let finalApiStatus;
 
@@ -1258,8 +1263,7 @@ async function executeOrder(ctx) {
     if (ACCEPT_STATUSES.has(initialStatus) || REJECT_STATUSES.has(initialStatus)) {
       finalApiStatus = initialStatus;
     } else {
-      // ⏳ انتظار حتى يكتمل الطلب
-      await ctx.reply("⏳ الطلب قيد المعالجة في الموقع... سأخبرك بالنتيجة خلال دقيقة.");
+      // انتظار حتى يكتمل الطلب
       const waitResult = await waitForOrderCompletion(orderUuid, 30, 5000); // 30 × 5ث = 2.5 دقيقة
       if (waitResult.completed) {
         resp = waitResult.resp;
@@ -1448,7 +1452,11 @@ function startOrderPoller(bot) {
 async function requireAdmin(ctx) {
   const sessionActive = await isAdminSessionActive(ctx.from.id);
   if (!sessionActive && !authedAdminIds.has(ctx.from.id)) {
-    await ctx.reply("⛔ انتهت جلستك. أرسل أمر الدخول السري مجدداً.");
+    const u = await getUser(ctx.from.id);
+    if (!u?.is_admin) { await ctx.reply("⛔ هذا القسم للإدارة فقط."); return false; }
+    // الجلسة منتهية → اطلب كلمة المرور مباشرة
+    setStep(ctx.from.id, { kind: "admin:login" });
+    await ctx.reply("🔑 أرسل كلمة المرور للدخول إلى لوحة الإدارة:");
     return false;
   }
   const u = await getUser(ctx.from.id);
