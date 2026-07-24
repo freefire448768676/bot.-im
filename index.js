@@ -1,5 +1,5 @@
 // ============================================================
-//  متجر المروان — بوت تيليجرام v2.1
+//  متجر المروان — بوت تيليجرام v2.2 (إصلاح الأداء + الأمان)
 //  إصلاحات: تسريع الأزرار، زر الرجوع، إخفاء لوحة الإدارة
 // ============================================================
 "use strict";
@@ -711,16 +711,24 @@ async function showMainMenu(ctx) {
   const user = await ensureUser(ctx);
   if (!user) return;
   setStep(user.id, { kind: "idle" });
-  const status = await getBotStatus();
-  if (status === "off" && !authedAdminIds.has(user.id)) {
+  if (user.status === "banned") { await sendOrEdit(ctx, "🚫 تم حظرك من استخدام البوت."); return; }
+  // ── تشغيل الاستعلامات بالتوازي لتسريع الاستجابة ──
+  const [status, rate, adminSessionActive] = await Promise.all([
+    getBotStatus(),
+    getExchangeRate(),
+    isAdminSessionActive(user.id),
+  ]);
+  if (status === "off" && !authedAdminIds.has(user.id) && !adminSessionActive) {
     await sendOrEdit(ctx, "🔧 البوت قيد الصيانة. سيعود للعمل بأقرب وقت ممكن. نشكر صبركم! 🙏");
     return;
   }
-  if (user.status === "banned") { await sendOrEdit(ctx, "🚫 تم حظرك من استخدام البوت."); return; }
-  const rate = await getExchangeRate();
   const greeting = `أهلاً فيك في متجر المروان 🌟\nالاسم: ${user.first_name ?? "—"}${user.username ? ` (@${user.username})` : ""}\nالرقم: ${user.id}\nالرصيد: ${formatBalance(Number(user.balance), rate)}\n\nاختر من القائمة 👇`;
-  const adminSessionActive = await isAdminSessionActive(user.id);
-  await sendOrEdit(ctx, greeting, (adminSessionActive || authedAdminIds.has(user.id)) ? mainMenuAdmin() : mainMenu());
+  // ── إذا كانت الجلسة منتهية في DB لكن الذاكرة تحتوي المدير، احذفه ──
+  if (authedAdminIds.has(user.id) && !adminSessionActive && !user.is_admin) {
+    authedAdminIds.delete(user.id);
+  }
+  const isAuthed = adminSessionActive || (authedAdminIds.has(user.id) && !!user.is_admin);
+  await sendOrEdit(ctx, greeting, isAuthed ? mainMenuAdmin() : mainMenu());
 }
 
 async function showContactLinks(ctx) {
@@ -794,15 +802,18 @@ async function notifyAdminsDeposit(ctx, depositRow) {
 async function showCategory(ctx, parentId, page, backTo) {
   const u = await getUser(ctx.from.id);
   const isAdmin = !!u?.is_admin && authedAdminIds.has(ctx.from.id);
-  const kws = await getExcludedKeywords();
-  const excludedStr = await getSetting("excluded_category_ids");
+  // ── تشغيل الاستعلامات المستقلة بالتوازي لتسريع تحميل القسم ──
+  const [kws, excludedStr, content, socialKws, socialMarkup, markup, ovMap] = await Promise.all([
+    getExcludedKeywords(),
+    getSetting("excluded_category_ids"),
+    getCachedContent(parentId),
+    getSocialKeywords(),
+    getSocialMarkupPercent(),
+    getMarkupPercent(),
+    getAllOverridesCached(),
+  ]);
   const excludedCats = new Set(excludedStr.split(",").map(s => Number(s.trim())).filter(Number.isFinite));
-  const content = await getCachedContent(parentId);
   const catOv = await loadCategoryOverrides([...content.categories.map(c => c.id), parentId]);
-  const socialKws = await getSocialKeywords();
-  const socialMarkup = await getSocialMarkupPercent();
-  const markup = await getMarkupPercent();
-  const ovMap = await getAllOverridesCached();
 
   const visibleCats = [];
   for (const c of content.categories) {
@@ -927,16 +938,19 @@ async function showProduct(ctx, productId, backTo) {
   }
 
   if (!p) { await sendOrEdit(ctx, "⚠️ المنتج غير موجود.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
-  const kws = await getExcludedKeywords();
-  const u = await getUser(ctx.from.id);
+  // ── تشغيل الاستعلامات المستقلة بالتوازي ──
+  const [kws, u, ovMap, markup, rate, socialKws, socialMarkup] = await Promise.all([
+    getExcludedKeywords(),
+    getUser(ctx.from.id),
+    loadOverrideMap([p.id]),
+    getMarkupPercent(),
+    getExchangeRate(),
+    getSocialKeywords(),
+    getSocialMarkupPercent(),
+  ]);
   const isAdmin = !!u?.is_admin;
   if (isExcludedProduct(p, kws) && !isAdmin) { await sendOrEdit(ctx, "⚠️ هذا المنتج غير متاح.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
-  const ovMap = await loadOverrideMap([p.id]);
   const ov = ovMap.get(p.id);
-  const markup = await getMarkupPercent();
-  const rate = await getExchangeRate();
-  const socialKws = await getSocialKeywords();
-  const socialMarkup = await getSocialMarkupPercent();
   const isSocial = isSocialProduct(p.name, p.category_name, socialKws);
   const usd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws);
   const syp = Math.round(usd * rate);
@@ -1440,16 +1454,30 @@ function startOrderPoller(bot) {
 //  ADMIN
 // ============================================================
 async function requireAdmin(ctx) {
-  const sessionActive = await isAdminSessionActive(ctx.from.id);
+  const [sessionActive, u] = await Promise.all([
+    isAdminSessionActive(ctx.from.id),
+    getUser(ctx.from.id),
+  ]);
+  // ── تنظيف: إذا فُقدت صلاحيات المدير في DB، امسح الذاكرة أيضاً ──
+  if (!u?.is_admin) {
+    authedAdminIds.delete(ctx.from.id);
+    await setAdminSession(ctx.from.id, false).catch(() => {});
+    await ctx.reply("⛔ هذا القسم للإدارة فقط.");
+    return false;
+  }
+  // ── إذا كانت الجلسة منتهية في DB والذاكرة، اطلب تسجيل الدخول ──
   if (!sessionActive && !authedAdminIds.has(ctx.from.id)) {
-    const u = await getUser(ctx.from.id);
-    if (!u?.is_admin) { await ctx.reply("⛔ هذا القسم للإدارة فقط."); return false; }
     setStep(ctx.from.id, { kind: "admin:login" });
     await ctx.reply("🔑 أرسل كلمة المرور للدخول إلى لوحة الإدارة:");
     return false;
   }
-  const u = await getUser(ctx.from.id);
-  if (!u?.is_admin) { await ctx.reply("⛔ هذا القسم للإدارة فقط."); return false; }
+  // ── إذا كانت الجلسة منتهية في DB لكن الذاكرة تحتوي المدير، امسح الذاكرة ──
+  if (!sessionActive && authedAdminIds.has(ctx.from.id)) {
+    authedAdminIds.delete(ctx.from.id);
+    setStep(ctx.from.id, { kind: "admin:login" });
+    await ctx.reply("🔑 انتهت جلسة الإدارة. أرسل كلمة المرور للدخول مجدداً:");
+    return false;
+  }
   return true;
 }
 
@@ -1765,7 +1793,13 @@ async function startBot() {
     if (!(await requireAdmin(ctx))) return;
     const uid = Number(ctx.match[1]); const u = await getUser(uid);
     const newStatus = u?.status === "banned" ? "active" : "banned";
-    await setStatus(uid, newStatus); await ctx.reply(newStatus === "banned" ? "🚫 تم الحظر." : "✅ تم رفع الحظر.");
+    await setStatus(uid, newStatus);
+    // ── إذا تم حظر مدير: أنهِ جلسته وأزله من الذاكرة ──
+    if (newStatus === "banned" && u?.is_admin) {
+      authedAdminIds.delete(uid);
+      await setAdminSession(uid, false).catch(() => {});
+    }
+    await ctx.reply(newStatus === "banned" ? "🚫 تم الحظر." : "✅ تم رفع الحظر.");
     await showUserCard(ctx, uid);
   });
   bot.action(/^adm:userAdmin:(\d+)$/, async ctx => {
@@ -1775,6 +1809,11 @@ async function startBot() {
     const uid = Number(ctx.match[1]); const u = await getUser(uid);
     const newAdmin = !u?.is_admin;
     await setAdmin(uid, newAdmin, newAdmin ? false : undefined);
+    // ── عند إلغاء صلاحية المدير: أنهِ جلسته وأزله من الذاكرة ──
+    if (!newAdmin) {
+      authedAdminIds.delete(uid);
+      await setAdminSession(uid, false).catch(() => {});
+    }
     await ctx.reply(newAdmin ? "👑 تم التعيين إداريًا." : "👤 تم إلغاء الإداري.");
     await showUserCard(ctx, uid);
   });
@@ -1783,6 +1822,11 @@ async function startBot() {
     const uid = Number(ctx.match[1]); const u = await getUser(uid);
     const newSA = !u?.is_super_admin;
     await setAdmin(uid, newSA ? true : u?.is_admin ?? false, newSA);
+    // ── عند إلغاء المدير الأعلى: أنهِ جلسته وأزله من الذاكرة ──
+    if (!newSA) {
+      authedAdminIds.delete(uid);
+      await setAdminSession(uid, false).catch(() => {});
+    }
     await ctx.reply(newSA ? "🌟 تم تعيينه مديراً أعلى." : "⬇️ تم إلغاء صلاحية المدير الأعلى.");
     await showUserCard(ctx, uid);
   });
@@ -2345,7 +2389,7 @@ async function startBot() {
     req.on("error", () => {}); req.end();
   }, 4 * 60_000).unref();
 
-  console.log("✅ البوت يعمل بنجاح! (v2.1)");
+  console.log("✅ البوت يعمل بنجاح! (v2.2)");
   return bot;
 }
 
@@ -2353,8 +2397,8 @@ async function startBot() {
 const app = express();
 const PORT = Number(process.env.PORT ?? 3000);
 app.use(express.json());
-app.get("/", (_, res) => res.send("OK - متجر المروان Bot v2.1"));
-app.get("/health", (_, res) => res.json({ status: "ok", time: new Date().toISOString(), version: "2.1" }));
+app.get("/", (_, res) => res.send("OK - متجر المروان Bot v2.2"));
+app.get("/health", (_, res) => res.json({ status: "ok", time: new Date().toISOString(), version: "2.2" }));
 
 _botRef = null;
 app.post(/^\/bot.+/, (req, res) => {
