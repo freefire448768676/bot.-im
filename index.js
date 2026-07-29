@@ -403,7 +403,7 @@ function extractAmountFromText(txt, exchangeRate) {
   const clean = txt.replace(/,/g, "").trim();
 
   // هل هو بالليرة السورية؟
-  const isSYP = /ل\.س|ليرة|ليره|ليرات|سوري|سورية|syp/i.test(clean);
+  const isSYP = /ل\.س|ليرة|ليره|ليرات|سوري|سورية|syp|ريال|ريالات|ريوال/i.test(clean);
   // هل هو بالدولار؟
   const isUSD = /\$|usd|دولار|دولارات/i.test(clean);
 
@@ -847,13 +847,12 @@ async function showDepositMethod(ctx, methodId) {
   // ── تدفق الإيداع: نطلب المبلغ أولاً، ثم الصورة ──
   setStep(ctx.from.id, { kind: "deposit:info", methodId: m.id, methodName: m.name, amount: null, photoFileId: null });
   const kb = Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "deposit"), Markup.button.callback("❌ إلغاء", "dep:cancel")]]);
-  const infoText = `💳 ${m.name}\n🔑 الرقم: \`${m.identifier}\`\n\n📋 التعليمات:\n${m.instructions}`;
+  const infoText = `💳 ${m.name}\n🔑 الرقم: \`${m.identifier}\`\n\n📋 التعليمات:\n${m.instructions}\n\n📝 أرسل المبلغ وصورة إشعار التحويل\n(يمكنك إرسالهما بأي ترتيب)`;
   if (m.image_file_id) {
     await ctx.replyWithPhoto(m.image_file_id, { caption: infoText, parse_mode: "Markdown", ...kb });
   } else {
     await ctx.reply(infoText, { parse_mode: "Markdown", ...kb });
   }
-  await ctx.reply("أرسل المبلغ الذي قمت بتحويله:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "dep:cancel")]]));
 }
 
 // ── إكمال طلب الإيداع بعد استلام المبلغ والصورة ─────────────
