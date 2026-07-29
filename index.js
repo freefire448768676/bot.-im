@@ -9,6 +9,7 @@ const { Pool } = require("pg");
 const axios = require("axios");
 const express = require("express");
 const http = require("http");
+const https = require("https");
 const crypto = require("crypto");
 
 // ── ENV check ────────────────────────────────────────────────
@@ -173,6 +174,8 @@ async function ensureTables() {
 //  SETTINGS
 // ============================================================
 const settingsCache = new Map();
+let _settingsCacheExpiry = 0;
+const SETTINGS_TTL = 2 * 60_000; // 2 دقيقة
 
 const DEFAULTS = {
   markup_percent: "3",
@@ -215,12 +218,16 @@ async function ensureDefaults() {
 }
 
 async function getSetting(key) {
-  if (!settingsCache.has(key)) await loadAllSettings();
+  if (!settingsCache.has(key) || Date.now() > _settingsCacheExpiry) {
+    await loadAllSettings();
+    _settingsCacheExpiry = Date.now() + SETTINGS_TTL;
+  }
   return settingsCache.get(key) ?? DEFAULTS[key] ?? "";
 }
 
 async function setSetting(key, value) {
   settingsCache.set(key, value);
+  _settingsCacheExpiry = Date.now() + SETTINGS_TTL; // تمديد الكاش بعد أي تحديث
   await q("INSERT INTO bot_settings(key,value,updated_at) VALUES($1,$2,NOW()) ON CONFLICT(key) DO UPDATE SET value=$2, updated_at=NOW()", [key, value]);
 }
 
@@ -423,8 +430,11 @@ const ORANOS_BASE = process.env.ORANOS_API_BASE ?? "https://api.oranosmarket.com
 const ORANOS_TOKEN = process.env.ORANOS_API_TOKEN ?? "";
 
 const oranosClient = axios.create({
-  baseURL: ORANOS_BASE, timeout: 20000,
+  baseURL: ORANOS_BASE,
+  timeout: 12000,
   headers: { "api-token": ORANOS_TOKEN, Accept: "application/json" },
+  httpAgent:  new http.Agent({ keepAlive: true, maxSockets: 20 }),
+  httpsAgent: new https.Agent({ keepAlive: true, maxSockets: 20 }),
 });
 
 let _maintenanceMode = false;
@@ -558,35 +568,60 @@ function buildSmartFaq(msg) {
 // ============================================================
 //  PRODUCT CACHE
 // ============================================================
-const PRODUCTS_TTL = 5 * 60_000;
-const CONTENT_TTL = 5 * 60_000;
-const OVERRIDES_TTL = 3 * 60_000;
+const PRODUCTS_TTL  = 15 * 60_000;   // كاش 15 دقيقة
+const CONTENT_TTL   = 15 * 60_000;   // كاش 15 دقيقة
+const OVERRIDES_TTL = 10 * 60_000;   // كاش 10 دقائق
 const PAGE_SIZE = 8;
 
 let productsCache = null;
 const contentCache = new Map();
 let allOverridesCache = null;
 
+// in-flight deduplication: لا تُرسل طلبات متعددة لنفس البيانات في نفس الوقت
+let _productsInFlight    = null;
+const _contentInFlight   = new Map();
+let _overridesInFlight   = null;
+
 async function getCachedProducts() {
   if (productsCache && productsCache.expiry > Date.now()) return productsCache.products;
-  const products = await fetchAllProducts();
-  productsCache = { products, expiry: Date.now() + PRODUCTS_TTL };
-  return products;
+  if (_productsInFlight) return _productsInFlight;
+  _productsInFlight = fetchAllProducts()
+    .then(products => {
+      productsCache = { products, expiry: Date.now() + PRODUCTS_TTL };
+      _productsInFlight = null;
+      return products;
+    })
+    .catch(err => { _productsInFlight = null; throw err; });
+  return _productsInFlight;
 }
 
 async function getCachedContent(parentId) {
   const cached = contentCache.get(parentId);
   if (cached && cached.expiry > Date.now()) return cached.content;
-  const content = await fetchContent(parentId);
-  contentCache.set(parentId, { content, expiry: Date.now() + CONTENT_TTL });
-  return content;
+  const inFlight = _contentInFlight.get(parentId);
+  if (inFlight) return inFlight;
+  const p = fetchContent(parentId)
+    .then(content => {
+      contentCache.set(parentId, { content, expiry: Date.now() + CONTENT_TTL });
+      _contentInFlight.delete(parentId);
+      return content;
+    })
+    .catch(err => { _contentInFlight.delete(parentId); throw err; });
+  _contentInFlight.set(parentId, p);
+  return p;
 }
 
 async function getAllOverridesCached() {
   if (allOverridesCache && allOverridesCache.expiry > Date.now()) return allOverridesCache.map;
-  const map = await loadAllOverrides();
-  allOverridesCache = { map, expiry: Date.now() + OVERRIDES_TTL };
-  return map;
+  if (_overridesInFlight) return _overridesInFlight;
+  _overridesInFlight = loadAllOverrides()
+    .then(map => {
+      allOverridesCache = { map, expiry: Date.now() + OVERRIDES_TTL };
+      _overridesInFlight = null;
+      return map;
+    })
+    .catch(err => { _overridesInFlight = null; throw err; });
+  return _overridesInFlight;
 }
 
 function invalidateCaches() {
@@ -600,10 +635,13 @@ function startBackgroundRefresher() {
   if (refresherStarted) return;
   refresherStarted = true;
   setInterval(() => {
-    fetchAllProducts().then(p => { productsCache = { products: p, expiry: Date.now() + PRODUCTS_TTL }; }).catch(() => {});
-    loadAllOverrides().then(m => { allOverridesCache = { map: m, expiry: Date.now() + OVERRIDES_TTL }; }).catch(() => {});
-    fetchContent(0).then(c => { contentCache.set(0, { content: c, expiry: Date.now() + CONTENT_TTL }); }).catch(() => {});
-  }, 4 * 60_000).unref();
+    // تحديث المنتجات والأقسام والـ overrides في الخلفية بشكل متوازٍ
+    Promise.all([
+      fetchAllProducts().then(p => { productsCache = { products: p, expiry: Date.now() + PRODUCTS_TTL }; }),
+      loadAllOverrides().then(m => { allOverridesCache = { map: m, expiry: Date.now() + OVERRIDES_TTL }; }),
+      fetchContent(0).then(c => { contentCache.set(0, { content: c, expiry: Date.now() + CONTENT_TTL }); }),
+    ]).catch(() => {});
+  }, 11 * 60_000).unref(); // أقل من TTL (15 دق) لتبقى الكاش دافئة دائماً
 }
 
 function isExcludedProduct(p, kws) {
@@ -822,7 +860,7 @@ async function completeDepositRequest(ctx, step) {
   );
   const dep = res.rows[0];
   setStep(ctx.from.id, { kind: "idle" });
-  await ctx.reply("✅ تم استلام طلب الإيداع.\nسيتم مراجعته وإضافة الرصيد في أقرب وقت.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+  await ctx.reply("سيتم مراجعة طلبك في أقرب وقت ممكن.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
   await notifyAdminsDeposit(ctx, dep);
 }
 
@@ -1215,12 +1253,15 @@ async function startOrderFlow(ctx, productId, backTo) {
   if (!p) { await ctx.reply("⚠️ المنتج غير موجود."); return; }
   if (!p.available) { await ctx.reply("⚠️ هذا المنتج غير متاح حالياً."); return; }
 
-  const ovMap = await loadOverrideMap([p.id]);
+  // ── تنفيذ موازٍ لتسريع الاستجابة ──
+  const [ovMap, markup, socialKws, socialMarkup, user] = await Promise.all([
+    loadOverrideMap([p.id]),
+    getMarkupPercent(),
+    getSocialKeywords(),
+    getSocialMarkupPercent(),
+    getUser(ctx.from.id),
+  ]);
   const ov = ovMap.get(p.id);
-  const markup = await getMarkupPercent();
-  const socialKws = await getSocialKeywords();
-  const socialMarkup = await getSocialMarkupPercent();
-  const user = await getUser(ctx.from.id);
   const userMarkup = user?.custom_markup_percent != null ? Number(user.custom_markup_percent) : null;
   const unitPriceUsd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws, null, userMarkup);
   const isSocial = isSocialProduct(p.name, p.category_name, socialKws);
@@ -2183,7 +2224,7 @@ async function startBot() {
         await completeDepositRequest(ctx, newStep);
       } else {
         setStep(ctx.from.id, newStep);
-        await ctx.reply(`✅ تم استلام المبلغ: ${amount.toFixed(2)}$\nالآن أرسل صورة إشعار التحويل.`,
+        await ctx.reply(`أرسل صورة إشعار التحويل.`,
           Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "dep:cancel")]]));
       }
       return;
