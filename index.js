@@ -255,7 +255,7 @@ function isSocialProduct(name, catName, kws) {
 //  USER CACHE
 // ============================================================
 const userCache = new Map();
-const USER_CACHE_TTL = 30_000;
+const USER_CACHE_TTL = 60_000; // 60 ثانية
 function userCacheGet(id) { const hit = userCache.get(id); if (hit && hit.exp > Date.now()) return hit.u; return undefined; }
 function userCacheSet(id, u) { userCache.set(id, { u, exp: Date.now() + USER_CACHE_TTL }); }
 function invalidateUserCache(id) { userCache.delete(id); }
@@ -816,16 +816,19 @@ async function showContactLinks(ctx) {
 // ============================================================
 //  DEPOSIT
 // ============================================================
+let _depositMethodsEnsured = false;
 async function ensureDefaultDepositMethods() {
+  if (_depositMethodsEnsured) return;
   const res = await q("SELECT COUNT(*)::int AS c FROM deposit_methods");
-  if (res.rows[0].c > 0) return;
+  if (res.rows[0].c > 0) { _depositMethodsEnsured = true; return; }
   await q(`INSERT INTO deposit_methods(name,identifier,instructions) VALUES
     ('شام كاش','02d7079d7229d8860c7d89467bfdc938','حول المبلغ إلى رقم شام كاش أعلاه ثم أرسل صورة الإشعار'),
     ('سيريتل كاش','32820534','حول المبلغ إلى رقم سيريتل كاش أعلاه ثم أرسل صورة الإشعار')`);
+  _depositMethodsEnsured = true;
 }
 
 async function showDepositMenu(ctx) {
-  await ensureDefaultDepositMethods();
+  if (!_depositMethodsEnsured) await ensureDefaultDepositMethods();
   const res = await q("SELECT * FROM deposit_methods WHERE active=true ORDER BY id");
   const methods = res.rows;
   if (!methods.length) {
@@ -841,15 +844,16 @@ async function showDepositMethod(ctx, methodId) {
   const res = await q("SELECT * FROM deposit_methods WHERE id=$1 AND active=true", [methodId]);
   const m = res.rows[0];
   if (!m) { await ctx.reply("⚠️ الطريقة غير متاحة."); return; }
-  // ── تدفق جديد: نجمع المبلغ والصورة بأي ترتيب ──
+  // ── تدفق الإيداع: نطلب المبلغ أولاً، ثم الصورة ──
   setStep(ctx.from.id, { kind: "deposit:info", methodId: m.id, methodName: m.name, amount: null, photoFileId: null });
-  const text = `💳 ${m.name}\n🔑 الرقم: \`${m.identifier}\`\n\n📋 التعليمات:\n${m.instructions}\n\n📝 أرسل المبلغ الذي حوّلته وصورة إشعار التحويل.\n(يمكنك إرسالهما بأي ترتيب)`;
   const kb = Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "deposit"), Markup.button.callback("❌ إلغاء", "dep:cancel")]]);
+  const infoText = `💳 ${m.name}\n🔑 الرقم: \`${m.identifier}\`\n\n📋 التعليمات:\n${m.instructions}`;
   if (m.image_file_id) {
-    await ctx.replyWithPhoto(m.image_file_id, { caption: text, parse_mode: "Markdown", ...kb });
+    await ctx.replyWithPhoto(m.image_file_id, { caption: infoText, parse_mode: "Markdown", ...kb });
   } else {
-    await ctx.reply(text, { parse_mode: "Markdown", ...kb });
+    await ctx.reply(infoText, { parse_mode: "Markdown", ...kb });
   }
+  await ctx.reply("أرسل المبلغ الذي قمت بتحويله:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "dep:cancel")]]));
 }
 
 // ── إكمال طلب الإيداع بعد استلام المبلغ والصورة ─────────────
@@ -884,8 +888,8 @@ async function notifyAdminsDeposit(ctx, depositRow) {
 //  PRODUCTS & CATEGORIES
 // ============================================================
 async function showCategory(ctx, parentId, page, backTo) {
-  const u = await getUser(ctx.from.id);
-  const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || !!(await isAdminSessionActive(ctx.from.id)));
+  const [u, _catSessActive] = await Promise.all([getUser(ctx.from.id), isAdminSessionActive(ctx.from.id)]);
+  const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || _catSessActive);
   const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
   // ── تشغيل جميع الاستعلامات المستقلة بالتوازي ──
@@ -924,10 +928,11 @@ async function showCategory(ctx, parentId, page, backTo) {
     return true;
   });
 
-  const [vcRes, mpRes, rate] = await Promise.all([
+  const [vcRes, mpRes, rate, backLabel, homeLabel, prevLabel, nextLabel] = await Promise.all([
     q("SELECT * FROM virtual_categories WHERE parent_id=$1 ORDER BY position", [parentId]),
     q("SELECT * FROM manual_products WHERE category_id=$1 AND category_is_virtual=false AND active=true ORDER BY id", [parentId]),
     getExchangeRate(),
+    getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel(),
   ]);
 
   const vcRows = isAdmin ? vcRes.rows : vcRes.rows.filter(v => v.active);
@@ -937,8 +942,6 @@ async function showCategory(ctx, parentId, page, backTo) {
     const usd = Number(m.price_usd); const syp = Math.round(usd * rate);
     return Markup.button.callback(`🛒 ${m.name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `mprod:${m.id}:${parentId}`);
   });
-
-  const [backLabel, homeLabel, prevLabel, nextLabel] = await Promise.all([getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel()]);
 
   if (!visibleCats.length && !visibleProds.length && !vcBtns.length && !manualBtns.length) {
     const emptyRows = [];
@@ -1028,7 +1031,7 @@ async function showProduct(ctx, productId, backTo) {
 
   if (!p) { await sendOrEdit(ctx, "⚠️ المنتج غير موجود.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
 
-  const [kws, u, ovMap, markup, rate, socialKws, socialMarkup] = await Promise.all([
+  const [kws, u, ovMap, markup, rate, socialKws, socialMarkup, sessionActive] = await Promise.all([
     getExcludedKeywords(),
     getUser(ctx.from.id),
     loadOverrideMap([p.id]),
@@ -1036,10 +1039,8 @@ async function showProduct(ctx, productId, backTo) {
     getExchangeRate(),
     getSocialKeywords(),
     getSocialMarkupPercent(),
+    isAdminSessionActive(ctx.from.id),
   ]);
-
-  // ── إصلاح: فحص الجلسة الإدارية بشكل متسق ──
-  const sessionActive = await isAdminSessionActive(ctx.from.id);
   const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || sessionActive);
   const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
@@ -1056,7 +1057,7 @@ async function showProduct(ctx, productId, backTo) {
       qtyInfo = `الكمية بين ${Number(parsed.min).toLocaleString("en-US")} و ${Number(parsed.max).toLocaleString("en-US")}`;
     else if (parsed && Array.isArray(parsed) && parsed.length > 0)
       qtyInfo = `الكميات المتاحة: ${parsed.join(", ")}`;
-    else { const min = await getSocialMinQty(); const max = await getSocialMaxQty(); qtyInfo = `الكمية بين ${min.toLocaleString("en-US")} و ${max.toLocaleString("en-US")}`; }
+    else { const [min, max] = await Promise.all([getSocialMinQty(), getSocialMaxQty()]); qtyInfo = `الكمية بين ${min.toLocaleString("en-US")} و ${max.toLocaleString("en-US")}`; }
   } else if (!p.qty_values) { qtyInfo = "الكمية: 1 (ثابتة)"; }
   else if (Array.isArray(p.qty_values)) { qtyInfo = `الكميات المتاحة: ${p.qty_values.join(", ")}`; }
   else { qtyInfo = `الكمية بين ${p.qty_values.min} و ${p.qty_values.max}`; }
@@ -1078,23 +1079,12 @@ async function showProduct(ctx, productId, backTo) {
 }
 
 async function showVirtualCategory(ctx, vcId, page, backTo) {
-  const u = await getUser(ctx.from.id);
-  const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || !!(await isAdminSessionActive(ctx.from.id)));
+  const [u, _vcSessActive] = await Promise.all([getUser(ctx.from.id), isAdminSessionActive(ctx.from.id)]);
+  const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || _vcSessActive);
   const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
-  const vcRes = await q("SELECT * FROM virtual_categories WHERE id=$1", [vcId]);
-  const vc = vcRes.rows[0];
-  if (!vc || (!vc.active && !isAdmin)) { await sendOrEdit(ctx, "⚠️ هذا القسم غير متاح.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
-  const [backLabel, homeLabel, prevLabel, nextLabel] = await Promise.all([getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel()]);
-  let backBtn;
-  if (backTo === 0) {
-    backBtn = Markup.button.callback(backLabel, "cat:0:1:0");
-  } else {
-    const parentVcat = (await q("SELECT id FROM virtual_categories WHERE id=$1", [backTo])).rows[0];
-    backBtn = parentVcat ? Markup.button.callback(backLabel, `vcat:${backTo}:1:0`) : Markup.button.callback(backLabel, `cat:${backTo}:1:0`);
-  }
-
-  const [allOv, allProducts, kws, markup, rate, socialKws, socialMarkup] = await Promise.all([
+  const [vcRes, allOv, allProducts, kws, markup, rate, socialKws, socialMarkup, backLabel, homeLabel, prevLabel, nextLabel] = await Promise.all([
+    q("SELECT * FROM virtual_categories WHERE id=$1", [vcId]),
     getAllOverridesCached(),
     getCachedProducts(),
     getExcludedKeywords(),
@@ -1102,7 +1092,17 @@ async function showVirtualCategory(ctx, vcId, page, backTo) {
     getExchangeRate(),
     getSocialKeywords(),
     getSocialMarkupPercent(),
+    getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel(),
   ]);
+  const vc = vcRes.rows[0];
+  if (!vc || (!vc.active && !isAdmin)) { await sendOrEdit(ctx, "⚠️ هذا القسم غير متاح.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
+  let backBtn;
+  if (backTo === 0) {
+    backBtn = Markup.button.callback(backLabel, "cat:0:1:0");
+  } else {
+    const parentVcat = (await q("SELECT id FROM virtual_categories WHERE id=$1", [backTo])).rows[0];
+    backBtn = parentVcat ? Markup.button.callback(backLabel, `vcat:${backTo}:1:0`) : Markup.button.callback(backLabel, `cat:${backTo}:1:0`);
+  }
 
   const subVcRes = await q("SELECT * FROM virtual_categories WHERE parent_id=$1 ORDER BY position", [vcId]);
   const subVcs = isAdmin ? subVcRes.rows : subVcRes.rows.filter(v => v.active);
@@ -2183,8 +2183,9 @@ async function startBot() {
         // لدينا المبلغ والصورة، اكمل الطلب
         await completeDepositRequest(ctx, newStep);
       } else {
+        // استلمنا الصورة قبل المبلغ، اطلب المبلغ
         setStep(ctx.from.id, newStep);
-        await ctx.reply("✅ تم استلام الصورة.\nالآن أرسل المبلغ الذي حوّلته.",
+        await ctx.reply("أرسل المبلغ الذي قمت بتحويله:",
           Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "dep:cancel")]]));
       }
       return;
