@@ -18,11 +18,11 @@ if (!process.env.DATABASE_URL) {
 }
 
 // ── DB pool محسّن ─────────────────────────────────────────────
+const _dbUrl = process.env.DATABASE_URL;
+const _needSSL = _dbUrl.includes("railway") || _dbUrl.includes("neon") || _dbUrl.includes("supabase");
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL.includes("railway") || process.env.DATABASE_URL.includes("neon") || process.env.DATABASE_URL.includes("supabase")
-    ? { rejectUnauthorized: false }
-    : false,
+  connectionString: _dbUrl,
+  ssl: _needSSL ? { rejectUnauthorized: false } : false,
   max: 10,
   min: 2,
   idleTimeoutMillis: 30_000,
