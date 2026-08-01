@@ -1,6 +1,6 @@
 // ============================================================
-//  متجر المروان — بوت تيليجرام v2.3 (إصلاح شامل)
-//  إصلاحات: الأداء، تدفق الإيداع، إزالة أرقام الطلبات
+//  ظ…طھط¬ط± ط§ظ„ظ…ط±ظˆط§ظ† â€” ط¨ظˆطھ طھظٹظ„ظٹط¬ط±ط§ظ… v2.3 (ط¥طµظ„ط§ط­ ط´ط§ظ…ظ„)
+//  ط¥طµظ„ط§ط­ط§طھ: ط§ظ„ط£ط¯ط§ط،طŒ طھط¯ظپظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹طŒ ط¥ط²ط§ظ„ط© ط£ط±ظ‚ط§ظ… ط§ظ„ط·ظ„ط¨ط§طھ
 // ============================================================
 "use strict";
 
@@ -12,13 +12,13 @@ const http = require("http");
 const https = require("https");
 const crypto = require("crypto");
 
-// ── ENV check ────────────────────────────────────────────────
+// â”€â”€ ENV check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 if (!process.env.DATABASE_URL) {
-  console.error("❌ DATABASE_URL is required");
+  console.error("â‌Œ DATABASE_URL is required");
   process.exit(1);
 }
 
-// ── DB pool محسّن ─────────────────────────────────────────────
+// â”€â”€ DB pool ظ…ط­ط³ظ‘ظ† â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const _dbUrl = process.env.DATABASE_URL;
 const _needSSL = _dbUrl.includes("railway") || _dbUrl.includes("neon") || _dbUrl.includes("supabase");
 const pool = new Pool({
@@ -37,7 +37,7 @@ async function q(text, params = []) {
   finally { client.release(); }
 }
 
-// ── Create tables if not exist ────────────────────────────────
+// â”€â”€ Create tables if not exist â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function ensureTables() {
   await q(`
     CREATE TABLE IF NOT EXISTS users (
@@ -175,30 +175,30 @@ async function ensureTables() {
 // ============================================================
 const settingsCache = new Map();
 let _settingsCacheExpiry = 0;
-const SETTINGS_TTL = 2 * 60_000; // 2 دقيقة
+const SETTINGS_TTL = 2 * 60_000; // 2 ط¯ظ‚ظٹظ‚ط©
 
 const DEFAULTS = {
   markup_percent: "3",
   exchange_rate: "132",
   bot_status: "on",
-  currency_label: "ل.س",
+  currency_label: "ظ„.ط³",
   excluded_category_ids: "6,81,561",
-  excluded_product_keywords: "سيرتل كاش,سيريتل كاش,syriatel cash,mtn كاش,mtn cash,ام تي ان كاش",
+  excluded_product_keywords: "ط³ظٹط±طھظ„ ظƒط§ط´,ط³ظٹط±ظٹطھظ„ ظƒط§ط´,syriatel cash,mtn ظƒط§ط´,mtn cash,ط§ظ… طھظٹ ط§ظ† ظƒط§ط´",
   social_markup_percent: "3",
   social_min_qty: "500",
   social_max_qty: "10000",
-  social_keywords: "سوشل,social,تواصل اجتماعي,اجتماعي,انستغرام,instagram,تيك توك,tiktok,فيسبوك,facebook,تويتر,twitter,يوتيوب,youtube,تليجرام,telegram,سناب,snap",
-  ai_keywords: "ذكاء اصطناعي,chatgpt,gpt,openai,claude,gemini,midjourney,perplexity,ai ",
+  social_keywords: "ط³ظˆط´ظ„,social,طھظˆط§طµظ„ ط§ط¬طھظ…ط§ط¹ظٹ,ط§ط¬طھظ…ط§ط¹ظٹ,ط§ظ†ط³طھط؛ط±ط§ظ…,instagram,طھظٹظƒ طھظˆظƒ,tiktok,ظپظٹط³ط¨ظˆظƒ,facebook,طھظˆظٹطھط±,twitter,ظٹظˆطھظٹظˆط¨,youtube,طھظ„ظٹط¬ط±ط§ظ…,telegram,ط³ظ†ط§ط¨,snap",
+  ai_keywords: "ط°ظƒط§ط، ط§طµط·ظ†ط§ط¹ظٹ,chatgpt,gpt,openai,claude,gemini,midjourney,perplexity,ai ",
   admin_password: "0941408061@0941408061aM",
   admin_login_command: "Abdulmalik Marai 1122334455",
   auto_ping_enabled: "off",
   auto_ping_interval_min: "5",
   auto_ping_target_user_id: "",
   auto_ping_last_sent: "0",
-  btn_back_label: "⬅️ رجوع",
-  btn_home_label: "🏠 الرئيسية",
-  btn_prev_label: "⬅️ السابق",
-  btn_next_label: "التالي ➡️",
+  btn_back_label: "â¬…ï¸ڈ ط±ط¬ظˆط¹",
+  btn_home_label: "ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©",
+  btn_prev_label: "â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚",
+  btn_next_label: "ط§ظ„طھط§ظ„ظٹ â‍،ï¸ڈ",
 };
 
 async function loadAllSettings() {
@@ -227,7 +227,7 @@ async function getSetting(key) {
 
 async function setSetting(key, value) {
   settingsCache.set(key, value);
-  _settingsCacheExpiry = Date.now() + SETTINGS_TTL; // تمديد الكاش بعد أي تحديث
+  _settingsCacheExpiry = Date.now() + SETTINGS_TTL; // طھظ…ط¯ظٹط¯ ط§ظ„ظƒط§ط´ ط¨ط¹ط¯ ط£ظٹ طھط­ط¯ظٹط«
   await q("INSERT INTO bot_settings(key,value,updated_at) VALUES($1,$2,NOW()) ON CONFLICT(key) DO UPDATE SET value=$2, updated_at=NOW()", [key, value]);
 }
 
@@ -255,7 +255,7 @@ function isSocialProduct(name, catName, kws) {
 //  USER CACHE
 // ============================================================
 const userCache = new Map();
-const USER_CACHE_TTL = 60_000; // 60 ثانية
+const USER_CACHE_TTL = 60_000; // 60 ط«ط§ظ†ظٹط©
 function userCacheGet(id) { const hit = userCache.get(id); if (hit && hit.exp > Date.now()) return hit.u; return undefined; }
 function userCacheSet(id, u) { userCache.set(id, { u, exp: Date.now() + USER_CACHE_TTL }); }
 function invalidateUserCache(id) { userCache.delete(id); }
@@ -394,20 +394,20 @@ async function loadAllOverrides() {
 }
 
 function formatBalance(usd, rate) {
-  return `${usd.toFixed(2)}$ | ${Math.round(usd * rate).toLocaleString("en-US")} ل.س`;
+  return `${usd.toFixed(2)}$ | ${Math.round(usd * rate).toLocaleString("en-US")} ظ„.ط³`;
 }
 
-// ── استخراج المبلغ من نص بصيغ مختلفة ─────────────────────────
+// â”€â”€ ط§ط³طھط®ط±ط§ط¬ ط§ظ„ظ…ط¨ظ„ط؛ ظ…ظ† ظ†طµ ط¨طµظٹط؛ ظ…ط®طھظ„ظپط© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function extractAmountFromText(txt, exchangeRate) {
   if (!txt) return null;
   const clean = txt.replace(/,/g, "").trim();
 
-  // هل هو بالليرة السورية؟
-  const isSYP = /ل\.س|ليرة|ليره|ليرات|سوري|سورية|syp|ريال|ريالات|ريوال/i.test(clean);
-  // هل هو بالدولار؟
-  const isUSD = /\$|usd|دولار|دولارات/i.test(clean);
+  // ظ‡ظ„ ظ‡ظˆ ط¨ط§ظ„ظ„ظٹط±ط© ط§ظ„ط³ظˆط±ظٹط©طں
+  const isSYP = /ظ„\.ط³|ظ„ظٹط±ط©|ظ„ظٹط±ظ‡|ظ„ظٹط±ط§طھ|ط³ظˆط±ظٹ|ط³ظˆط±ظٹط©|syp|ط±ظٹط§ظ„|ط±ظٹط§ظ„ط§طھ|ط±ظٹظˆط§ظ„/i.test(clean);
+  // ظ‡ظ„ ظ‡ظˆ ط¨ط§ظ„ط¯ظˆظ„ط§ط±طں
+  const isUSD = /\$|usd|ط¯ظˆظ„ط§ط±|ط¯ظˆظ„ط§ط±ط§طھ/i.test(clean);
 
-  // استخرج أول رقم (صحيح أو عشري)
+  // ط§ط³طھط®ط±ط¬ ط£ظˆظ„ ط±ظ‚ظ… (طµط­ظٹط­ ط£ظˆ ط¹ط´ط±ظٹ)
   const numMatch = clean.match(/(\d+\.?\d*)/);
   if (!numMatch) return null;
 
@@ -415,11 +415,11 @@ function extractAmountFromText(txt, exchangeRate) {
   if (!Number.isFinite(num) || num <= 0) return null;
 
   if (isSYP) {
-    // حوّل من ليرة إلى دولار
+    // ط­ظˆظ‘ظ„ ظ…ظ† ظ„ظٹط±ط© ط¥ظ„ظ‰ ط¯ظˆظ„ط§ط±
     const rate = Number(exchangeRate) || 132;
     return num / rate;
   }
-  // افتراضياً دولار
+  // ط§ظپطھط±ط§ط¶ظٹط§ظ‹ ط¯ظˆظ„ط§ط±
   return num;
 }
 
@@ -525,10 +525,10 @@ function getProductApiNotes(p) {
 // ============================================================
 const convHistory = new Map();
 
-// لا نذكر اسم الموقع أو أي رابط خارجي في البرومبت
-const AI_SYSTEM_PROMPT = `أنت مساعد ذكاء اصطناعي متخصص في إدارة متجر "متجر المروان" على تيليجرام.
-البوت يبيع منتجات رقمية بشكل آلي.
-أجب دائماً بالعربية. كن دقيقاً وعملياً. لا تذكر أسماء مواقع أو روابط خارجية.`;
+// ظ„ط§ ظ†ط°ظƒط± ط§ط³ظ… ط§ظ„ظ…ظˆظ‚ط¹ ط£ظˆ ط£ظٹ ط±ط§ط¨ط· ط®ط§ط±ط¬ظٹ ظپظٹ ط§ظ„ط¨ط±ظˆظ…ط¨طھ
+const AI_SYSTEM_PROMPT = `ط£ظ†طھ ظ…ط³ط§ط¹ط¯ ط°ظƒط§ط، ط§طµط·ظ†ط§ط¹ظٹ ظ…طھط®طµطµ ظپظٹ ط¥ط¯ط§ط±ط© ظ…طھط¬ط± "ظ…طھط¬ط± ط§ظ„ظ…ط±ظˆط§ظ†" ط¹ظ„ظ‰ طھظٹظ„ظٹط¬ط±ط§ظ….
+ط§ظ„ط¨ظˆطھ ظٹط¨ظٹط¹ ظ…ظ†طھط¬ط§طھ ط±ظ‚ظ…ظٹط© ط¨ط´ظƒظ„ ط¢ظ„ظٹ.
+ط£ط¬ط¨ ط¯ط§ط¦ظ…ط§ظ‹ ط¨ط§ظ„ط¹ط±ط¨ظٹط©. ظƒظ† ط¯ظ‚ظٹظ‚ط§ظ‹ ظˆط¹ظ…ظ„ظٹط§ظ‹. ظ„ط§ طھط°ظƒط± ط£ط³ظ…ط§ط، ظ…ظˆط§ظ‚ط¹ ط£ظˆ ط±ظˆط§ط¨ط· ط®ط§ط±ط¬ظٹط©.`;
 
 async function callAiSupport(userId, userMessage) {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -557,27 +557,27 @@ function hasAiKey() { return !!process.env.OPENAI_API_KEY; }
 
 function buildSmartFaq(msg) {
   const m = msg.toLowerCase();
-  if (m.includes("رصيد") || m.includes("balance")) return "💰 لمعرفة رصيدك استخدم زر *رصيدي* في القائمة الرئيسية.";
-  if (m.includes("إيداع") || m.includes("شحن") || m.includes("deposit")) return "💳 لشحن رصيدك اضغط زر *إيداع* في القائمة الرئيسية.";
-  if (m.includes("طلب") || m.includes("order")) return "📦 لمتابعة طلباتك اضغط زر *طلباتي* في القائمة الرئيسية.";
-  if (m.includes("سعر") || m.includes("price")) return "💱 *تعديل سعر الصرف:*\nالإدارة → ⚙️ الإعدادات → 💱 تعديل سعر الصرف";
-  if (m.includes("ربح") || m.includes("markup")) return "📈 *نسبة الربح:*\nالإدارة → ⚙️ الإعدادات → ✏️ تعديل الربح العام";
-  return "📞 للمساعدة تواصل مع الدعم عبر زر *الدعم* في القائمة.";
+  if (m.includes("ط±طµظٹط¯") || m.includes("balance")) return "ًں’° ظ„ظ…ط¹ط±ظپط© ط±طµظٹط¯ظƒ ط§ط³طھط®ط¯ظ… ط²ط± *ط±طµظٹط¯ظٹ* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
+  if (m.includes("ط¥ظٹط¯ط§ط¹") || m.includes("ط´ط­ظ†") || m.includes("deposit")) return "ًں’³ ظ„ط´ط­ظ† ط±طµظٹط¯ظƒ ط§ط¶ط؛ط· ط²ط± *ط¥ظٹط¯ط§ط¹* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
+  if (m.includes("ط·ظ„ط¨") || m.includes("order")) return "ًں“¦ ظ„ظ…طھط§ط¨ط¹ط© ط·ظ„ط¨ط§طھظƒ ط§ط¶ط؛ط· ط²ط± *ط·ظ„ط¨ط§طھظٹ* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
+  if (m.includes("ط³ط¹ط±") || m.includes("price")) return "ًں’± *طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طµط±ظپ:*\nط§ظ„ط¥ط¯ط§ط±ط© â†’ âڑ™ï¸ڈ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ â†’ ًں’± طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طµط±ظپ";
+  if (m.includes("ط±ط¨ط­") || m.includes("markup")) return "ًں“ˆ *ظ†ط³ط¨ط© ط§ظ„ط±ط¨ط­:*\nط§ظ„ط¥ط¯ط§ط±ط© â†’ âڑ™ï¸ڈ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ â†’ âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ…";
+  return "ًں“‍ ظ„ظ„ظ…ط³ط§ط¹ط¯ط© طھظˆط§طµظ„ ظ…ط¹ ط§ظ„ط¯ط¹ظ… ط¹ط¨ط± ط²ط± *ط§ظ„ط¯ط¹ظ…* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط©.";
 }
 
 // ============================================================
 //  PRODUCT CACHE
 // ============================================================
-const PRODUCTS_TTL  = 15 * 60_000;   // كاش 15 دقيقة
-const CONTENT_TTL   = 15 * 60_000;   // كاش 15 دقيقة
-const OVERRIDES_TTL = 10 * 60_000;   // كاش 10 دقائق
+const PRODUCTS_TTL  = 15 * 60_000;   // ظƒط§ط´ 15 ط¯ظ‚ظٹظ‚ط©
+const CONTENT_TTL   = 15 * 60_000;   // ظƒط§ط´ 15 ط¯ظ‚ظٹظ‚ط©
+const OVERRIDES_TTL = 10 * 60_000;   // ظƒط§ط´ 10 ط¯ظ‚ط§ط¦ظ‚
 const PAGE_SIZE = 8;
 
 let productsCache = null;
 const contentCache = new Map();
 let allOverridesCache = null;
 
-// in-flight deduplication: لا تُرسل طلبات متعددة لنفس البيانات في نفس الوقت
+// in-flight deduplication: ظ„ط§ طھظڈط±ط³ظ„ ط·ظ„ط¨ط§طھ ظ…طھط¹ط¯ط¯ط© ظ„ظ†ظپط³ ط§ظ„ط¨ظٹط§ظ†ط§طھ ظپظٹ ظ†ظپط³ ط§ظ„ظˆظ‚طھ
 let _productsInFlight    = null;
 const _contentInFlight   = new Map();
 let _overridesInFlight   = null;
@@ -635,13 +635,13 @@ function startBackgroundRefresher() {
   if (refresherStarted) return;
   refresherStarted = true;
   setInterval(() => {
-    // تحديث المنتجات والأقسام والـ overrides في الخلفية بشكل متوازٍ
+    // طھط­ط¯ظٹط« ط§ظ„ظ…ظ†طھط¬ط§طھ ظˆط§ظ„ط£ظ‚ط³ط§ظ… ظˆط§ظ„ظ€ overrides ظپظٹ ط§ظ„ط®ظ„ظپظٹط© ط¨ط´ظƒظ„ ظ…طھظˆط§ط²ظچ
     Promise.all([
       fetchAllProducts().then(p => { productsCache = { products: p, expiry: Date.now() + PRODUCTS_TTL }; }),
       loadAllOverrides().then(m => { allOverridesCache = { map: m, expiry: Date.now() + OVERRIDES_TTL }; }),
       fetchContent(0).then(c => { contentCache.set(0, { content: c, expiry: Date.now() + CONTENT_TTL }); }),
     ]).catch(() => {});
-  }, 11 * 60_000).unref(); // أقل من TTL (15 دق) لتبقى الكاش دافئة دائماً
+  }, 11 * 60_000).unref(); // ط£ظ‚ظ„ ظ…ظ† TTL (15 ط¯ظ‚) ظ„طھط¨ظ‚ظ‰ ط§ظ„ظƒط§ط´ ط¯ط§ظپط¦ط© ط¯ط§ط¦ظ…ط§ظ‹
 }
 
 function isExcludedProduct(p, kws) {
@@ -663,7 +663,7 @@ async function loadCategoryOverrides(ids) {
   return m;
 }
 
-// ── بناء مجموعة IDs الأقسام التي تحتوي منتجات ظاهرة ──────────
+// â”€â”€ ط¨ظ†ط§ط، ظ…ط¬ظ…ظˆط¹ط© IDs ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„طھظٹ طھط­طھظˆظٹ ظ…ظ†طھط¬ط§طھ ط¸ط§ظ‡ط±ط© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function buildVisibleCategoryIds(excludedCats, kws) {
   const all = await getCachedProducts();
   const direct = new Set();
@@ -701,7 +701,7 @@ async function effectivePriceUsd(p, override, defaultMarkup, socialMarkup, socia
   return Number((rawPrice * (1 + m / 100)).toFixed(6));
 }
 
-const BOT_MAINTENANCE_MSG = "🔧 البوت قيد الصيانة حالياً.\nسيعود للعمل بأقرب وقت ممكن. نشكر صبركم! 🙏";
+const BOT_MAINTENANCE_MSG = "ًں”§ ط§ظ„ط¨ظˆطھ ظ‚ظٹط¯ ط§ظ„طµظٹط§ظ†ط© ط­ط§ظ„ظٹط§ظ‹.\nط³ظٹط¹ظˆط¯ ظ„ظ„ط¹ظ…ظ„ ط¨ط£ظ‚ط±ط¨ ظˆظ‚طھ ظ…ظ…ظƒظ†. ظ†ط´ظƒط± طµط¨ط±ظƒظ…! ًں™ڈ";
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME ?? "admin").split(",")[0].trim();
 
 // ============================================================
@@ -714,7 +714,7 @@ function setStep(uid, s) { stepMap.set(uid, s); }
 let _botRef = null;
 const authedAdminIds = new Set();
 
-// ── حالة التنقل: userId → Map<catId, page> ────────────────────
+// â”€â”€ ط­ط§ظ„ط© ط§ظ„طھظ†ظ‚ظ„: userId â†’ Map<catId, page> â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const navState = new Map();
 function saveNavPage(uid, catId, page) {
   if (!navState.has(uid)) navState.set(uid, new Map());
@@ -722,7 +722,7 @@ function saveNavPage(uid, catId, page) {
 }
 function getNavPage(uid, catId) { return navState.get(uid)?.get(catId) ?? 1; }
 
-// ── إشعارات الإيداع ───────────────────────────────────────────
+// â”€â”€ ط¥ط´ط¹ط§ط±ط§طھ ط§ظ„ط¥ظٹط¯ط§ط¹ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const depositNotifications = new Map();
 async function clearDepositForOtherAdmins(processorId, depId, statusText) {
   const list = depositNotifications.get(depId) ?? [];
@@ -731,7 +731,7 @@ async function clearDepositForOtherAdmins(processorId, depId, statusText) {
     if (n.adminId === processorId) continue;
     try {
       await _botRef?.telegram.editMessageCaption(n.adminId, n.messageId, undefined,
-        `${statusText}\n(تمت المعالجة بواسطة مدير آخر)`);
+        `${statusText}\n(طھظ…طھ ط§ظ„ظ…ط¹ط§ظ„ط¬ط© ط¨ظˆط§ط³ط·ط© ظ…ط¯ظٹط± ط¢ط®ط±)`);
     } catch { /* ignore */ }
   }
 }
@@ -761,21 +761,21 @@ async function ensureUser(ctx) {
   return upsertUser({ id: f.id, username: f.username, first_name: f.first_name, last_name: f.last_name });
 }
 
-// ── لوحة الإدارة مخفية - لا تظهر في القائمة الرئيسية ─────
+// â”€â”€ ظ„ظˆط­ط© ط§ظ„ط¥ط¯ط§ط±ط© ظ…ط®ظپظٹط© - ظ„ط§ طھط¸ظ‡ط± ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط© â”€â”€â”€â”€â”€
 function mainMenu() {
   return Markup.inlineKeyboard([
-    [Markup.button.callback("🛒 المنتجات", "cat:0:1:0"), Markup.button.callback("💰 رصيدي", "balance")],
-    [Markup.button.callback("💳 إيداع", "deposit"), Markup.button.callback("📦 طلباتي", "myorders:1")],
-    [Markup.button.callback("📞 الدعم", "support"), Markup.button.callback("🔄 تحديث", "home")],
+    [Markup.button.callback("ًں›’ ط§ظ„ظ…ظ†طھط¬ط§طھ", "cat:0:1:0"), Markup.button.callback("ًں’° ط±طµظٹط¯ظٹ", "balance")],
+    [Markup.button.callback("ًں’³ ط¥ظٹط¯ط§ط¹", "deposit"), Markup.button.callback("ًں“¦ ط·ظ„ط¨ط§طھظٹ", "myorders:1")],
+    [Markup.button.callback("ًں“‍ ط§ظ„ط¯ط¹ظ…", "support"), Markup.button.callback("ًں”„ طھط­ط¯ظٹط«", "home")],
   ]);
 }
 
 function mainMenuAdmin() {
   return Markup.inlineKeyboard([
-    [Markup.button.callback("🛒 المنتجات", "cat:0:1:0"), Markup.button.callback("💰 رصيدي", "balance")],
-    [Markup.button.callback("💳 إيداع", "deposit"), Markup.button.callback("📦 طلباتي", "myorders:1")],
-    [Markup.button.callback("📞 الدعم", "support"), Markup.button.callback("🔄 تحديث", "home")],
-    [Markup.button.callback("👑 الدخول للوحة الإدارة", "admin:menu")],
+    [Markup.button.callback("ًں›’ ط§ظ„ظ…ظ†طھط¬ط§طھ", "cat:0:1:0"), Markup.button.callback("ًں’° ط±طµظٹط¯ظٹ", "balance")],
+    [Markup.button.callback("ًں’³ ط¥ظٹط¯ط§ط¹", "deposit"), Markup.button.callback("ًں“¦ ط·ظ„ط¨ط§طھظٹ", "myorders:1")],
+    [Markup.button.callback("ًں“‍ ط§ظ„ط¯ط¹ظ…", "support"), Markup.button.callback("ًں”„ طھط­ط¯ظٹط«", "home")],
+    [Markup.button.callback("ًں‘‘ ط§ظ„ط¯ط®ظˆظ„ ظ„ظ„ظˆط­ط© ط§ظ„ط¥ط¯ط§ط±ط©", "admin:menu")],
   ]);
 }
 
@@ -783,17 +783,17 @@ async function showMainMenu(ctx) {
   const user = await ensureUser(ctx);
   if (!user) return;
   setStep(user.id, { kind: "idle" });
-  if (user.status === "banned") { await sendOrEdit(ctx, "🚫 تم حظرك من استخدام البوت."); return; }
+  if (user.status === "banned") { await sendOrEdit(ctx, "ًںڑ« طھظ… ط­ط¸ط±ظƒ ظ…ظ† ط§ط³طھط®ط¯ط§ظ… ط§ظ„ط¨ظˆطھ."); return; }
   const [status, rate, adminSessionActive] = await Promise.all([
     getBotStatus(),
     getExchangeRate(),
     isAdminSessionActive(user.id),
   ]);
   if (status === "off" && !authedAdminIds.has(user.id) && !adminSessionActive) {
-    await sendOrEdit(ctx, "🔧 البوت قيد الصيانة. سيعود للعمل بأقرب وقت ممكن. نشكر صبركم! 🙏");
+    await sendOrEdit(ctx, "ًں”§ ط§ظ„ط¨ظˆطھ ظ‚ظٹط¯ ط§ظ„طµظٹط§ظ†ط©. ط³ظٹط¹ظˆط¯ ظ„ظ„ط¹ظ…ظ„ ط¨ط£ظ‚ط±ط¨ ظˆظ‚طھ ظ…ظ…ظƒظ†. ظ†ط´ظƒط± طµط¨ط±ظƒظ…! ًں™ڈ");
     return;
   }
-  const greeting = `أهلاً فيك في متجر المروان 🌟\nالاسم: ${user.first_name ?? "—"}${user.username ? ` (@${user.username})` : ""}\nالرقم: ${user.id}\nالرصيد: ${formatBalance(Number(user.balance), rate)}\n\nاختر من القائمة 👇`;
+  const greeting = `ط£ظ‡ظ„ط§ظ‹ ظپظٹظƒ ظپظٹ ظ…طھط¬ط± ط§ظ„ظ…ط±ظˆط§ظ† ًںŒں\nط§ظ„ط§ط³ظ…: ${user.first_name ?? "â€”"}${user.username ? ` (@${user.username})` : ""}\nط§ظ„ط±ظ‚ظ…: ${user.id}\nط§ظ„ط±طµظٹط¯: ${formatBalance(Number(user.balance), rate)}\n\nط§ط®طھط± ظ…ظ† ط§ظ„ظ‚ط§ط¦ظ…ط© ًں‘‡`;
   if (authedAdminIds.has(user.id) && !adminSessionActive && !user.is_admin) {
     authedAdminIds.delete(user.id);
   }
@@ -805,12 +805,12 @@ async function showContactLinks(ctx) {
   const res = await q("SELECT * FROM contact_links WHERE active=true ORDER BY id");
   const links = res.rows;
   if (!links.length) {
-    await ctx.reply(`📞 للدعم: @${ADMIN_USERNAME}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+    await ctx.reply(`ًں“‍ ظ„ظ„ط¯ط¹ظ…: @${ADMIN_USERNAME}`, Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
     return;
   }
   const rows = links.map(l => [Markup.button.url(l.name, l.link.startsWith("http") ? l.link : `https://t.me/${l.link.replace(/^@/, "")}`)]);
-  rows.push([Markup.button.callback("🏠 الرئيسية", "home")]);
-  await ctx.reply("📞 وسائل التواصل:", Markup.inlineKeyboard(rows));
+  rows.push([Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]);
+  await ctx.reply("ًں“‍ ظˆط³ط§ط¦ظ„ ط§ظ„طھظˆط§طµظ„:", Markup.inlineKeyboard(rows));
 }
 
 // ============================================================
@@ -822,8 +822,8 @@ async function ensureDefaultDepositMethods() {
   const res = await q("SELECT COUNT(*)::int AS c FROM deposit_methods");
   if (res.rows[0].c > 0) { _depositMethodsEnsured = true; return; }
   await q(`INSERT INTO deposit_methods(name,identifier,instructions) VALUES
-    ('شام كاش','02d7079d7229d8860c7d89467bfdc938','حول المبلغ إلى رقم شام كاش أعلاه ثم أرسل صورة الإشعار'),
-    ('سيريتل كاش','32820534','حول المبلغ إلى رقم سيريتل كاش أعلاه ثم أرسل صورة الإشعار')`);
+    ('ط´ط§ظ… ظƒط§ط´','02d7079d7229d8860c7d89467bfdc938','ط­ظˆظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط¥ظ„ظ‰ ط±ظ‚ظ… ط´ط§ظ… ظƒط§ط´ ط£ط¹ظ„ط§ظ‡ ط«ظ… ط£ط±ط³ظ„ طµظˆط±ط© ط§ظ„ط¥ط´ط¹ط§ط±'),
+    ('ط³ظٹط±ظٹطھظ„ ظƒط§ط´','32820534','ط­ظˆظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط¥ظ„ظ‰ ط±ظ‚ظ… ط³ظٹط±ظٹطھظ„ ظƒط§ط´ ط£ط¹ظ„ط§ظ‡ ط«ظ… ط£ط±ط³ظ„ طµظˆط±ط© ط§ظ„ط¥ط´ط¹ط§ط±')`);
   _depositMethodsEnsured = true;
 }
 
@@ -832,22 +832,22 @@ async function showDepositMenu(ctx) {
   const res = await q("SELECT * FROM deposit_methods WHERE active=true ORDER BY id");
   const methods = res.rows;
   if (!methods.length) {
-    await sendOrEdit(ctx, "❌ لا توجد طرق إيداع متاحة حالياً.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+    await sendOrEdit(ctx, "â‌Œ ظ„ط§ طھظˆط¬ط¯ ط·ط±ظ‚ ط¥ظٹط¯ط§ط¹ ظ…طھط§ط­ط© ط­ط§ظ„ظٹط§ظ‹.", Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
     return;
   }
-  const rows = methods.map(m => [Markup.button.callback(`💳 ${m.name}`, `dep:method:${m.id}`)]);
-  rows.push([Markup.button.callback("🏠 الرئيسية", "home")]);
-  await sendOrEdit(ctx, "💳 اختر طريقة الإيداع:", Markup.inlineKeyboard(rows));
+  const rows = methods.map(m => [Markup.button.callback(`ًں’³ ${m.name}`, `dep:method:${m.id}`)]);
+  rows.push([Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]);
+  await sendOrEdit(ctx, "ًں’³ ط§ط®طھط± ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹:", Markup.inlineKeyboard(rows));
 }
 
 async function showDepositMethod(ctx, methodId) {
   const res = await q("SELECT * FROM deposit_methods WHERE id=$1 AND active=true", [methodId]);
   const m = res.rows[0];
-  if (!m) { await ctx.reply("⚠️ الطريقة غير متاحة."); return; }
-  // ── تدفق الإيداع: نطلب المبلغ أولاً، ثم الصورة ──
+  if (!m) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ط·ط±ظٹظ‚ط© ط؛ظٹط± ظ…طھط§ط­ط©."); return; }
+  // â”€â”€ طھط¯ظپظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹: ظ†ط·ظ„ط¨ ط§ظ„ظ…ط¨ظ„ط؛ ط£ظˆظ„ط§ظ‹طŒ ط«ظ… ط§ظ„طµظˆط±ط© â”€â”€
   setStep(ctx.from.id, { kind: "deposit:info", methodId: m.id, methodName: m.name, amount: null, photoFileId: null });
-  const kb = Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "deposit"), Markup.button.callback("❌ إلغاء", "dep:cancel")]]);
-  const infoText = `💳 ${m.name}\n🔑 الرقم: \`${m.identifier}\`\n\n📋 التعليمات:\n${m.instructions}\n\n📝 أرسل المبلغ وصورة إشعار التحويل\n(يمكنك إرسالهما بأي ترتيب)`;
+  const kb = Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "deposit"), Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "dep:cancel")]]);
+  const infoText = `ًں’³ ${m.name}\nًں”‘ ط§ظ„ط±ظ‚ظ…: \`${m.identifier}\`\n\nًں“‹ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ:\n${m.instructions}\n\nًں“‌ ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ظˆطµظˆط±ط© ط¥ط´ط¹ط§ط± ط§ظ„طھط­ظˆظٹظ„\n(ظٹظ…ظƒظ†ظƒ ط¥ط±ط³ط§ظ„ظ‡ظ…ط§ ط¨ط£ظٹ طھط±طھظٹط¨)`;
   if (m.image_file_id) {
     await ctx.replyWithPhoto(m.image_file_id, { caption: infoText, parse_mode: "Markdown", ...kb });
   } else {
@@ -855,7 +855,7 @@ async function showDepositMethod(ctx, methodId) {
   }
 }
 
-// ── إكمال طلب الإيداع بعد استلام المبلغ والصورة ─────────────
+// â”€â”€ ط¥ظƒظ…ط§ظ„ ط·ظ„ط¨ ط§ظ„ط¥ظٹط¯ط§ط¹ ط¨ط¹ط¯ ط§ط³طھظ„ط§ظ… ط§ظ„ظ…ط¨ظ„ط؛ ظˆط§ظ„طµظˆط±ط© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function completeDepositRequest(ctx, step) {
   const res = await q(
     "INSERT INTO deposit_requests(user_id,method_id,method_name,amount,screenshot_file_id) VALUES($1,$2,$3,$4,$5) RETURNING *",
@@ -863,15 +863,15 @@ async function completeDepositRequest(ctx, step) {
   );
   const dep = res.rows[0];
   setStep(ctx.from.id, { kind: "idle" });
-  await ctx.reply("سيتم مراجعة طلبك في أقرب وقت ممكن.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+  await ctx.reply("ط³ظٹطھظ… ظ…ط±ط§ط¬ط¹ط© ط·ظ„ط¨ظƒ ظپظٹ ط£ظ‚ط±ط¨ ظˆظ‚طھ ظ…ظ…ظƒظ†.", Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
   await notifyAdminsDeposit(ctx, dep);
 }
 
 async function notifyAdminsDeposit(ctx, depositRow) {
   const user = await getUser(ctx.from.id);
-  const amountStr = depositRow.amount ? `${Number(depositRow.amount).toFixed(2)}$` : "—";
-  const text = `📥 طلب إيداع جديد\n👤 ${user?.first_name ?? "—"}${user?.username ? " @" + user.username : ""} (${ctx.from.id})\n💳 ${depositRow.method_name}\n💵 المبلغ المُحوَّل: ${amountStr}`;
-  const kb = Markup.inlineKeyboard([[Markup.button.callback("✅ موافقة", `adm:dep:approve:${depositRow.id}`), Markup.button.callback("❌ رفض", `adm:dep:reject:${depositRow.id}`)]]);
+  const amountStr = depositRow.amount ? `${Number(depositRow.amount).toFixed(2)}$` : "â€”";
+  const text = `ًں“¥ ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹ ط¬ط¯ظٹط¯\nًں‘¤ ${user?.first_name ?? "â€”"}${user?.username ? " @" + user.username : ""} (${ctx.from.id})\nًں’³ ${depositRow.method_name}\nًں’µ ط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„ظ…ظڈط­ظˆظژظ‘ظ„: ${amountStr}`;
+  const kb = Markup.inlineKeyboard([[Markup.button.callback("âœ… ظ…ظˆط§ظپظ‚ط©", `adm:dep:approve:${depositRow.id}`), Markup.button.callback("â‌Œ ط±ظپط¶", `adm:dep:reject:${depositRow.id}`)]]);
   const admins = await listAdmins();
   const notifications = [];
   for (const a of admins) {
@@ -891,7 +891,7 @@ async function showCategory(ctx, parentId, page, backTo) {
   const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || _catSessActive);
   const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
-  // ── تشغيل جميع الاستعلامات المستقلة بالتوازي ──
+  // â”€â”€ طھط´ط؛ظٹظ„ ط¬ظ…ظٹط¹ ط§ظ„ط§ط³طھط¹ظ„ط§ظ…ط§طھ ط§ظ„ظ…ط³طھظ‚ظ„ط© ط¨ط§ظ„طھظˆط§ط²ظٹ â”€â”€
   const [kws, excludedStr, content, socialKws, socialMarkup, markup, ovMap] = await Promise.all([
     getExcludedKeywords(),
     getSetting("excluded_category_ids"),
@@ -904,7 +904,7 @@ async function showCategory(ctx, parentId, page, backTo) {
   const excludedCats = new Set(excludedStr.split(",").map(s => Number(s.trim())).filter(Number.isFinite));
   const catOv = await loadCategoryOverrides([...content.categories.map(c => c.id), parentId]);
 
-  // ── إصلاح الأداء: استخرج مجموعة الأقسام الظاهرة مرة واحدة خارج الحلقة ──
+  // â”€â”€ ط¥طµظ„ط§ط­ ط§ظ„ط£ط¯ط§ط،: ط§ط³طھط®ط±ط¬ ظ…ط¬ظ…ظˆط¹ط© ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ط¸ط§ظ‡ط±ط© ظ…ط±ط© ظˆط§ط­ط¯ط© ط®ط§ط±ط¬ ط§ظ„ط­ظ„ظ‚ط© â”€â”€
   const visibleDirectSet = await buildVisibleCategoryIds(excludedCats, kws);
 
   const visibleCats = [];
@@ -935,18 +935,18 @@ async function showCategory(ctx, parentId, page, backTo) {
   ]);
 
   const vcRows = isAdmin ? vcRes.rows : vcRes.rows.filter(v => v.active);
-  const vcBtns = vcRows.map(v => Markup.button.callback(`${v.active ? "📂 " : "🔒 "}${v.name}`.slice(0, 60), `vcat:${v.id}:1:${parentId}`));
+  const vcBtns = vcRows.map(v => Markup.button.callback(`${v.active ? "ًں“‚ " : "ًں”’ "}${v.name}`.slice(0, 60), `vcat:${v.id}:1:${parentId}`));
 
   const manualBtns = mpRes.rows.map(m => {
     const usd = Number(m.price_usd); const syp = Math.round(usd * rate);
-    return Markup.button.callback(`🛒 ${m.name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `mprod:${m.id}:${parentId}`);
+    return Markup.button.callback(`ًں›’ ${m.name} â€¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³`.slice(0, 60), `mprod:${m.id}:${parentId}`);
   });
 
   if (!visibleCats.length && !visibleProds.length && !vcBtns.length && !manualBtns.length) {
     const emptyRows = [];
     if (isAdmin) {
-      emptyRows.push([Markup.button.callback("✏️ تعديل اسم القسم", `adm:catEdit:${parentId}`)]);
-      emptyRows.push([Markup.button.callback("🙈 إخفاء القسم", `adm:catToggle:${parentId}`)]);
+      emptyRows.push([Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ط³ظ… ط§ظ„ظ‚ط³ظ…", `adm:catEdit:${parentId}`)]);
+      emptyRows.push([Markup.button.callback("ًں™ˆ ط¥ط®ظپط§ط، ط§ظ„ظ‚ط³ظ…", `adm:catToggle:${parentId}`)]);
     }
     if (parentId === 0) {
       if (isAdmin) emptyRows.push([Markup.button.callback(backLabel, "admin:menu"), Markup.button.callback(homeLabel, "home")]);
@@ -956,7 +956,7 @@ async function showCategory(ctx, parentId, page, backTo) {
       const backAction = backTo === 0 ? "cat:0:1:0" : `cat:${backTo}:${bp}:0`;
       emptyRows.push([Markup.button.callback(backLabel, backAction), Markup.button.callback(homeLabel, "home")]);
     }
-    await sendOrEdit(ctx, "📭 هذا القسم فارغ حالياً.", Markup.inlineKeyboard(emptyRows)); return;
+    await sendOrEdit(ctx, "ًں“­ ظ‡ط°ط§ ط§ظ„ظ‚ط³ظ… ظپط§ط±ط؛ ط­ط§ظ„ظٹط§ظ‹.", Markup.inlineKeyboard(emptyRows)); return;
   }
 
   visibleCats.sort((a, b) => (catOv.get(a.id)?.sortOrder ?? 9999) - (catOv.get(b.id)?.sortOrder ?? 9999));
@@ -965,17 +965,17 @@ async function showCategory(ctx, parentId, page, backTo) {
     ...visibleCats.map(c => {
       const ov = catOv.get(c.id);
       const label = ov?.customName ?? c.name;
-      return Markup.button.callback(`${ov?.hidden ? "🔒 " : "📂 "}${label}`.slice(0, 60), `cat:${c.id}:1:${parentId}`);
+      return Markup.button.callback(`${ov?.hidden ? "ًں”’ " : "ًں“‚ "}${label}`.slice(0, 60), `cat:${c.id}:1:${parentId}`);
     }),
   ];
 
-  // ── تطبيق markup المستخدم الخاص في أسعار قائمة المنتجات ──
+  // â”€â”€ طھط·ط¨ظٹظ‚ markup ط§ظ„ظ…ط³طھط®ط¯ظ… ط§ظ„ط®ط§طµ ظپظٹ ط£ط³ط¹ط§ط± ظ‚ط§ط¦ظ…ط© ط§ظ„ظ…ظ†طھط¬ط§طھ â”€â”€
   const prodBtns = await Promise.all(visibleProds.map(async p => {
     const ov = ovMap.get(p.id);
     const usd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws, null, userMarkupPercent);
     const syp = Math.round(usd * rate);
     const name = ov?.customName ?? p.name;
-    return Markup.button.callback(`${ov?.hidden ? "🔒 " : "🛒 "}${name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `prod:${p.id}:${parentId}`);
+    return Markup.button.callback(`${ov?.hidden ? "ًں”’ " : "ًں›’ "}${name} â€¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³`.slice(0, 60), `prod:${p.id}:${parentId}`);
   }));
 
   const all = [...catBtns, ...prodBtns, ...manualBtns];
@@ -987,9 +987,9 @@ async function showCategory(ctx, parentId, page, backTo) {
   const rows = [];
   if (isAdmin && parentId !== 0) {
     const curOv = (await q("SELECT * FROM category_overrides WHERE category_id=$1", [parentId])).rows[0];
-    rows.push([Markup.button.callback("✏️ تعديل اسم القسم", `adm:catEdit:${parentId}`), Markup.button.callback(curOv?.hidden ? "👁 إظهار" : "🙈 إخفاء", `adm:catToggle:${parentId}`)]);
-    rows.push([Markup.button.callback("% نسبة ربح القسم", `adm:catMarkup:${parentId}`), Markup.button.callback("🔢 ترتيب القسم", `adm:catSort:${parentId}`)]);
-    rows.push([Markup.button.callback("🚚 نقل كل منتجات القسم", `adm:moveCatAll:${parentId}`), Markup.button.callback("📁 نقل القسم إلى قسم", `adm:moveCatToParent:${parentId}`)]);
+    rows.push([Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ط³ظ… ط§ظ„ظ‚ط³ظ…", `adm:catEdit:${parentId}`), Markup.button.callback(curOv?.hidden ? "ًں‘پ ط¥ط¸ظ‡ط§ط±" : "ًں™ˆ ط¥ط®ظپط§ط،", `adm:catToggle:${parentId}`)]);
+    rows.push([Markup.button.callback("% ظ†ط³ط¨ط© ط±ط¨ط­ ط§ظ„ظ‚ط³ظ…", `adm:catMarkup:${parentId}`), Markup.button.callback("ًں”¢ طھط±طھظٹط¨ ط§ظ„ظ‚ط³ظ…", `adm:catSort:${parentId}`)]);
+    rows.push([Markup.button.callback("ًںڑڑ ظ†ظ‚ظ„ ظƒظ„ ظ…ظ†طھط¬ط§طھ ط§ظ„ظ‚ط³ظ…", `adm:moveCatAll:${parentId}`), Markup.button.callback("ًں“پ ظ†ظ‚ظ„ ط§ظ„ظ‚ط³ظ… ط¥ظ„ظ‰ ظ‚ط³ظ…", `adm:moveCatToParent:${parentId}`)]);
   }
   for (const b of slice) rows.push([b]);
 
@@ -1011,7 +1011,7 @@ async function showCategory(ctx, parentId, page, backTo) {
     rows.push([Markup.button.callback(backLabel, backAction), Markup.button.callback(homeLabel, "home")]);
   }
 
-  const title = parentId === 0 ? "🛒 الأقسام الرئيسية" : `📂 ${catOv.get(parentId)?.customName ?? "محتويات القسم"}`;
+  const title = parentId === 0 ? "ًں›’ ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ط±ط¦ظٹط³ظٹط©" : `ًں“‚ ${catOv.get(parentId)?.customName ?? "ظ…ط­طھظˆظٹط§طھ ط§ظ„ظ‚ط³ظ…"}`;
   await sendOrEdit(ctx, title, Markup.inlineKeyboard(rows));
 }
 
@@ -1028,7 +1028,7 @@ async function showProduct(ctx, productId, backTo) {
     return Markup.button.callback(backLabel, `cat:${to}:${page}:0`);
   }
 
-  if (!p) { await sendOrEdit(ctx, "⚠️ المنتج غير موجود.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
+  if (!p) { await sendOrEdit(ctx, "âڑ ï¸ڈ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…ظˆط¬ظˆط¯.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
 
   const [kws, u, ovMap, markup, rate, socialKws, socialMarkup, sessionActive] = await Promise.all([
     getExcludedKeywords(),
@@ -1043,7 +1043,7 @@ async function showProduct(ctx, productId, backTo) {
   const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || sessionActive);
   const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
-  if (isExcludedProduct(p, kws) && !isAdmin) { await sendOrEdit(ctx, "⚠️ هذا المنتج غير متاح.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
+  if (isExcludedProduct(p, kws) && !isAdmin) { await sendOrEdit(ctx, "âڑ ï¸ڈ ظ‡ط°ط§ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…طھط§ط­.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
   const ov = ovMap.get(p.id);
   const isSocial = isSocialProduct(p.name, p.category_name, socialKws);
   const usd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws, null, userMarkupPercent);
@@ -1053,25 +1053,25 @@ async function showProduct(ctx, productId, backTo) {
   if (isSocial) {
     const parsed = p.qty_values;
     if (parsed && !Array.isArray(parsed) && Number(parsed.min) > 0 && Number(parsed.max) > 0)
-      qtyInfo = `الكمية بين ${Number(parsed.min).toLocaleString("en-US")} و ${Number(parsed.max).toLocaleString("en-US")}`;
+      qtyInfo = `ط§ظ„ظƒظ…ظٹط© ط¨ظٹظ† ${Number(parsed.min).toLocaleString("en-US")} ظˆ ${Number(parsed.max).toLocaleString("en-US")}`;
     else if (parsed && Array.isArray(parsed) && parsed.length > 0)
-      qtyInfo = `الكميات المتاحة: ${parsed.join(", ")}`;
-    else { const [min, max] = await Promise.all([getSocialMinQty(), getSocialMaxQty()]); qtyInfo = `الكمية بين ${min.toLocaleString("en-US")} و ${max.toLocaleString("en-US")}`; }
-  } else if (!p.qty_values) { qtyInfo = "الكمية: 1 (ثابتة)"; }
-  else if (Array.isArray(p.qty_values)) { qtyInfo = `الكميات المتاحة: ${p.qty_values.join(", ")}`; }
-  else { qtyInfo = `الكمية بين ${p.qty_values.min} و ${p.qty_values.max}`; }
+      qtyInfo = `ط§ظ„ظƒظ…ظٹط§طھ ط§ظ„ظ…طھط§ط­ط©: ${parsed.join(", ")}`;
+    else { const [min, max] = await Promise.all([getSocialMinQty(), getSocialMaxQty()]); qtyInfo = `ط§ظ„ظƒظ…ظٹط© ط¨ظٹظ† ${min.toLocaleString("en-US")} ظˆ ${max.toLocaleString("en-US")}`; }
+  } else if (!p.qty_values) { qtyInfo = "ط§ظ„ظƒظ…ظٹط©: 1 (ط«ط§ط¨طھط©)"; }
+  else if (Array.isArray(p.qty_values)) { qtyInfo = `ط§ظ„ظƒظ…ظٹط§طھ ط§ظ„ظ…طھط§ط­ط©: ${p.qty_values.join(", ")}`; }
+  else { qtyInfo = `ط§ظ„ظƒظ…ظٹط© ط¨ظٹظ† ${p.qty_values.min} ظˆ ${p.qty_values.max}`; }
 
   const displayName = ov?.customName ?? p.name;
   const instructions = ov?.instructions?.trim() || getProductApiNotes(p);
-  const text = `🛒 ${displayName}\n${p.category_name ? `القسم: ${p.category_name}\n` : ""}السعر: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س\n${qtyInfo}${instructions ? `\n\n📋 تعليمات:\n${instructions}` : ""}`;
+  const text = `ًں›’ ${displayName}\n${p.category_name ? `ط§ظ„ظ‚ط³ظ…: ${p.category_name}\n` : ""}ط§ظ„ط³ط¹ط±: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³\n${qtyInfo}${instructions ? `\n\nًں“‹ طھط¹ظ„ظٹظ…ط§طھ:\n${instructions}` : ""}`;
 
   const backBtnResolved = await resolveBackBtn(backTo);
   const btns = [];
-  if (p.available || isAdmin) btns.push([Markup.button.callback("🛒 طلب الآن", `buy:${p.id}:${backTo}`)]);
+  if (p.available || isAdmin) btns.push([Markup.button.callback("ًں›’ ط·ظ„ط¨ ط§ظ„ط¢ظ†", `buy:${p.id}:${backTo}`)]);
   if (isAdmin) {
-    btns.push([Markup.button.callback("✏️ تعديل السعر", `adm:editPrice:${p.id}`), Markup.button.callback("📋 تعليمات", `adm:editInstr:${p.id}`)]);
-    btns.push([Markup.button.callback("📝 تعديل الاسم", `adm:renameProd:${p.id}`), Markup.button.callback("🚚 نقل لقسم آخر", `adm:moveProd:${p.id}`)]);
-    btns.push([Markup.button.callback(ov?.hidden ? "👁 إظهار" : "🙈 إخفاء", `adm:hideProd:${p.id}`)]);
+    btns.push([Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ظ„ط³ط¹ط±", `adm:editPrice:${p.id}`), Markup.button.callback("ًں“‹ طھط¹ظ„ظٹظ…ط§طھ", `adm:editInstr:${p.id}`)]);
+    btns.push([Markup.button.callback("ًں“‌ طھط¹ط¯ظٹظ„ ط§ظ„ط§ط³ظ…", `adm:renameProd:${p.id}`), Markup.button.callback("ًںڑڑ ظ†ظ‚ظ„ ظ„ظ‚ط³ظ… ط¢ط®ط±", `adm:moveProd:${p.id}`)]);
+    btns.push([Markup.button.callback(ov?.hidden ? "ًں‘پ ط¥ط¸ظ‡ط§ط±" : "ًں™ˆ ط¥ط®ظپط§ط،", `adm:hideProd:${p.id}`)]);
   }
   btns.push([backBtnResolved, Markup.button.callback(homeLabel, "home")]);
   await sendOrEdit(ctx, text, Markup.inlineKeyboard(btns));
@@ -1094,7 +1094,7 @@ async function showVirtualCategory(ctx, vcId, page, backTo) {
     getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel(),
   ]);
   const vc = vcRes.rows[0];
-  if (!vc || (!vc.active && !isAdmin)) { await sendOrEdit(ctx, "⚠️ هذا القسم غير متاح.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
+  if (!vc || (!vc.active && !isAdmin)) { await sendOrEdit(ctx, "âڑ ï¸ڈ ظ‡ط°ط§ ط§ظ„ظ‚ط³ظ… ط؛ظٹط± ظ…طھط§ط­.", Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])); return; }
   let backBtn;
   if (backTo === 0) {
     backBtn = Markup.button.callback(backLabel, "cat:0:1:0");
@@ -1105,7 +1105,7 @@ async function showVirtualCategory(ctx, vcId, page, backTo) {
 
   const subVcRes = await q("SELECT * FROM virtual_categories WHERE parent_id=$1 ORDER BY position", [vcId]);
   const subVcs = isAdmin ? subVcRes.rows : subVcRes.rows.filter(v => v.active);
-  const subVcBtns = subVcs.map(v => Markup.button.callback(`${v.active ? "📂 " : "🔒 "}${v.name}`.slice(0, 60), `vcat:${v.id}:1:${vcId}`));
+  const subVcBtns = subVcs.map(v => Markup.button.callback(`${v.active ? "ًں“‚ " : "ًں”’ "}${v.name}`.slice(0, 60), `vcat:${v.id}:1:${vcId}`));
 
   const movedPids = [];
   for (const [pid, ov] of allOv) { if (ov.customCategoryId === vcId) movedPids.push(pid); }
@@ -1123,18 +1123,18 @@ async function showVirtualCategory(ctx, vcId, page, backTo) {
     : await q("SELECT * FROM manual_products WHERE category_id=$1 AND category_is_virtual=true AND active=true ORDER BY id", [vcId]);
   const manualBtnsVc = mpRes.rows.map(m => {
     const usd = Number(m.price_usd); const syp = Math.round(usd * rate);
-    return Markup.button.callback(`🛒 ${m.name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `mprod:${m.id}:${vcId}`);
+    return Markup.button.callback(`ًں›’ ${m.name} â€¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³`.slice(0, 60), `mprod:${m.id}:${vcId}`);
   });
 
-  if (!visible.length && !subVcBtns.length && !manualBtnsVc.length && !isAdmin) { await sendOrEdit(ctx, "📭 هذا القسم فارغ حالياً.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
+  if (!visible.length && !subVcBtns.length && !manualBtnsVc.length && !isAdmin) { await sendOrEdit(ctx, "ًں“­ ظ‡ط°ط§ ط§ظ„ظ‚ط³ظ… ظپط§ط±ط؛ ط­ط§ظ„ظٹط§ظ‹.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
 
   const ovMap = await loadOverrideMap(visible.map(p => p.id));
-  // ── تطبيق markup المستخدم الخاص ──
+  // â”€â”€ طھط·ط¨ظٹظ‚ markup ط§ظ„ظ…ط³طھط®ط¯ظ… ط§ظ„ط®ط§طµ â”€â”€
   const prodBtns = await Promise.all(visible.map(async p => {
     const ov = ovMap.get(p.id);
     const usd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws, null, userMarkupPercent);
     const syp = Math.round(usd * rate);
-    return Markup.button.callback(`${ov?.hidden ? "🔒 " : "🛒 "}${ov?.customName ?? p.name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `prod:${p.id}:${vcId}`);
+    return Markup.button.callback(`${ov?.hidden ? "ًں”’ " : "ًں›’ "}${ov?.customName ?? p.name} â€¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³`.slice(0, 60), `prod:${p.id}:${vcId}`);
   }));
 
   const allBtns = [...subVcBtns, ...prodBtns, ...manualBtnsVc];
@@ -1145,8 +1145,8 @@ async function showVirtualCategory(ctx, vcId, page, backTo) {
 
   const rows = [];
   if (isAdmin) {
-    rows.push([Markup.button.callback("✏️ تعديل الاسم", `adm:vcEdit:${vcId}`), Markup.button.callback(vc.active ? "🙈 إخفاء" : "👁 إظهار", `adm:vcToggle:${vcId}`)]);
-    rows.push([Markup.button.callback("➕ قسم فرعي", `adm:addVCatSub:${vcId}`), Markup.button.callback("🗑️ حذف القسم", `adm:vcDel:${vcId}`)]);
+    rows.push([Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ظ„ط§ط³ظ…", `adm:vcEdit:${vcId}`), Markup.button.callback(vc.active ? "ًں™ˆ ط¥ط®ظپط§ط،" : "ًں‘پ ط¥ط¸ظ‡ط§ط±", `adm:vcToggle:${vcId}`)]);
+    rows.push([Markup.button.callback("â‍• ظ‚ط³ظ… ظپط±ط¹ظٹ", `adm:addVCatSub:${vcId}`), Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ ط§ظ„ظ‚ط³ظ…", `adm:vcDel:${vcId}`)]);
   }
   for (const b of slice) rows.push([b]);
   const nav = [];
@@ -1155,7 +1155,7 @@ async function showVirtualCategory(ctx, vcId, page, backTo) {
   if (safe < totalPages) nav.push(Markup.button.callback(nextLabel, `vcat:${vcId}:${safe + 1}:${backTo}`));
   if (nav.length > 1) rows.push(nav);
   rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
-  await sendOrEdit(ctx, `📂 ${vc.name}`, Markup.inlineKeyboard(rows));
+  await sendOrEdit(ctx, `ًں“‚ ${vc.name}`, Markup.inlineKeyboard(rows));
 }
 
 async function showManualProduct(ctx, mId, backTo) {
@@ -1171,15 +1171,15 @@ async function showManualProduct(ctx, mId, backTo) {
   const m = mRes.rows[0];
   const u = await getUser(ctx.from.id);
   const isAdmin = !!u?.is_admin;
-  if (!m || (!m.active && !isAdmin)) { await sendOrEdit(ctx, "⚠️ المنتج غير متاح.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
+  if (!m || (!m.active && !isAdmin)) { await sendOrEdit(ctx, "âڑ ï¸ڈ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…طھط§ط­.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
   const rate = await getExchangeRate();
   const usd = Number(m.price_usd); const syp = Math.round(usd * rate);
   const balance = u ? Number(u.balance) : 0;
   const canAfford = balance >= usd;
-  const text = `🛒 ${m.name}\nالسعر: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س\nالرصيد: ${formatBalance(balance, rate)}${m.instructions ? `\n\n📋 ${m.instructions}` : ""}`;
+  const text = `ًں›’ ${m.name}\nط§ظ„ط³ط¹ط±: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³\nط§ظ„ط±طµظٹط¯: ${formatBalance(balance, rate)}${m.instructions ? `\n\nًں“‹ ${m.instructions}` : ""}`;
   const rows = [];
-  if (m.active && canAfford) rows.push([Markup.button.callback("🛒 طلب الآن", `mbuy:${m.id}`)]);
-  else if (m.active && !canAfford) rows.push([Markup.button.callback("💳 شحن رصيد", "deposit")]);
+  if (m.active && canAfford) rows.push([Markup.button.callback("ًں›’ ط·ظ„ط¨ ط§ظ„ط¢ظ†", `mbuy:${m.id}`)]);
+  else if (m.active && !canAfford) rows.push([Markup.button.callback("ًں’³ ط´ط­ظ† ط±طµظٹط¯", "deposit")]);
   rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
   await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
 }
@@ -1209,7 +1209,7 @@ function formatApiResponseClean(resp) {
     const raw = orderData.status;
     const label = statusLabel(raw);
     if (!parts.some(p => p.includes(raw) || p.includes(label))) {
-      if (!ACCEPT_STATUSES.has(raw.toLowerCase())) parts.push(`📊 الحالة: ${label}`);
+      if (!ACCEPT_STATUSES.has(raw.toLowerCase())) parts.push(`ًں“ٹ ط§ظ„ط­ط§ظ„ط©: ${label}`);
     }
   }
   return [...new Set(parts)].filter(Boolean).join("\n\n").trim();
@@ -1227,9 +1227,9 @@ function parseQtyValues(qv) {
 
 function statusLabel(s) {
   const n = (s ?? "").toString().toLowerCase().trim();
-  if (ACCEPT_STATUSES.has(n) || n === "1" || n === "true") return "✅ مقبول";
-  if (REJECT_STATUSES.has(n) || n === "0" || n === "false") return "❌ مرفوض";
-  return "⏳ انتظار";
+  if (ACCEPT_STATUSES.has(n) || n === "1" || n === "true") return "âœ… ظ…ظ‚ط¨ظˆظ„";
+  if (REJECT_STATUSES.has(n) || n === "0" || n === "false") return "â‌Œ ظ…ط±ظپظˆط¶";
+  return "âڈ³ ط§ظ†طھط¸ط§ط±";
 }
 
 function formatPriceLabel(qty, unitPriceUsd) {
@@ -1242,17 +1242,17 @@ function formatPriceLabel(qty, unitPriceUsd) {
   else if (total >= 0.001) totalStr = total.toFixed(4);
   else totalStr = total.toFixed(6);
   if (parseFloat(totalStr) === 0) totalStr = total.toFixed(8);
-  return `${Number(qty).toLocaleString("en-US")} — ${totalStr}$`;
+  return `${Number(qty).toLocaleString("en-US")} â€” ${totalStr}$`;
 }
 
 async function startOrderFlow(ctx, productId, backTo) {
   let all = await getCachedProducts();
   let p = all.find(x => x.id === productId);
   if (!p) { all = await fetchAllProducts(); p = all.find(x => x.id === productId); }
-  if (!p) { await ctx.reply("⚠️ المنتج غير موجود."); return; }
-  if (!p.available) { await ctx.reply("⚠️ هذا المنتج غير متاح حالياً."); return; }
+  if (!p) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
+  if (!p.available) { await ctx.reply("âڑ ï¸ڈ ظ‡ط°ط§ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…طھط§ط­ ط­ط§ظ„ظٹط§ظ‹."); return; }
 
-  // ── تنفيذ موازٍ لتسريع الاستجابة ──
+  // â”€â”€ طھظ†ظپظٹط° ظ…ظˆط§ط²ظچ ظ„طھط³ط±ظٹط¹ ط§ظ„ط§ط³طھط¬ط§ط¨ط© â”€â”€
   const [ovMap, markup, socialKws, socialMarkup, user] = await Promise.all([
     loadOverrideMap([p.id]),
     getMarkupPercent(),
@@ -1274,15 +1274,15 @@ async function startOrderFlow(ctx, productId, backTo) {
         const label = formatPriceLabel(v, unitPriceUsd);
         return [Markup.button.callback(label, `ord:qty:${v}`)];
       });
-      rows.push([Markup.button.callback("❌ إلغاء", "ord:cancel")]);
-      await sendOrEdit(ctx, `🛒 ${p.name}\n\nاختر الكمية:`, Markup.inlineKeyboard(rows)); return;
+      rows.push([Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]);
+      await sendOrEdit(ctx, `ًں›’ ${p.name}\n\nط§ط®طھط± ط§ظ„ظƒظ…ظٹط©:`, Markup.inlineKeyboard(rows)); return;
     }
     let min, max;
     if (parsedSocial.kind === "range" && Number.isFinite(parsedSocial.min) && parsedSocial.min > 0)
       { min = parsedSocial.min; max = parsedSocial.max; }
     else { min = await getSocialMinQty(); max = await getSocialMaxQty(); }
     setStep(ctx.from.id, { kind: "order:qty", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: { min, max }, backTo });
-    await sendOrEdit(ctx, `🛒 ${p.name}\n\nأرسل الكمية (بين ${min.toLocaleString("en-US")} و ${max.toLocaleString("en-US")}):`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]])); return;
+    await sendOrEdit(ctx, `ًں›’ ${p.name}\n\nط£ط±ط³ظ„ ط§ظ„ظƒظ…ظٹط© (ط¨ظٹظ† ${min.toLocaleString("en-US")} ظˆ ${max.toLocaleString("en-US")}):`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]])); return;
   }
 
   const parsed = parseQtyValues(p.qty_values);
@@ -1293,18 +1293,18 @@ async function startOrderFlow(ctx, productId, backTo) {
       const label = formatPriceLabel(v, unitPriceUsd);
       return [Markup.button.callback(label, `ord:qty:${v}`)];
     });
-    rows.push([Markup.button.callback("❌ إلغاء", "ord:cancel")]);
-    await sendOrEdit(ctx, `🛒 ${p.name}\nاختر الكمية:`, Markup.inlineKeyboard(rows)); return;
+    rows.push([Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]);
+    await sendOrEdit(ctx, `ًں›’ ${p.name}\nط§ط®طھط± ط§ظ„ظƒظ…ظٹط©:`, Markup.inlineKeyboard(rows)); return;
   }
   setStep(ctx.from.id, { kind: "order:qty", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: { min: parsed.min, max: parsed.max }, backTo });
-  await sendOrEdit(ctx, `🛒 ${p.name}\nأرسل الكمية (بين ${parsed.min} و ${parsed.max}):`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]]));
+  await sendOrEdit(ctx, `ًں›’ ${p.name}\nط£ط±ط³ظ„ ط§ظ„ظƒظ…ظٹط© (ط¨ظٹظ† ${parsed.min} ظˆ ${parsed.max}):`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]]));
 }
 
 async function askNextParam(ctx, p, unitPriceUsd, qty, paramKeys, collected, idx, backTo) {
   if (idx >= paramKeys.length) { await showOrderConfirmation(ctx, p, unitPriceUsd, qty, collected, backTo); return; }
   setStep(ctx.from.id, { kind: "order:params", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, qty, paramKeys, collected, idx, backTo });
   const key = paramKeys[idx];
-  await ctx.reply(`📝 أدخل قيمة الحقل: *${key}*`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]]) });
+  await ctx.reply(`ًں“‌ ط£ط¯ط®ظ„ ظ‚ظٹظ…ط© ط§ظ„ط­ظ‚ظ„: *${key}*`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]]) });
 }
 
 async function showOrderConfirmation(ctx, p, unitPriceUsd, qty, collected, backTo) {
@@ -1313,14 +1313,14 @@ async function showOrderConfirmation(ctx, p, unitPriceUsd, qty, collected, backT
   const totalSyp = Math.round(totalUsd * rate);
   const u = await getUser(ctx.from.id);
   const balance = u ? Number(u.balance) : 0;
-  const paramsLines = Object.entries(collected).map(([k, v]) => `• ${k}: ${v}`).join("\n");
+  const paramsLines = Object.entries(collected).map(([k, v]) => `â€¢ ${k}: ${v}`).join("\n");
   setStep(ctx.from.id, { kind: "order:params", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, qty, paramKeys: Object.keys(collected), collected, idx: Object.keys(collected).length, backTo });
   const lowBalance = balance < totalUsd;
   const totalUsdStr = totalUsd < 0.005 ? totalUsd.toFixed(4) : totalUsd.toFixed(2);
-  const text = `🧾 تأكيد الطلب\n\n🛒 المنتج: ${p.name}\n🔢 الكمية: ${qty.toLocaleString("en-US")}\n${paramsLines ? paramsLines + "\n" : ""}💰 الإجمالي: ${totalUsdStr}$ | ${totalSyp.toLocaleString("en-US")} ل.س\n💳 رصيدك: ${formatBalance(balance, rate)}\n\n${lowBalance ? "❌ ليس لديك رصيد كافي. يرجى شحن رصيدك ثم المحاولة مجدداً." : "هل تريد تأكيد الطلب؟"}`;
+  const text = `ًں§¾ طھط£ظƒظٹط¯ ط§ظ„ط·ظ„ط¨\n\nًں›’ ط§ظ„ظ…ظ†طھط¬: ${p.name}\nًں”¢ ط§ظ„ظƒظ…ظٹط©: ${qty.toLocaleString("en-US")}\n${paramsLines ? paramsLines + "\n" : ""}ًں’° ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ: ${totalUsdStr}$ | ${totalSyp.toLocaleString("en-US")} ظ„.ط³\nًں’³ ط±طµظٹط¯ظƒ: ${formatBalance(balance, rate)}\n\n${lowBalance ? "â‌Œ ظ„ظٹط³ ظ„ط¯ظٹظƒ ط±طµظٹط¯ ظƒط§ظپظٹ. ظٹط±ط¬ظ‰ ط´ط­ظ† ط±طµظٹط¯ظƒ ط«ظ… ط§ظ„ظ…ط­ط§ظˆظ„ط© ظ…ط¬ط¯ط¯ط§ظ‹." : "ظ‡ظ„ طھط±ظٹط¯ طھط£ظƒظٹط¯ ط§ظ„ط·ظ„ط¨طں"}`;
   const rows = lowBalance
-    ? [[Markup.button.callback("💳 شحن رصيد", "deposit")], [Markup.button.callback("❌ إلغاء", "ord:cancel")]]
-    : [[Markup.button.callback("✅ تأكيد وتنفيذ", "ord:confirm"), Markup.button.callback("❌ إلغاء", "ord:cancel")]];
+    ? [[Markup.button.callback("ًں’³ ط´ط­ظ† ط±طµظٹط¯", "deposit")], [Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]]
+    : [[Markup.button.callback("âœ… طھط£ظƒظٹط¯ ظˆطھظ†ظپظٹط°", "ord:confirm"), Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]];
   await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
 }
 
@@ -1343,12 +1343,12 @@ async function executeOrder(ctx) {
   if (step.kind !== "order:params") return;
   let all = await getCachedProducts(); let p = all.find(x => x.id === step.productId);
   if (!p) { all = await fetchAllProducts(); p = all.find(x => x.id === step.productId); }
-  if (!p) { await ctx.reply("⚠️ المنتج غير موجود."); return; }
+  if (!p) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
 
   const totalUsd = Number((step.priceUsd * step.qty).toFixed(4));
   const u = await getUser(ctx.from.id);
   const balance = u ? Number(u.balance) : 0;
-  if (balance < totalUsd) { await ctx.reply("❌ ليس لديك رصيد كافٍ.", Markup.inlineKeyboard([[Markup.button.callback("💳 شحن رصيد", "deposit")], [Markup.button.callback("🏠 الرئيسية", "home")]])); setStep(ctx.from.id, { kind: "idle" }); return; }
+  if (balance < totalUsd) { await ctx.reply("â‌Œ ظ„ظٹط³ ظ„ط¯ظٹظƒ ط±طµظٹط¯ ظƒط§ظپظچ.", Markup.inlineKeyboard([[Markup.button.callback("ًں’³ ط´ط­ظ† ط±طµظٹط¯", "deposit")], [Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])); setStep(ctx.from.id, { kind: "idle" }); return; }
   await clearInlineKeyboard(ctx).catch(() => {});
   const orderUuid = crypto.randomUUID();
   await adjustBalance(ctx.from.id, -totalUsd);
@@ -1362,7 +1362,7 @@ async function executeOrder(ctx) {
     [ctx.from.id, p.id, p.name, String(step.qty), JSON.stringify(step.collected), String(totalUsd), orderUuid]
   );
   const order = insRes.rows[0];
-  await ctx.reply("⏳ جاري تنفيذ طلبك...");
+  await ctx.reply("âڈ³ ط¬ط§ط±ظٹ طھظ†ظپظٹط° ط·ظ„ط¨ظƒ...");
   let resp;
   let finalApiStatus;
 
@@ -1382,7 +1382,7 @@ async function executeOrder(ctx) {
       }
     }
   } catch {
-    resp = { status: "ERR", message: "خطأ شبكة" };
+    resp = { status: "ERR", message: "ط®ط·ط£ ط´ط¨ظƒط©" };
     finalApiStatus = "err";
   }
 
@@ -1398,12 +1398,12 @@ async function executeOrder(ctx) {
     setStep(ctx.from.id, { kind: "idle" });
     const rejectReason = extractDeliveredCode(detailedResp) ||
       (detailedResp?.message && detailedResp.message !== "Network error" ? detailedResp.message : null);
-    // ── لا نعرض رقم الطلب للمستخدم ──
+    // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
     await ctx.reply(
-      `❌ تم رفض الطلب.\n` +
-      (rejectReason ? `📋 السبب: ${rejectReason}\n` : "") +
-      `✅ تمت إعادة ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`,
-      Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])
+      `â‌Œ طھظ… ط±ظپط¶ ط§ظ„ط·ظ„ط¨.\n` +
+      (rejectReason ? `ًں“‹ ط§ظ„ط³ط¨ط¨: ${rejectReason}\n` : "") +
+      `âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ظ„.ط³ ط¥ظ„ظ‰ ط±طµظٹط¯ظƒ.`,
+      Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])
     );
     return;
   }
@@ -1411,12 +1411,12 @@ async function executeOrder(ctx) {
   if (isPending) {
     await q("UPDATE orders SET status='pending', api_response=$1 WHERE id=$2", [JSON.stringify(resp), order.id]);
     setStep(ctx.from.id, { kind: "idle" });
-    // ── لا نعرض رقم الطلب للمستخدم ──
+    // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
     await ctx.reply(
-      `⏳ طلبك قيد المعالجة.\n🛒 ${p.name} × ${step.qty}\n💰 ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س\n\nسأُعلمك تلقائياً عند اكتماله.`,
+      `âڈ³ ط·ظ„ط¨ظƒ ظ‚ظٹط¯ ط§ظ„ظ…ط¹ط§ظ„ط¬ط©.\nًں›’ ${p.name} أ— ${step.qty}\nًں’° ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ظ„.ط³\n\nط³ط£ظڈط¹ظ„ظ…ظƒ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ط¹ظ†ط¯ ط§ظƒطھظ…ط§ظ„ظ‡.`,
       Markup.inlineKeyboard([
-        [Markup.button.callback("🔄 تحديث الحالة", `ord:check:${order.id}`)],
-        [Markup.button.callback("🏠 الرئيسية", "home")]
+        [Markup.button.callback("ًں”„ طھط­ط¯ظٹط« ط§ظ„ط­ط§ظ„ط©", `ord:check:${order.id}`)],
+        [Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]
       ])
     );
     return;
@@ -1427,13 +1427,13 @@ async function executeOrder(ctx) {
   await q("UPDATE orders SET status='accept', oranos_order_id=$1, api_response=$2, delivered_code=$3 WHERE id=$4",
     [oranosOrderId, JSON.stringify(resp), deliveredCode ?? null, order.id]);
   setStep(ctx.from.id, { kind: "idle" });
-  // ── لا نعرض رقم الطلب للمستخدم ──
-  await ctx.reply(`✅ تم تنفيذ طلبك بنجاح!\n🛒 ${p.name} × ${step.qty}\n💰 ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س`);
+  // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
+  await ctx.reply(`âœ… طھظ… طھظ†ظپظٹط° ط·ظ„ط¨ظƒ ط¨ظ†ط¬ط§ط­!\nًں›’ ${p.name} أ— ${step.qty}\nًں’° ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ظ„.ط³`);
   if (deliveredCode) {
-    await ctx.reply(`🔑 تفاصيل الطلب:\n\`\`\`\n${deliveredCode}\n\`\`\``,
-      { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]) });
+    await ctx.reply(`ًں”‘ طھظپط§طµظٹظ„ ط§ظ„ط·ظ„ط¨:\n\`\`\`\n${deliveredCode}\n\`\`\``,
+      { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]) });
   } else {
-    await ctx.reply("شكراً لاستخدامك متجرنا! 🌟", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+    await ctx.reply("ط´ظƒط±ط§ظ‹ ظ„ط§ط³طھط®ط¯ط§ظ…ظƒ ظ…طھط¬ط±ظ†ط§! ًںŒں", Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
   }
 }
 
@@ -1441,22 +1441,22 @@ async function showMyOrders(ctx, page) {
   const limit = 8; const offset = (page - 1) * limit;
   const res = await q("SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3", [ctx.from.id, limit + 1, offset]);
   const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
-  if (!slice.length) { await sendOrEdit(ctx, "📭 لا يوجد لديك أي طلبات بعد.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
-  // ── لا نعرض رقم الطلب في قائمة الطلبات ──
-  const lines = slice.map(r => `🛒 ${r.product_name} ×${r.qty} • ${Number(r.price_usd).toFixed(2)}$ • ${statusLabel(r.status)}`);
+  if (!slice.length) { await sendOrEdit(ctx, "ًں“­ ظ„ط§ ظٹظˆط¬ط¯ ظ„ط¯ظٹظƒ ط£ظٹ ط·ظ„ط¨ط§طھ ط¨ط¹ط¯.", Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])); return; }
+  // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظپظٹ ظ‚ط§ط¦ظ…ط© ط§ظ„ط·ظ„ط¨ط§طھ â”€â”€
+  const lines = slice.map(r => `ًں›’ ${r.product_name} أ—${r.qty} â€¢ ${Number(r.price_usd).toFixed(2)}$ â€¢ ${statusLabel(r.status)}`);
   const navRow = [];
-  if (page > 1) navRow.push(Markup.button.callback("⬅️ السابق", `myorders:${page - 1}`));
-  if (hasNext) navRow.push(Markup.button.callback("التالي ➡️", `myorders:${page + 1}`));
+  if (page > 1) navRow.push(Markup.button.callback("â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚", `myorders:${page - 1}`));
+  if (hasNext) navRow.push(Markup.button.callback("ط§ظ„طھط§ظ„ظٹ â‍،ï¸ڈ", `myorders:${page + 1}`));
   const kb = []; if (navRow.length) kb.push(navRow);
-  kb.push([Markup.button.callback("🏠 الرئيسية", "home")]);
-  await sendOrEdit(ctx, `📦 طلباتي\n\n${lines.join("\n")}`, Markup.inlineKeyboard(kb));
+  kb.push([Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]);
+  await sendOrEdit(ctx, `ًں“¦ ط·ظ„ط¨ط§طھظٹ\n\n${lines.join("\n")}`, Markup.inlineKeyboard(kb));
 }
 
 async function checkOrderStatus(ctx, orderId) {
   const res = await q("SELECT * FROM orders WHERE id=$1", [orderId]);
   const row = res.rows[0];
-  if (!row || Number(row.user_id) !== ctx.from.id) { await ctx.reply("⚠️ غير موجود."); return; }
-  if (!row.oranos_order_id) { await ctx.reply(`الحالة الحالية: ${statusLabel(row.status)}`); return; }
+  if (!row || Number(row.user_id) !== ctx.from.id) { await ctx.reply("âڑ ï¸ڈ ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
+  if (!row.oranos_order_id) { await ctx.reply(`ط§ظ„ط­ط§ظ„ط© ط§ظ„ط­ط§ظ„ظٹط©: ${statusLabel(row.status)}`); return; }
   try {
     const resp = await checkOrder(row.oranos_order_id);
     const orderData = extractOrderData(resp);
@@ -1469,12 +1469,12 @@ async function checkOrderStatus(ctx, orderId) {
         code ? [finalStatus, JSON.stringify(resp), code, row.id] : [finalStatus, JSON.stringify(resp), row.id]);
       if (isRejected && !REJECT_STATUSES.has(row.status)) await adjustBalance(ctx.from.id, Number(row.price_usd));
       const cleanText = formatApiResponseClean(resp);
-      // ── لا نعرض رقم الطلب للمستخدم ──
-      if (code && !row.delivered_code) await ctx.reply(`🔑 تفاصيل الطلب:\n\n${code}`);
-      else if (cleanText) await ctx.reply(`📋 تحديث طلبك:\n\n${cleanText}`);
+      // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
+      if (code && !row.delivered_code) await ctx.reply(`ًں”‘ طھظپط§طµظٹظ„ ط§ظ„ط·ظ„ط¨:\n\n${code}`);
+      else if (cleanText) await ctx.reply(`ًں“‹ طھط­ط¯ظٹط« ط·ظ„ط¨ظƒ:\n\n${cleanText}`);
     }
-    await ctx.reply(`الحالة الحالية لطلبك: ${statusLabel(finalStatus)}`);
-  } catch { await ctx.reply("⚠️ تعذّر فحص الحالة الآن."); }
+    await ctx.reply(`ط§ظ„ط­ط§ظ„ط© ط§ظ„ط­ط§ظ„ظٹط© ظ„ط·ظ„ط¨ظƒ: ${statusLabel(finalStatus)}`);
+  } catch { await ctx.reply("âڑ ï¸ڈ طھط¹ط°ظ‘ط± ظپط­طµ ط§ظ„ط­ط§ظ„ط© ط§ظ„ط¢ظ†."); }
 }
 
 async function pollOneOrder(bot, order) {
@@ -1509,34 +1509,34 @@ async function pollOneOrder(bot, order) {
     if (!prevRejected) await adjustBalance(order.user_id, priceUsd);
     const refundSyp = Math.round(priceUsd * rate);
     const rejectReply = code || cleanText || null;
-    // ── لا نعرض رقم الطلب للمستخدم ──
+    // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
     const msgLines = [
-      `❌ تم رفض أحد طلباتك`,
-      `🛒 المنتج: ${order.product_name}`,
-      ...(rejectReply ? [`📋 الرد: ${rejectReply}`] : []),
-      `💰 تمت إعادة ${priceUsd.toFixed(2)}$ | ${refundSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`
+      `â‌Œ طھظ… ط±ظپط¶ ط£ط­ط¯ ط·ظ„ط¨ط§طھظƒ`,
+      `ًں›’ ط§ظ„ظ…ظ†طھط¬: ${order.product_name}`,
+      ...(rejectReply ? [`ًں“‹ ط§ظ„ط±ط¯: ${rejectReply}`] : []),
+      `ًں’° طھظ…طھ ط¥ط¹ط§ط¯ط© ${priceUsd.toFixed(2)}$ | ${refundSyp.toLocaleString("en-US")} ظ„.ط³ ط¥ظ„ظ‰ ط±طµظٹط¯ظƒ.`
     ];
     await bot.telegram.sendMessage(order.user_id, msgLines.join("\n"),
-      Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+      Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])).catch(() => {});
   } else if (isAccepted) {
     const priceSyp = Math.round(priceUsd * rate);
-    // ── لا نعرض رقم الطلب للمستخدم ──
+    // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
     const msgLines = [
-      `✅ تم تنفيذ أحد طلباتك بنجاح!`,
-      `🛒 المنتج: ${order.product_name}`,
-      `💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`
+      `âœ… طھظ… طھظ†ظپظٹط° ط£ط­ط¯ ط·ظ„ط¨ط§طھظƒ ط¨ظ†ط¬ط§ط­!`,
+      `ًں›’ ط§ظ„ظ…ظ†طھط¬: ${order.product_name}`,
+      `ًں’° ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ظ„.ط³`
     ];
     if (code) {
-      msgLines.push(`\n🔑 تفاصيل الطلب:\n\`\`\`\n${code}\n\`\`\``);
+      msgLines.push(`\nًں”‘ طھظپط§طµظٹظ„ ط§ظ„ط·ظ„ط¨:\n\`\`\`\n${code}\n\`\`\``);
       await bot.telegram.sendMessage(order.user_id, msgLines.join("\n"),
-        { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]) }).catch(() => {});
+        { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]) }).catch(() => {});
     } else if (cleanText) {
-      msgLines.push(`\n📋 تفاصيل الطلب:\n\`\`\`\n${cleanText}\n\`\`\``);
+      msgLines.push(`\nًں“‹ طھظپط§طµظٹظ„ ط§ظ„ط·ظ„ط¨:\n\`\`\`\n${cleanText}\n\`\`\``);
       await bot.telegram.sendMessage(order.user_id, msgLines.join("\n"),
-        { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]) }).catch(() => {});
+        { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]) }).catch(() => {});
     } else {
       await bot.telegram.sendMessage(order.user_id, msgLines.join("\n"),
-        Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+        Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])).catch(() => {});
     }
   }
 }
@@ -1568,27 +1568,27 @@ async function requireAdmin(ctx) {
   if (!u?.is_admin) {
     authedAdminIds.delete(ctx.from.id);
     await setAdminSession(ctx.from.id, false).catch(() => {});
-    await ctx.reply("⛔ هذا القسم للإدارة فقط.");
+    await ctx.reply("â›” ظ‡ط°ط§ ط§ظ„ظ‚ط³ظ… ظ„ظ„ط¥ط¯ط§ط±ط© ظپظ‚ط·.");
     return false;
   }
   if (!sessionActive && !authedAdminIds.has(ctx.from.id)) {
     setStep(ctx.from.id, { kind: "admin:login" });
-    await ctx.reply("🔑 أرسل كلمة المرور للدخول إلى لوحة الإدارة:");
+    await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ظ„ظ„ط¯ط®ظˆظ„ ط¥ظ„ظ‰ ظ„ظˆط­ط© ط§ظ„ط¥ط¯ط§ط±ط©:");
     return false;
   }
   if (!sessionActive && authedAdminIds.has(ctx.from.id)) {
     authedAdminIds.delete(ctx.from.id);
     setStep(ctx.from.id, { kind: "admin:login" });
-    await ctx.reply("🔑 انتهت جلسة الإدارة. أرسل كلمة المرور للدخول مجدداً:");
+    await ctx.reply("ًں”‘ ط§ظ†طھظ‡طھ ط¬ظ„ط³ط© ط§ظ„ط¥ط¯ط§ط±ط©. ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ظ„ظ„ط¯ط®ظˆظ„ ظ…ط¬ط¯ط¯ط§ظ‹:");
     return false;
   }
   return true;
 }
 
 async function requireSuperAdmin(ctx) {
-  if (!authedAdminIds.has(ctx.from.id)) { await ctx.reply("⛔ هذا الإجراء للمدير الأعلى فقط."); return false; }
+  if (!authedAdminIds.has(ctx.from.id)) { await ctx.reply("â›” ظ‡ط°ط§ ط§ظ„ط¥ط¬ط±ط§ط، ظ„ظ„ظ…ط¯ظٹط± ط§ظ„ط£ط¹ظ„ظ‰ ظپظ‚ط·."); return false; }
   const u = await getUser(ctx.from.id);
-  if (!u?.is_super_admin) { await ctx.reply("⛔ هذا الإجراء للمدير الأعلى فقط."); return false; }
+  if (!u?.is_super_admin) { await ctx.reply("â›” ظ‡ط°ط§ ط§ظ„ط¥ط¬ط±ط§ط، ظ„ظ„ظ…ط¯ظٹط± ط§ظ„ط£ط¹ظ„ظ‰ ظپظ‚ط·."); return false; }
   return true;
 }
 
@@ -1598,16 +1598,16 @@ async function showAdminMenu(ctx) {
   const u = await getUser(ctx.from.id);
   const isSA = !!u?.is_super_admin;
   const rows = [
-    [Markup.button.callback("📥 طلبات الإيداع", "adm:depList:1"), Markup.button.callback("👥 المستخدمون", "adm:users:1")],
-    [Markup.button.callback("🔍 بحث مستخدم", "adm:findUser"), Markup.button.callback("📦 كل الطلبات", "adm:allOrders:1")],
-    [Markup.button.callback("📣 رسالة جماعية", "adm:broadcast"), Markup.button.callback("💳 طرق الإيداع", "adm:methods")],
-    [Markup.button.callback("🛒 إدارة المنتجات", "cat:0:1:0"), Markup.button.callback("⚙️ الإعدادات", "adm:settings")],
-    [Markup.button.callback("📞 وسائل التواصل", "adm:contacts"), Markup.button.callback("📁 أقسام مخصصة", "adm:vcList")],
-    [Markup.button.callback("➕ منتج يدوي", "adm:manualProds"), Markup.button.callback("🛠️ مساعد الإدارة", "adm:aiSupport")],
-    [Markup.button.callback("🔄 بينج تلقائي", "adm:ping"), Markup.button.callback(status === "on" ? "🟢 البوت: شغال" : "🔴 البوت: متوقف", "adm:toggleStatus")],
-    [Markup.button.callback("🚪 تسجيل خروج", "adm:logout"), Markup.button.callback("🏠 الرئيسية", "home")],
+    [Markup.button.callback("ًں“¥ ط·ظ„ط¨ط§طھ ط§ظ„ط¥ظٹط¯ط§ط¹", "adm:depList:1"), Markup.button.callback("ًں‘¥ ط§ظ„ظ…ط³طھط®ط¯ظ…ظˆظ†", "adm:users:1")],
+    [Markup.button.callback("ًں”چ ط¨ط­ط« ظ…ط³طھط®ط¯ظ…", "adm:findUser"), Markup.button.callback("ًں“¦ ظƒظ„ ط§ظ„ط·ظ„ط¨ط§طھ", "adm:allOrders:1")],
+    [Markup.button.callback("ًں“£ ط±ط³ط§ظ„ط© ط¬ظ…ط§ط¹ظٹط©", "adm:broadcast"), Markup.button.callback("ًں’³ ط·ط±ظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹", "adm:methods")],
+    [Markup.button.callback("ًں›’ ط¥ط¯ط§ط±ط© ط§ظ„ظ…ظ†طھط¬ط§طھ", "cat:0:1:0"), Markup.button.callback("âڑ™ï¸ڈ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ", "adm:settings")],
+    [Markup.button.callback("ًں“‍ ظˆط³ط§ط¦ظ„ ط§ظ„طھظˆط§طµظ„", "adm:contacts"), Markup.button.callback("ًں“پ ط£ظ‚ط³ط§ظ… ظ…ط®طµطµط©", "adm:vcList")],
+    [Markup.button.callback("â‍• ظ…ظ†طھط¬ ظٹط¯ظˆظٹ", "adm:manualProds"), Markup.button.callback("ًں› ï¸ڈ ظ…ط³ط§ط¹ط¯ ط§ظ„ط¥ط¯ط§ط±ط©", "adm:aiSupport")],
+    [Markup.button.callback("ًں”„ ط¨ظٹظ†ط¬ طھظ„ظ‚ط§ط¦ظٹ", "adm:ping"), Markup.button.callback(status === "on" ? "ًںں¢ ط§ظ„ط¨ظˆطھ: ط´ط؛ط§ظ„" : "ًں”´ ط§ظ„ط¨ظˆطھ: ظ…طھظˆظ‚ظپ", "adm:toggleStatus")],
+    [Markup.button.callback("ًںڑھ طھط³ط¬ظٹظ„ ط®ط±ظˆط¬", "adm:logout"), Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")],
   ];
-  await sendOrEdit(ctx, `👑 لوحة الإدارة${isSA ? " (مدير أعلى)" : ""}`, Markup.inlineKeyboard(rows));
+  await sendOrEdit(ctx, `ًں‘‘ ظ„ظˆط­ط© ط§ظ„ط¥ط¯ط§ط±ط©${isSA ? " (ظ…ط¯ظٹط± ط£ط¹ظ„ظ‰)" : ""}`, Markup.inlineKeyboard(rows));
 }
 
 async function showSettingsMenu(ctx) {
@@ -1617,17 +1617,17 @@ async function showSettingsMenu(ctx) {
   const u = await getUser(ctx.from.id);
   const isSA = !!u?.is_super_admin;
   const rows = [
-    [Markup.button.callback("✏️ تعديل الربح العام", "adm:setMarkup")],
-    [Markup.button.callback("✏️ تعديل ربح السوشل", "adm:setSocialMarkup")],
-    [Markup.button.callback("💱 تعديل سعر الصرف", "adm:setRate")],
-    [Markup.button.callback("🔑 تغيير كلمة المرور", "adm:newPass")],
-    [Markup.button.callback("🔘 تعديل أزرار التنقل", "adm:btnLabels")],
+    [Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ…", "adm:setMarkup")],
+    [Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط±ط¨ط­ ط§ظ„ط³ظˆط´ظ„", "adm:setSocialMarkup")],
+    [Markup.button.callback("ًں’± طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طµط±ظپ", "adm:setRate")],
+    [Markup.button.callback("ًں”‘ طھط؛ظٹظٹط± ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±", "adm:newPass")],
+    [Markup.button.callback("ًں”ک طھط¹ط¯ظٹظ„ ط£ط²ط±ط§ط± ط§ظ„طھظ†ظ‚ظ„", "adm:btnLabels")],
   ];
   if (isSA) {
-    rows.push([Markup.button.callback("🔐 تغيير أمر الدخول السري", "adm:changeLoginCmd")]);
+    rows.push([Markup.button.callback("ًں”گ طھط؛ظٹظٹط± ط£ظ…ط± ط§ظ„ط¯ط®ظˆظ„ ط§ظ„ط³ط±ظٹ", "adm:changeLoginCmd")]);
   }
-  rows.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
-  await sendOrEdit(ctx, `⚙️ الإعدادات\n\nالربح العام: ${m}%\nربح السوشل: ${sm}%\nسعر الصرف: ${r} ل.س/$\nأمر الدخول: \`${loginCmd}\``,
+  rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
+  await sendOrEdit(ctx, `âڑ™ï¸ڈ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ\n\nط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ…: ${m}%\nط±ط¨ط­ ط§ظ„ط³ظˆط´ظ„: ${sm}%\nط³ط¹ط± ط§ظ„طµط±ظپ: ${r} ظ„.ط³/$\nط£ظ…ط± ط§ظ„ط¯ط®ظˆظ„: \`${loginCmd}\``,
     Markup.inlineKeyboard(rows));
 }
 
@@ -1636,64 +1636,64 @@ async function showDepList(ctx, page) {
   const limit = 8; const offset = (page - 1) * limit;
   const res = await q("SELECT * FROM deposit_requests WHERE status='pending' ORDER BY created_at DESC LIMIT $1 OFFSET $2", [limit + 1, offset]);
   const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
-  if (!slice.length) { await sendOrEdit(ctx, "📭 لا توجد طلبات إيداع معلقة.", Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "admin:menu")]])); return; }
-  const kb = slice.map(d => [Markup.button.callback(`${d.method_name} • ${d.amount ? Number(d.amount).toFixed(2) + "$" : "—"} • UID:${d.user_id}`, `adm:depShow:${d.id}`)]);
+  if (!slice.length) { await sendOrEdit(ctx, "ًں“­ ظ„ط§ طھظˆط¬ط¯ ط·ظ„ط¨ط§طھ ط¥ظٹط¯ط§ط¹ ظ…ط¹ظ„ظ‚ط©.", Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]])); return; }
+  const kb = slice.map(d => [Markup.button.callback(`${d.method_name} â€¢ ${d.amount ? Number(d.amount).toFixed(2) + "$" : "â€”"} â€¢ UID:${d.user_id}`, `adm:depShow:${d.id}`)]);
   const nav = [];
-  if (page > 1) nav.push(Markup.button.callback("⬅️ السابق", `adm:depList:${page - 1}`));
-  if (hasNext) nav.push(Markup.button.callback("التالي ➡️", `adm:depList:${page + 1}`));
+  if (page > 1) nav.push(Markup.button.callback("â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚", `adm:depList:${page - 1}`));
+  if (hasNext) nav.push(Markup.button.callback("ط§ظ„طھط§ظ„ظٹ â‍،ï¸ڈ", `adm:depList:${page + 1}`));
   if (nav.length) kb.push(nav);
-  kb.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
-  await sendOrEdit(ctx, "📥 طلبات الإيداع المعلقة:", Markup.inlineKeyboard(kb));
+  kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
+  await sendOrEdit(ctx, "ًں“¥ ط·ظ„ط¨ط§طھ ط§ظ„ط¥ظٹط¯ط§ط¹ ط§ظ„ظ…ط¹ظ„ظ‚ط©:", Markup.inlineKeyboard(kb));
 }
 
 async function showDepDetails(ctx, depId) {
   if (!(await requireAdmin(ctx))) return;
   const res = await q("SELECT * FROM deposit_requests WHERE id=$1", [depId]);
-  const d = res.rows[0]; if (!d) { await ctx.reply("⚠️ غير موجود."); return; }
+  const d = res.rows[0]; if (!d) { await ctx.reply("âڑ ï¸ڈ ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
   const u = await getUser(d.user_id);
-  const text = `📥 طلب إيداع\nالحالة: ${d.status}\nالطريقة: ${d.method_name}\nالمستخدم: ${u?.first_name ?? ""} ${u?.username ? "@" + u.username : ""} (${d.user_id})\nرصيد المستخدم: ${u ? Number(u.balance).toFixed(2) : "0.00"}$\nالمبلغ المُحوَّل: ${d.amount ? Number(d.amount).toFixed(2) + "$" : "—"}`;
-  const balanceRow = [Markup.button.callback("➕ شحن رصيد", `adm:userAdd:${d.user_id}`), Markup.button.callback("➖ خصم رصيد", `adm:userSub:${d.user_id}`)];
+  const text = `ًں“¥ ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹\nط§ظ„ط­ط§ظ„ط©: ${d.status}\nط§ظ„ط·ط±ظٹظ‚ط©: ${d.method_name}\nط§ظ„ظ…ط³طھط®ط¯ظ…: ${u?.first_name ?? ""} ${u?.username ? "@" + u.username : ""} (${d.user_id})\nط±طµظٹط¯ ط§ظ„ظ…ط³طھط®ط¯ظ…: ${u ? Number(u.balance).toFixed(2) : "0.00"}$\nط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„ظ…ظڈط­ظˆظژظ‘ظ„: ${d.amount ? Number(d.amount).toFixed(2) + "$" : "â€”"}`;
+  const balanceRow = [Markup.button.callback("â‍• ط´ط­ظ† ط±طµظٹط¯", `adm:userAdd:${d.user_id}`), Markup.button.callback("â‍– ط®طµظ… ط±طµظٹط¯", `adm:userSub:${d.user_id}`)];
   const kb = d.status === "pending"
-    ? Markup.inlineKeyboard([[Markup.button.callback("✅ موافقة", `adm:dep:approve:${d.id}`), Markup.button.callback("❌ رفض", `adm:dep:reject:${d.id}`)], balanceRow, [Markup.button.callback("👤 ملف المستخدم", `adm:user:${d.user_id}`)], [Markup.button.callback("⬅️ رجوع", "adm:depList:1")]])
-    : Markup.inlineKeyboard([balanceRow, [Markup.button.callback("👤 ملف المستخدم", `adm:user:${d.user_id}`)], [Markup.button.callback("⬅️ رجوع", "adm:depList:1")]]);
+    ? Markup.inlineKeyboard([[Markup.button.callback("âœ… ظ…ظˆط§ظپظ‚ط©", `adm:dep:approve:${d.id}`), Markup.button.callback("â‌Œ ط±ظپط¶", `adm:dep:reject:${d.id}`)], balanceRow, [Markup.button.callback("ًں‘¤ ظ…ظ„ظپ ط§ظ„ظ…ط³طھط®ط¯ظ…", `adm:user:${d.user_id}`)], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:depList:1")]])
+    : Markup.inlineKeyboard([balanceRow, [Markup.button.callback("ًں‘¤ ظ…ظ„ظپ ط§ظ„ظ…ط³طھط®ط¯ظ…", `adm:user:${d.user_id}`)], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:depList:1")]]);
   try { await ctx.replyWithPhoto(d.screenshot_file_id, { caption: text, ...kb }); }
-  catch { await ctx.reply(text + "\n\n(تعذّر تحميل الصورة)", kb); }
+  catch { await ctx.reply(text + "\n\n(طھط¹ط°ظ‘ط± طھط­ظ…ظٹظ„ ط§ظ„طµظˆط±ط©)", kb); }
 }
 
 async function approveDeposit(ctx, depId) {
   if (!(await requireAdmin(ctx))) return;
   setStep(ctx.from.id, { kind: "admin:depositApproveAmount", depositId: depId });
-  await ctx.reply(`💵 أرسل المبلغ بالدولار لإضافته إلى رصيد المستخدم:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "admin:menu")]]));
+  await ctx.reply(`ًں’µ ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط¨ط§ظ„ط¯ظˆظ„ط§ط± ظ„ط¥ط¶ط§ظپطھظ‡ ط¥ظ„ظ‰ ط±طµظٹط¯ ط§ظ„ظ…ط³طھط®ط¯ظ…:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "admin:menu")]]));
 }
 
 async function rejectDeposit(ctx, depId) {
   if (!(await requireAdmin(ctx))) return;
   const res = await q("UPDATE deposit_requests SET status='rejected', processed_by=$1, processed_at=NOW() WHERE id=$2 AND status='pending' RETURNING *", [ctx.from.id, depId]);
-  if (!res.rows.length) { await ctx.reply("⚠️ تمت معالجة هذا الطلب مسبقاً بواسطة مدير آخر."); return; }
+  if (!res.rows.length) { await ctx.reply("âڑ ï¸ڈ طھظ…طھ ظ…ط¹ط§ظ„ط¬ط© ظ‡ط°ط§ ط§ظ„ط·ظ„ط¨ ظ…ط³ط¨ظ‚ط§ظ‹ ط¨ظˆط§ط³ط·ط© ظ…ط¯ظٹط± ط¢ط®ط±."); return; }
   const d = res.rows[0];
-  await clearDepositForOtherAdmins(ctx.from.id, depId, `❌ طلب إيداع — تم الرفض`);
-  await ctx.reply(`❌ تم رفض طلب الإيداع.`);
-  // ── لا نعرض رقم الطلب للمستخدم ──
-  if (d) { try { await ctx.telegram.sendMessage(d.user_id, `❌ تم رفض طلب الإيداع. للاستفسار راسل @${ADMIN_USERNAME}.`); } catch { /* ignore */ } }
+  await clearDepositForOtherAdmins(ctx.from.id, depId, `â‌Œ ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹ â€” طھظ… ط§ظ„ط±ظپط¶`);
+  await ctx.reply(`â‌Œ طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„ط¥ظٹط¯ط§ط¹.`);
+  // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
+  if (d) { try { await ctx.telegram.sendMessage(d.user_id, `â‌Œ طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„ط¥ظٹط¯ط§ط¹. ظ„ظ„ط§ط³طھظپط³ط§ط± ط±ط§ط³ظ„ @${ADMIN_USERNAME}.`); } catch { /* ignore */ } }
 }
 
 async function showUserCard(ctx, uid) {
   if (!(await requireAdmin(ctx))) return;
-  const u = await getUser(uid); if (!u) { await ctx.reply("⚠️ غير موجود."); return; }
+  const u = await getUser(uid); if (!u) { await ctx.reply("âڑ ï¸ڈ ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
   const me = await getUser(ctx.from.id);
   const isMeSA = !!me?.is_super_admin;
   const statsRes = await q("SELECT COUNT(*)::int AS c, COALESCE(SUM(price_usd),0)::text AS s FROM orders WHERE user_id=$1", [uid]);
   const oc = statsRes.rows[0]?.c ?? 0; const sum = Number(statsRes.rows[0]?.s ?? 0);
-  const text = `👤 ${u.first_name ?? "—"}${u.username ? " @" + u.username : ""}\nID: ${u.id}\nالرصيد: ${Number(u.balance).toFixed(2)}$\nالحالة: ${u.status}\nإداري؟ ${u.is_admin ? "نعم" : "لا"}${u.is_super_admin ? " (أعلى)" : ""}\nعدد الطلبات: ${oc} • إجمالي: ${sum.toFixed(2)}$`;
+  const text = `ًں‘¤ ${u.first_name ?? "â€”"}${u.username ? " @" + u.username : ""}\nID: ${u.id}\nط§ظ„ط±طµظٹط¯: ${Number(u.balance).toFixed(2)}$\nط§ظ„ط­ط§ظ„ط©: ${u.status}\nط¥ط¯ط§ط±ظٹطں ${u.is_admin ? "ظ†ط¹ظ…" : "ظ„ط§"}${u.is_super_admin ? " (ط£ط¹ظ„ظ‰)" : ""}\nط¹ط¯ط¯ ط§ظ„ط·ظ„ط¨ط§طھ: ${oc} â€¢ ط¥ط¬ظ…ط§ظ„ظٹ: ${sum.toFixed(2)}$`;
   const kb = [
-    [Markup.button.callback("➕ شحن رصيد", `adm:userAdd:${uid}`), Markup.button.callback("➖ خصم رصيد", `adm:userSub:${uid}`)],
-    [Markup.button.callback(u.status === "banned" ? "✅ رفع الحظر" : "🚫 حظر", `adm:userBan:${uid}`), Markup.button.callback(u.is_admin ? "👤 إلغاء إداري" : "👑 جعله إداري", `adm:userAdmin:${uid}`)],
-    [Markup.button.callback("📦 طلباته", `adm:userOrders:${uid}:1`), Markup.button.callback("% ربح خاص", `adm:userMarkup:${uid}`)],
+    [Markup.button.callback("â‍• ط´ط­ظ† ط±طµظٹط¯", `adm:userAdd:${uid}`), Markup.button.callback("â‍– ط®طµظ… ط±طµظٹط¯", `adm:userSub:${uid}`)],
+    [Markup.button.callback(u.status === "banned" ? "âœ… ط±ظپط¹ ط§ظ„ط­ط¸ط±" : "ًںڑ« ط­ط¸ط±", `adm:userBan:${uid}`), Markup.button.callback(u.is_admin ? "ًں‘¤ ط¥ظ„ط؛ط§ط، ط¥ط¯ط§ط±ظٹ" : "ًں‘‘ ط¬ط¹ظ„ظ‡ ط¥ط¯ط§ط±ظٹ", `adm:userAdmin:${uid}`)],
+    [Markup.button.callback("ًں“¦ ط·ظ„ط¨ط§طھظ‡", `adm:userOrders:${uid}:1`), Markup.button.callback("% ط±ط¨ط­ ط®ط§طµ", `adm:userMarkup:${uid}`)],
   ];
   if (isMeSA && uid !== ctx.from.id) {
-    kb.push([Markup.button.callback(u.is_super_admin ? "⬇️ إلغاء المدير الأعلى" : "🌟 جعله مديراً أعلى", `adm:userSA:${uid}`)]);
+    kb.push([Markup.button.callback(u.is_super_admin ? "â¬‡ï¸ڈ ط¥ظ„ط؛ط§ط، ط§ظ„ظ…ط¯ظٹط± ط§ظ„ط£ط¹ظ„ظ‰" : "ًںŒں ط¬ط¹ظ„ظ‡ ظ…ط¯ظٹط±ط§ظ‹ ط£ط¹ظ„ظ‰", `adm:userSA:${uid}`)]);
   }
-  kb.push([Markup.button.callback("⬅️ رجوع", "adm:users:1")]);
+  kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:users:1")]);
   await sendOrEdit(ctx, text, Markup.inlineKeyboard(kb));
 }
 
@@ -1716,7 +1716,7 @@ function startPingScheduler(bot) {
 // ============================================================
 async function startBot() {
   const token = process.env.BOT_TOKEN;
-  if (!token) { console.error("❌ BOT_TOKEN is required"); process.exit(1); }
+  if (!token) { console.error("â‌Œ BOT_TOKEN is required"); process.exit(1); }
 
   await ensureTables();
   await ensureDefaults();
@@ -1724,7 +1724,7 @@ async function startBot() {
 
   const bot = new Telegraf(token, { handlerTimeout: 90_000 });
 
-  // ── Rate limiter + رد فوري على callback ──────────────────────
+  // â”€â”€ Rate limiter + ط±ط¯ ظپظˆط±ظٹ ط¹ظ„ظ‰ callback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const _rateMap = new Map();
   setInterval(() => {
     const now = Date.now();
@@ -1738,7 +1738,7 @@ async function startBot() {
     const now = Date.now();
     const times = (_rateMap.get(uid) ?? []).filter(t => now - t < 2_000);
     if (times.length >= 5) {
-      if (ctx.callbackQuery) ctx.answerCbQuery("⏱️ الرجاء الانتظار...").catch(() => {});
+      if (ctx.callbackQuery) ctx.answerCbQuery("âڈ±ï¸ڈ ط§ظ„ط±ط¬ط§ط، ط§ظ„ط§ظ†طھط¸ط§ط±...").catch(() => {});
       return;
     }
     times.push(now); _rateMap.set(uid, times);
@@ -1746,7 +1746,7 @@ async function startBot() {
     return next();
   });
 
-  // ── Commands ───────────────────────────────────────────────
+  // â”€â”€ Commands â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.start(async ctx => {
     const txt = ctx.message?.text ?? "";
     setStep(ctx.from.id, { kind: "idle" });
@@ -1755,14 +1755,14 @@ async function startBot() {
       const loginCmd = await getAdminLoginCommand();
       if (startParam === loginCmd) {
         setStep(ctx.from.id, { kind: "admin:login" });
-        await ctx.reply("🔑 أرسل كلمة المرور:");
+        await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±:");
         return;
       }
     }
     await showMainMenu(ctx);
   });
   bot.command("menu", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
-  bot.command("balance", async ctx => { const u = await ensureUser(ctx); if (!u) return; await ctx.reply(`💰 رصيدك: ${formatBalance(Number(u.balance), await getExchangeRate())}`); });
+  bot.command("balance", async ctx => { const u = await ensureUser(ctx); if (!u) return; await ctx.reply(`ًں’° ط±طµظٹط¯ظƒ: ${formatBalance(Number(u.balance), await getExchangeRate())}`); });
   bot.command("deposit", async ctx => { await ensureUser(ctx); setStep(ctx.from.id, { kind: "idle" }); await showDepositMenu(ctx); });
   bot.command("orders", async ctx => { await ensureUser(ctx); await showMyOrders(ctx, 1); });
   bot.command("support", async ctx => { await ensureUser(ctx); await showContactLinks(ctx); });
@@ -1770,35 +1770,35 @@ async function startBot() {
   bot.command("admin", async ctx => {
     const user = await ensureUser(ctx);
     if (!user?.is_admin) {
-      await ctx.reply("⛔ هذا الأمر للإدارة فقط.");
+      await ctx.reply("â›” ظ‡ط°ط§ ط§ظ„ط£ظ…ط± ظ„ظ„ط¥ط¯ط§ط±ط© ظپظ‚ط·.");
       return;
     }
     const sessionActive = await isAdminSessionActive(ctx.from.id);
     if (!sessionActive && !authedAdminIds.has(ctx.from.id)) {
       setStep(ctx.from.id, { kind: "admin:login" });
-      await ctx.reply("🔑 أرسل كلمة المرور:");
+      await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±:");
       return;
     }
     await showAdminMenu(ctx);
   });
 
-  // ── Callback Queries ───────────────────────────────────────
+  // â”€â”€ Callback Queries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action("home", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
   bot.action("balance", async ctx => {
     const u = await ensureUser(ctx); if (!u) return;
     const rate = await getExchangeRate();
-    await sendOrEdit(ctx, `💰 رصيدك: ${formatBalance(Number(u.balance), rate)}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+    await sendOrEdit(ctx, `ًں’° ط±طµظٹط¯ظƒ: ${formatBalance(Number(u.balance), rate)}`, Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
   });
   bot.action("deposit", async ctx => { await ensureUser(ctx); await showDepositMenu(ctx); });
   bot.action("support", async ctx => { await ensureUser(ctx); await showContactLinks(ctx); });
   bot.action(/^myorders:(\d+)$/, async ctx => { await showMyOrders(ctx, Number(ctx.match[1])); });
-  bot.action("noop", async ctx => { /* نقرة على رقم الصفحة */ });
+  bot.action("noop", async ctx => { /* ظ†ظ‚ط±ط© ط¹ظ„ظ‰ ط±ظ‚ظ… ط§ظ„طµظپط­ط© */ });
 
-  // ── Admin auth ──────────────────────────────────────────────
+  // â”€â”€ Admin auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action("admin:menu", async ctx => { await showAdminMenu(ctx); });
   bot.action("admin:loginPrompt", async ctx => {
     setStep(ctx.from.id, { kind: "admin:login" });
-    await ctx.reply("🔑 أرسل كلمة المرور:");
+    await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±:");
   });
 
   bot.action("adm:logout", async ctx => {
@@ -1808,15 +1808,15 @@ async function startBot() {
     setStep(ctx.from.id, { kind: "idle" });
     const user = await getUser(ctx.from.id);
     const rate = await getExchangeRate();
-    const greeting = `أهلاً فيك في متجر المروان 🌟\nالاسم: ${user?.first_name ?? "—"}${user?.username ? ` (@${user.username})` : ""}\nالرقم: ${ctx.from.id}\nالرصيد: ${formatBalance(Number(user?.balance ?? 0), rate)}\n\nتم تسجيل الخروج من لوحة الإدارة 👋\nاختر من القائمة 👇`;
+    const greeting = `ط£ظ‡ظ„ط§ظ‹ ظپظٹظƒ ظپظٹ ظ…طھط¬ط± ط§ظ„ظ…ط±ظˆط§ظ† ًںŒں\nط§ظ„ط§ط³ظ…: ${user?.first_name ?? "â€”"}${user?.username ? ` (@${user.username})` : ""}\nط§ظ„ط±ظ‚ظ…: ${ctx.from.id}\nط§ظ„ط±طµظٹط¯: ${formatBalance(Number(user?.balance ?? 0), rate)}\n\nطھظ… طھط³ط¬ظٹظ„ ط§ظ„ط®ط±ظˆط¬ ظ…ظ† ظ„ظˆط­ط© ط§ظ„ط¥ط¯ط§ط±ط© ًں‘‹\nط§ط®طھط± ظ…ظ† ط§ظ„ظ‚ط§ط¦ظ…ط© ًں‘‡`;
     await sendOrEdit(ctx, greeting, mainMenu());
   });
 
-  // ── Deposit flow ────────────────────────────────────────────
+  // â”€â”€ Deposit flow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action(/^dep:method:(\d+)$/, async ctx => { await showDepositMethod(ctx, Number(ctx.match[1])); });
   bot.action("dep:cancel", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
 
-  // ── Category / Product navigation ──────────────────────────
+  // â”€â”€ Category / Product navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action(/^cat:(\d+):(\d+):(\d+)$/, async ctx => {
     await ensureUser(ctx);
     await showCategory(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3]));
@@ -1834,7 +1834,7 @@ async function startBot() {
     await showManualProduct(ctx, Number(ctx.match[1]), Number(ctx.match[2]));
   });
 
-  // ── Buy flow ───────────────────────────────────────────────
+  // â”€â”€ Buy flow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action(/^buy:(\d+):(\d+)$/, async ctx => {
     await ensureUser(ctx);
     await startOrderFlow(ctx, Number(ctx.match[1]), Number(ctx.match[2]));
@@ -1852,38 +1852,38 @@ async function startBot() {
   bot.action("ord:cancel", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
   bot.action(/^ord:check:(\d+)$/, async ctx => { await checkOrderStatus(ctx, Number(ctx.match[1])); });
 
-  // ── Manual product buy ──────────────────────────────────────
+  // â”€â”€ Manual product buy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action(/^mbuy:(\d+)$/, async ctx => {
     const mid = Number(ctx.match[1]);
     const m = (await q("SELECT * FROM manual_products WHERE id=$1 AND active=true", [mid])).rows[0];
-    if (!m) { await ctx.reply("⚠️ المنتج غير متاح."); return; }
+    if (!m) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…طھط§ط­."); return; }
     const u = await getUser(ctx.from.id);
     const priceUsd = Number(m.price_usd);
-    if (!u || Number(u.balance) < priceUsd) { await ctx.reply("❌ رصيد غير كافٍ.", Markup.inlineKeyboard([[Markup.button.callback("💳 شحن رصيد", "deposit")]])); return; }
+    if (!u || Number(u.balance) < priceUsd) { await ctx.reply("â‌Œ ط±طµظٹط¯ ط؛ظٹط± ظƒط§ظپظچ.", Markup.inlineKeyboard([[Markup.button.callback("ًں’³ ط´ط­ظ† ط±طµظٹط¯", "deposit")]])); return; }
     setStep(ctx.from.id, { kind: "order:manualNote", productId: mid, priceUsd });
-    await ctx.reply(`📝 أرسل ملاحظة للطلب أو اكتب "skip":`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]]));
+    await ctx.reply(`ًں“‌ ط£ط±ط³ظ„ ظ…ظ„ط§ط­ط¸ط© ظ„ظ„ط·ظ„ط¨ ط£ظˆ ط§ظƒطھط¨ "skip":`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]]));
   });
 
-  // ── Admin: deposit management ──────────────────────────────
+  // â”€â”€ Admin: deposit management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action(/^adm:depList:(\d+)$/, async ctx => { await showDepList(ctx, Number(ctx.match[1])); });
   bot.action(/^adm:depShow:(\d+)$/, async ctx => { await showDepDetails(ctx, Number(ctx.match[1])); });
   bot.action(/^adm:dep:approve:(\d+)$/, async ctx => { await approveDeposit(ctx, Number(ctx.match[1])); });
   bot.action(/^adm:dep:reject:(\d+)$/, async ctx => { await rejectDeposit(ctx, Number(ctx.match[1])); });
 
-  // ── Admin: users ──────────────────────────────────────────
+  // â”€â”€ Admin: users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action(/^adm:users:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const page = Number(ctx.match[1]); const limit = 10; const offset = (page - 1) * limit;
     const users = await listUsers(offset, limit + 1);
     const hasNext = users.length > limit; const slice = users.slice(0, limit);
     const total = await countUsers();
-    const kb = slice.map(u => [Markup.button.callback(`${u.first_name ?? "—"}${u.username ? " @" + u.username : ""} • ${Number(u.balance).toFixed(2)}$${u.is_super_admin ? " 🌟" : u.is_admin ? " 👑" : ""}`, `adm:user:${u.id}`)]);
+    const kb = slice.map(u => [Markup.button.callback(`${u.first_name ?? "â€”"}${u.username ? " @" + u.username : ""} â€¢ ${Number(u.balance).toFixed(2)}$${u.is_super_admin ? " ًںŒں" : u.is_admin ? " ًں‘‘" : ""}`, `adm:user:${u.id}`)]);
     const nav = [];
-    if (page > 1) nav.push(Markup.button.callback("⬅️ السابق", `adm:users:${page - 1}`));
-    if (hasNext) nav.push(Markup.button.callback("التالي ➡️", `adm:users:${page + 1}`));
+    if (page > 1) nav.push(Markup.button.callback("â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚", `adm:users:${page - 1}`));
+    if (hasNext) nav.push(Markup.button.callback("ط§ظ„طھط§ظ„ظٹ â‍،ï¸ڈ", `adm:users:${page + 1}`));
     if (nav.length) kb.push(nav);
-    kb.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
-    await sendOrEdit(ctx, `👥 المستخدمون (${total}):`, Markup.inlineKeyboard(kb));
+    kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
+    await sendOrEdit(ctx, `ًں‘¥ ط§ظ„ظ…ط³طھط®ط¯ظ…ظˆظ† (${total}):`, Markup.inlineKeyboard(kb));
   });
   bot.action(/^adm:user:(\d+)$/, async ctx => { await showUserCard(ctx, Number(ctx.match[1])); });
   bot.action(/^adm:userBan:(\d+)$/, async ctx => {
@@ -1895,13 +1895,13 @@ async function startBot() {
       authedAdminIds.delete(uid);
       await setAdminSession(uid, false).catch(() => {});
     }
-    await ctx.reply(newStatus === "banned" ? "🚫 تم الحظر." : "✅ تم رفع الحظر.");
+    await ctx.reply(newStatus === "banned" ? "ًںڑ« طھظ… ط§ظ„ط­ط¸ط±." : "âœ… طھظ… ط±ظپط¹ ط§ظ„ط­ط¸ط±.");
     await showUserCard(ctx, uid);
   });
   bot.action(/^adm:userAdmin:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const me = await getUser(ctx.from.id);
-    if (!me?.is_super_admin) { await ctx.reply("⛔ المدير الأعلى فقط يستطيع تعيين المديرين."); return; }
+    if (!me?.is_super_admin) { await ctx.reply("â›” ط§ظ„ظ…ط¯ظٹط± ط§ظ„ط£ط¹ظ„ظ‰ ظپظ‚ط· ظٹط³طھط·ظٹط¹ طھط¹ظٹظٹظ† ط§ظ„ظ…ط¯ظٹط±ظٹظ†."); return; }
     const uid = Number(ctx.match[1]); const u = await getUser(uid);
     const newAdmin = !u?.is_admin;
     await setAdmin(uid, newAdmin, newAdmin ? false : undefined);
@@ -1909,7 +1909,7 @@ async function startBot() {
       authedAdminIds.delete(uid);
       await setAdminSession(uid, false).catch(() => {});
     }
-    await ctx.reply(newAdmin ? "👑 تم التعيين إداريًا." : "👤 تم إلغاء الإداري.");
+    await ctx.reply(newAdmin ? "ًں‘‘ طھظ… ط§ظ„طھط¹ظٹظٹظ† ط¥ط¯ط§ط±ظٹظ‹ط§." : "ًں‘¤ طھظ… ط¥ظ„ط؛ط§ط، ط§ظ„ط¥ط¯ط§ط±ظٹ.");
     await showUserCard(ctx, uid);
   });
   bot.action(/^adm:userSA:(\d+)$/, async ctx => {
@@ -1921,241 +1921,241 @@ async function startBot() {
       authedAdminIds.delete(uid);
       await setAdminSession(uid, false).catch(() => {});
     }
-    await ctx.reply(newSA ? "🌟 تم تعيينه مديراً أعلى." : "⬇️ تم إلغاء صلاحية المدير الأعلى.");
+    await ctx.reply(newSA ? "ًںŒں طھظ… طھط¹ظٹظٹظ†ظ‡ ظ…ط¯ظٹط±ط§ظ‹ ط£ط¹ظ„ظ‰." : "â¬‡ï¸ڈ طھظ… ط¥ظ„ط؛ط§ط، طµظ„ط§ط­ظٹط© ط§ظ„ظ…ط¯ظٹط± ط§ظ„ط£ط¹ظ„ظ‰.");
     await showUserCard(ctx, uid);
   });
-  bot.action(/^adm:userAdd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "add" }); await ctx.reply("💵 أرسل المبلغ بالدولار للإضافة:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "admin:menu")]])); });
-  bot.action(/^adm:userSub:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "sub" }); await ctx.reply("💵 أرسل المبلغ بالدولار للخصم:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "admin:menu")]])); });
-  bot.action("adm:findUser", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:findUser" }); await ctx.reply("🔍 أرسل اسم المستخدم أو ID:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "admin:menu")]])); });
+  bot.action(/^adm:userAdd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "add" }); await ctx.reply("ًں’µ ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط¨ط§ظ„ط¯ظˆظ„ط§ط± ظ„ظ„ط¥ط¶ط§ظپط©:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "admin:menu")]])); });
+  bot.action(/^adm:userSub:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "sub" }); await ctx.reply("ًں’µ ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط¨ط§ظ„ط¯ظˆظ„ط§ط± ظ„ظ„ط®طµظ…:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "admin:menu")]])); });
+  bot.action("adm:findUser", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:findUser" }); await ctx.reply("ًں”چ ط£ط±ط³ظ„ ط§ط³ظ… ط§ظ„ظ…ط³طھط®ط¯ظ… ط£ظˆ ID:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "admin:menu")]])); });
   bot.action(/^adm:userOrders:(\d+):(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const uid = Number(ctx.match[1]); const page = Number(ctx.match[2]); const limit = 8; const offset = (page - 1) * limit;
     const res = await q("SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3", [uid, limit + 1, offset]);
     const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
-    if (!slice.length) { await sendOrEdit(ctx, "📭 لا توجد طلبات.", Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", `adm:user:${uid}`)]])); return; }
-    const lines = slice.map(r => `🛒 ${r.product_name} ×${r.qty} • ${Number(r.price_usd).toFixed(2)}$ • ${statusLabel(r.status)}`);
-    const nav = []; if (page > 1) nav.push(Markup.button.callback("⬅️ السابق", `adm:userOrders:${uid}:${page - 1}`)); if (hasNext) nav.push(Markup.button.callback("التالي ➡️", `adm:userOrders:${uid}:${page + 1}`));
-    const kb = []; if (nav.length) kb.push(nav); kb.push([Markup.button.callback("⬅️ رجوع", `adm:user:${uid}`)]);
-    await sendOrEdit(ctx, `📦 طلبات المستخدم ${uid}\n\n${lines.join("\n")}`, Markup.inlineKeyboard(kb));
+    if (!slice.length) { await sendOrEdit(ctx, "ًں“­ ظ„ط§ طھظˆط¬ط¯ ط·ظ„ط¨ط§طھ.", Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", `adm:user:${uid}`)]])); return; }
+    const lines = slice.map(r => `ًں›’ ${r.product_name} أ—${r.qty} â€¢ ${Number(r.price_usd).toFixed(2)}$ â€¢ ${statusLabel(r.status)}`);
+    const nav = []; if (page > 1) nav.push(Markup.button.callback("â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚", `adm:userOrders:${uid}:${page - 1}`)); if (hasNext) nav.push(Markup.button.callback("ط§ظ„طھط§ظ„ظٹ â‍،ï¸ڈ", `adm:userOrders:${uid}:${page + 1}`));
+    const kb = []; if (nav.length) kb.push(nav); kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", `adm:user:${uid}`)]);
+    await sendOrEdit(ctx, `ًں“¦ ط·ظ„ط¨ط§طھ ط§ظ„ظ…ط³طھط®ط¯ظ… ${uid}\n\n${lines.join("\n")}`, Markup.inlineKeyboard(kb));
   });
-  bot.action(/^adm:userMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const uid = Number(ctx.match[1]); const u = await getUser(uid); setStep(ctx.from.id, { kind: "admin:setUserMarkup", userId: uid }); await ctx.reply(`% نسبة ربح ${u?.first_name ?? uid}\nالحالية: ${u?.custom_markup_percent ?? "غير محددة"}\nأرسل النسبة أو reset:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `adm:user:${uid}`)]])); });
+  bot.action(/^adm:userMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const uid = Number(ctx.match[1]); const u = await getUser(uid); setStep(ctx.from.id, { kind: "admin:setUserMarkup", userId: uid }); await ctx.reply(`% ظ†ط³ط¨ط© ط±ط¨ط­ ${u?.first_name ?? uid}\nط§ظ„ط­ط§ظ„ظٹط©: ${u?.custom_markup_percent ?? "ط؛ظٹط± ظ…ط­ط¯ط¯ط©"}\nط£ط±ط³ظ„ ط§ظ„ظ†ط³ط¨ط© ط£ظˆ reset:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `adm:user:${uid}`)]])); });
 
-  // ── Admin: orders ─────────────────────────────────────────
+  // â”€â”€ Admin: orders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action(/^adm:allOrders:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const page = Number(ctx.match[1]); const limit = 8; const offset = (page - 1) * limit;
     const res = await q(`SELECT o.*, u.username AS uname, u.first_name AS ufirst FROM orders o LEFT JOIN users u ON u.id=o.user_id ORDER BY o.created_at DESC LIMIT $1 OFFSET $2`, [limit + 1, offset]);
     const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
-    if (!slice.length) { await sendOrEdit(ctx, "📭 لا توجد طلبات.", Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "admin:menu")]])); return; }
-    const lines = slice.map(r => `${r.ufirst ?? "—"}${r.uname ? " @" + r.uname : ""}\n   ${r.product_name} ×${r.qty} • ${Number(r.price_usd).toFixed(2)}$ • ${statusLabel(r.status)}`);
-    const nav = []; if (page > 1) nav.push(Markup.button.callback("⬅️ السابق", `adm:allOrders:${page - 1}`)); if (hasNext) nav.push(Markup.button.callback("التالي ➡️", `adm:allOrders:${page + 1}`));
-    const kb = []; if (nav.length) kb.push(nav); kb.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
-    await sendOrEdit(ctx, `📦 كل الطلبات\n\n${lines.join("\n\n")}`, Markup.inlineKeyboard(kb));
+    if (!slice.length) { await sendOrEdit(ctx, "ًں“­ ظ„ط§ طھظˆط¬ط¯ ط·ظ„ط¨ط§طھ.", Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]])); return; }
+    const lines = slice.map(r => `${r.ufirst ?? "â€”"}${r.uname ? " @" + r.uname : ""}\n   ${r.product_name} أ—${r.qty} â€¢ ${Number(r.price_usd).toFixed(2)}$ â€¢ ${statusLabel(r.status)}`);
+    const nav = []; if (page > 1) nav.push(Markup.button.callback("â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚", `adm:allOrders:${page - 1}`)); if (hasNext) nav.push(Markup.button.callback("ط§ظ„طھط§ظ„ظٹ â‍،ï¸ڈ", `adm:allOrders:${page + 1}`));
+    const kb = []; if (nav.length) kb.push(nav); kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
+    await sendOrEdit(ctx, `ًں“¦ ظƒظ„ ط§ظ„ط·ظ„ط¨ط§طھ\n\n${lines.join("\n\n")}`, Markup.inlineKeyboard(kb));
   });
 
-  // ── Admin: broadcast ──────────────────────────────────────
-  bot.action("adm:broadcast", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:broadcast" }); await ctx.reply("📣 أرسل نص الرسالة الجماعية:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "admin:menu")]])); });
+  // â”€â”€ Admin: broadcast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  bot.action("adm:broadcast", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:broadcast" }); await ctx.reply("ًں“£ ط£ط±ط³ظ„ ظ†طµ ط§ظ„ط±ط³ط§ظ„ط© ط§ظ„ط¬ظ…ط§ط¹ظٹط©:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "admin:menu")]])); });
 
-  // ── Admin: deposit methods ─────────────────────────────────
+  // â”€â”€ Admin: deposit methods â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action("adm:methods", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const res = await q("SELECT * FROM deposit_methods ORDER BY id"); const rows = res.rows;
-    const kb = rows.map(m => [Markup.button.callback(`${m.active ? "🟢" : "🔴"} ${m.name}`, `adm:methodEdit:${m.id}`)]);
-    kb.push([Markup.button.callback("➕ إضافة طريقة", "adm:methodAdd")]); kb.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
-    await sendOrEdit(ctx, "💳 طرق الإيداع", Markup.inlineKeyboard(kb));
+    const kb = rows.map(m => [Markup.button.callback(`${m.active ? "ًںں¢" : "ًں”´"} ${m.name}`, `adm:methodEdit:${m.id}`)]);
+    kb.push([Markup.button.callback("â‍• ط¥ط¶ط§ظپط© ط·ط±ظٹظ‚ط©", "adm:methodAdd")]); kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
+    await sendOrEdit(ctx, "ًں’³ ط·ط±ظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹", Markup.inlineKeyboard(kb));
   });
-  bot.action("adm:methodAdd", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addMethod:name" }); await ctx.reply("💳 أرسل اسم طريقة الإيداع:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "adm:methods")]])); });
+  bot.action("adm:methodAdd", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addMethod:name" }); await ctx.reply("ًں’³ ط£ط±ط³ظ„ ط§ط³ظ… ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:methods")]])); });
   bot.action(/^adm:methodEdit:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const id = Number(ctx.match[1]); const res = await q("SELECT * FROM deposit_methods WHERE id=$1", [id]); const m = res.rows[0]; if (!m) return;
-    await sendOrEdit(ctx, `💳 ${m.name}\nالمعرف: ${m.identifier}\nالحالة: ${m.active ? "مفعّل" : "موقوف"}\n🖼 صورة: ${m.image_file_id ? "✅ موجودة" : "❌ لا يوجد"}\n\n${m.instructions}`,
+    await sendOrEdit(ctx, `ًں’³ ${m.name}\nط§ظ„ظ…ط¹ط±ظپ: ${m.identifier}\nط§ظ„ط­ط§ظ„ط©: ${m.active ? "ظ…ظپط¹ظ‘ظ„" : "ظ…ظˆظ‚ظˆظپ"}\nًں–¼ طµظˆط±ط©: ${m.image_file_id ? "âœ… ظ…ظˆط¬ظˆط¯ط©" : "â‌Œ ظ„ط§ ظٹظˆط¬ط¯"}\n\n${m.instructions}`,
       Markup.inlineKeyboard([
-        [Markup.button.callback(m.active ? "🔴 تعطيل" : "🟢 تفعيل", `adm:methodToggle:${id}`), Markup.button.callback("✏️ التعليمات", `adm:methodInstr:${id}`)],
-        [Markup.button.callback("🖼 رفع/تغيير الصورة", `adm:methodImg:${id}`), Markup.button.callback("🗑️ حذف الصورة", `adm:methodImgDel:${id}`)],
-        [Markup.button.callback("🗑️ حذف الطريقة", `adm:methodDel:${id}`)],
-        [Markup.button.callback("⬅️ رجوع", "adm:methods")]
+        [Markup.button.callback(m.active ? "ًں”´ طھط¹ط·ظٹظ„" : "ًںں¢ طھظپط¹ظٹظ„", `adm:methodToggle:${id}`), Markup.button.callback("âœڈï¸ڈ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ", `adm:methodInstr:${id}`)],
+        [Markup.button.callback("ًں–¼ ط±ظپط¹/طھط؛ظٹظٹط± ط§ظ„طµظˆط±ط©", `adm:methodImg:${id}`), Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ ط§ظ„طµظˆط±ط©", `adm:methodImgDel:${id}`)],
+        [Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ ط§ظ„ط·ط±ظٹظ‚ط©", `adm:methodDel:${id}`)],
+        [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:methods")]
       ]));
   });
   bot.action(/^adm:methodToggle:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const id = Number(ctx.match[1]); const cur = (await q("SELECT active FROM deposit_methods WHERE id=$1", [id])).rows[0]; if (!cur) return; await q("UPDATE deposit_methods SET active=$1 WHERE id=$2", [!cur.active, id]); });
-  bot.action(/^adm:methodInstr:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editMethodInstructions", methodId: Number(ctx.match[1]) }); await ctx.reply("📋 أرسل التعليمات الجديدة:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "adm:methods")]])); });
-  bot.action(/^adm:methodDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM deposit_methods WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("🗑️ تم الحذف."); });
+  bot.action(/^adm:methodInstr:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editMethodInstructions", methodId: Number(ctx.match[1]) }); await ctx.reply("ًں“‹ ط£ط±ط³ظ„ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ ط§ظ„ط¬ط¯ظٹط¯ط©:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:methods")]])); });
+  bot.action(/^adm:methodDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM deposit_methods WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("ًں—‘ï¸ڈ طھظ… ط§ظ„ط­ط°ظپ."); });
   bot.action(/^adm:methodImg:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     setStep(ctx.from.id, { kind: "admin:setMethodImage", methodId: Number(ctx.match[1]) });
-    await ctx.reply("🖼 أرسل الصورة التي تريد إضافتها:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "adm:methods")]]));
+    await ctx.reply("ًں–¼ ط£ط±ط³ظ„ ط§ظ„طµظˆط±ط© ط§ظ„طھظٹ طھط±ظٹط¯ ط¥ط¶ط§ظپطھظ‡ط§:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:methods")]]));
   });
   bot.action(/^adm:methodImgDel:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     await q("UPDATE deposit_methods SET image_file_id=NULL WHERE id=$1", [Number(ctx.match[1])]);
-    await ctx.reply("✅ تم حذف الصورة.");
+    await ctx.reply("âœ… طھظ… ط­ط°ظپ ط§ظ„طµظˆط±ط©.");
   });
 
-  // ── Admin: product management ──────────────────────────────
-  bot.action(/^adm:editPrice:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editPrice", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`✏️ سعر: ${p?.name ?? pid}\nأرسل: \`%5\` ربح أو \`$2.5\` تثبيت أو \`reset\``, { parse_mode: "Markdown" }); });
-  bot.action(/^adm:editInstr:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editProductInstructions", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`📋 أرسل تعليمات ${p?.name ?? pid} أو clear للمسح:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `prod:${pid}:0`)]])); });
-  bot.action(/^adm:renameProd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:renameProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`📝 الاسم الجديد لـ "${p?.name ?? pid}" أو reset:`); });
-  bot.action(/^adm:moveProd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:moveProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`🚚 نقل "${p?.name ?? pid}"\nأرسل رقم القسم أو reset:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `prod:${pid}:0`)]])); });
+  // â”€â”€ Admin: product management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  bot.action(/^adm:editPrice:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editPrice", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`âœڈï¸ڈ ط³ط¹ط±: ${p?.name ?? pid}\nط£ط±ط³ظ„: \`%5\` ط±ط¨ط­ ط£ظˆ \`$2.5\` طھط«ط¨ظٹطھ ط£ظˆ \`reset\``, { parse_mode: "Markdown" }); });
+  bot.action(/^adm:editInstr:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editProductInstructions", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`ًں“‹ ط£ط±ط³ظ„ طھط¹ظ„ظٹظ…ط§طھ ${p?.name ?? pid} ط£ظˆ clear ظ„ظ„ظ…ط³ط­:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `prod:${pid}:0`)]])); });
+  bot.action(/^adm:renameProd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:renameProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`ًں“‌ ط§ظ„ط§ط³ظ… ط§ظ„ط¬ط¯ظٹط¯ ظ„ظ€ "${p?.name ?? pid}" ط£ظˆ reset:`); });
+  bot.action(/^adm:moveProd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:moveProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`ًںڑڑ ظ†ظ‚ظ„ "${p?.name ?? pid}"\nط£ط±ط³ظ„ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط£ظˆ reset:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `prod:${pid}:0`)]])); });
   bot.action(/^adm:hideProd:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const pid = Number(ctx.match[1]); const cur = (await q("SELECT hidden FROM product_overrides WHERE product_id=$1", [pid])).rows[0];
     const nextHidden = !(cur?.hidden ?? false);
     await q("INSERT INTO product_overrides(product_id,hidden) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET hidden=$2, updated_at=NOW()", [pid, nextHidden]);
-    invalidateCaches(); await ctx.reply(nextHidden ? "🙈 تم إخفاء المنتج." : "👁 تم إظهار المنتج.");
+    invalidateCaches(); await ctx.reply(nextHidden ? "ًں™ˆ طھظ… ط¥ط®ظپط§ط، ط§ظ„ظ…ظ†طھط¬." : "ًں‘پ طھظ… ط¥ط¸ظ‡ط§ط± ط§ظ„ظ…ظ†طھط¬.");
   });
 
-  // ── Admin: category management ─────────────────────────────
-  bot.action(/^adm:catEdit:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editCategoryName", categoryId: Number(ctx.match[1]) }); await ctx.reply("✏️ أرسل الاسم الجديد للقسم (أو reset):"); });
+  // â”€â”€ Admin: category management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  bot.action(/^adm:catEdit:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editCategoryName", categoryId: Number(ctx.match[1]) }); await ctx.reply("âœڈï¸ڈ ط£ط±ط³ظ„ ط§ظ„ط§ط³ظ… ط§ظ„ط¬ط¯ظٹط¯ ظ„ظ„ظ‚ط³ظ… (ط£ظˆ reset):"); });
   bot.action(/^adm:catToggle:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const cid = Number(ctx.match[1]); const cur = (await q("SELECT hidden FROM category_overrides WHERE category_id=$1", [cid])).rows[0];
     const nextHidden = !(cur?.hidden ?? false);
     await q("INSERT INTO category_overrides(category_id,hidden) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET hidden=$2, updated_at=NOW()", [cid, nextHidden]);
-    invalidateCaches(); await ctx.reply(nextHidden ? "🙈 تم إخفاء القسم." : "👁 تم إظهار القسم.");
+    invalidateCaches(); await ctx.reply(nextHidden ? "ًں™ˆ طھظ… ط¥ط®ظپط§ط، ط§ظ„ظ‚ط³ظ…." : "ًں‘پ طھظ… ط¥ط¸ظ‡ط§ط± ط§ظ„ظ‚ط³ظ….");
   });
-  bot.action(/^adm:catMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); const cur = (await q("SELECT custom_markup_percent FROM category_overrides WHERE category_id=$1", [cid])).rows[0]; setStep(ctx.from.id, { kind: "admin:setCatMarkup", categoryId: cid }); await ctx.reply(`% نسبة ربح القسم ${cid}\nالحالية: ${cur?.custom_markup_percent ?? "غير محددة"}\nأرسل النسبة أو reset:`); });
-  bot.action(/^adm:catSort:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); setStep(ctx.from.id, { kind: "admin:setCatSort", categoryId: cid }); await ctx.reply(`🔢 ترتيب القسم ${cid}\nأرسل رقم الترتيب أو reset:`); });
-  bot.action(/^adm:moveCatAll:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:moveCatAll", sourceCategoryId: Number(ctx.match[1]) }); await ctx.reply(`🚚 نقل جميع منتجات القسم\nأرسل رقم القسم الهدف أو cancel:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${ctx.match[1]}:1:0`)]])); });
+  bot.action(/^adm:catMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); const cur = (await q("SELECT custom_markup_percent FROM category_overrides WHERE category_id=$1", [cid])).rows[0]; setStep(ctx.from.id, { kind: "admin:setCatMarkup", categoryId: cid }); await ctx.reply(`% ظ†ط³ط¨ط© ط±ط¨ط­ ط§ظ„ظ‚ط³ظ… ${cid}\nط§ظ„ط­ط§ظ„ظٹط©: ${cur?.custom_markup_percent ?? "ط؛ظٹط± ظ…ط­ط¯ط¯ط©"}\nط£ط±ط³ظ„ ط§ظ„ظ†ط³ط¨ط© ط£ظˆ reset:`); });
+  bot.action(/^adm:catSort:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); setStep(ctx.from.id, { kind: "admin:setCatSort", categoryId: cid }); await ctx.reply(`ًں”¢ طھط±طھظٹط¨ ط§ظ„ظ‚ط³ظ… ${cid}\nط£ط±ط³ظ„ ط±ظ‚ظ… ط§ظ„طھط±طھظٹط¨ ط£ظˆ reset:`); });
+  bot.action(/^adm:moveCatAll:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:moveCatAll", sourceCategoryId: Number(ctx.match[1]) }); await ctx.reply(`ًںڑڑ ظ†ظ‚ظ„ ط¬ظ…ظٹط¹ ظ…ظ†طھط¬ط§طھ ط§ظ„ظ‚ط³ظ…\nط£ط±ط³ظ„ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط§ظ„ظ‡ط¯ظپ ط£ظˆ cancel:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `cat:${ctx.match[1]}:1:0`)]])); });
   bot.action(/^adm:moveCatToParent:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const cid = Number(ctx.match[1]);
     setStep(ctx.from.id, { kind: "admin:moveCatToParent", categoryId: cid });
-    await ctx.reply(`📁 نقل القسم إلى داخل قسم آخر\nأرسل رقم القسم الهدف أو "0" للرجوع للجذر أو "cancel" للإلغاء:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${cid}:1:0`)]]));
+    await ctx.reply(`ًں“پ ظ†ظ‚ظ„ ط§ظ„ظ‚ط³ظ… ط¥ظ„ظ‰ ط¯ط§ط®ظ„ ظ‚ط³ظ… ط¢ط®ط±\nط£ط±ط³ظ„ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط§ظ„ظ‡ط¯ظپ ط£ظˆ "0" ظ„ظ„ط±ط¬ظˆط¹ ظ„ظ„ط¬ط°ط± ط£ظˆ "cancel" ظ„ظ„ط¥ظ„ط؛ط§ط،:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `cat:${cid}:1:0`)]]));
   });
 
-  // ── Admin: settings ──────────────────────────────────────
+  // â”€â”€ Admin: settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action("adm:settings", async ctx => { await showSettingsMenu(ctx); });
-  bot.action("adm:setMarkup", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setMarkup" }); await ctx.reply("✏️ أرسل نسبة الربح العام (مثال: 5):", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "adm:settings")]])); });
-  bot.action("adm:setSocialMarkup", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setSocialMarkup" }); await ctx.reply("✏️ أرسل نسبة ربح السوشل:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "adm:settings")]])); });
-  bot.action("adm:setRate", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setRate" }); await ctx.reply("💱 أرسل سعر الصرف (ل.س/$):", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "adm:settings")]])); });
-  bot.action("adm:newPass", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:newPassword" }); await ctx.reply("🔑 أرسل كلمة المرور الجديدة (4 أحرف على الأقل):", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "adm:settings")]])); });
+  bot.action("adm:setMarkup", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setMarkup" }); await ctx.reply("âœڈï¸ڈ ط£ط±ط³ظ„ ظ†ط³ط¨ط© ط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ… (ظ…ط«ط§ظ„: 5):", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:settings")]])); });
+  bot.action("adm:setSocialMarkup", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setSocialMarkup" }); await ctx.reply("âœڈï¸ڈ ط£ط±ط³ظ„ ظ†ط³ط¨ط© ط±ط¨ط­ ط§ظ„ط³ظˆط´ظ„:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:settings")]])); });
+  bot.action("adm:setRate", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setRate" }); await ctx.reply("ًں’± ط£ط±ط³ظ„ ط³ط¹ط± ط§ظ„طµط±ظپ (ظ„.ط³/$):", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:settings")]])); });
+  bot.action("adm:newPass", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:newPassword" }); await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط§ظ„ط¬ط¯ظٹط¯ط© (4 ط£ط­ط±ظپ ط¹ظ„ظ‰ ط§ظ„ط£ظ‚ظ„):", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:settings")]])); });
   bot.action("adm:changeLoginCmd", async ctx => {
     if (!(await requireSuperAdmin(ctx))) return;
     const cur = await getAdminLoginCommand();
     setStep(ctx.from.id, { kind: "admin:changeLoginCmd" });
-    await ctx.reply(`🔐 الأمر الحالي: \`${cur}\`\nأرسل الأمر الجديد:`, { parse_mode: "Markdown" });
+    await ctx.reply(`ًں”گ ط§ظ„ط£ظ…ط± ط§ظ„ط­ط§ظ„ظٹ: \`${cur}\`\nط£ط±ط³ظ„ ط§ظ„ط£ظ…ط± ط§ظ„ط¬ط¯ظٹط¯:`, { parse_mode: "Markdown" });
   });
   bot.action("adm:toggleStatus", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const cur = await getBotStatus(); const next = cur === "on" ? "off" : "on";
     await setSetting("bot_status", next);
-    await ctx.reply(next === "on" ? "🟢 البوت الآن شغال." : "🔴 البوت متوقف الآن.");
+    await ctx.reply(next === "on" ? "ًںں¢ ط§ظ„ط¨ظˆطھ ط§ظ„ط¢ظ† ط´ط؛ط§ظ„." : "ًں”´ ط§ظ„ط¨ظˆطھ ظ…طھظˆظ‚ظپ ط§ظ„ط¢ظ†.");
     await showAdminMenu(ctx);
   });
 
-  // ── Admin: ping ───────────────────────────────────────────
+  // â”€â”€ Admin: ping â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action("adm:ping", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const [enabled, target, interval] = await Promise.all([getSetting("auto_ping_enabled"), getSetting("auto_ping_target_user_id"), getSetting("auto_ping_interval_min")]);
-    await sendOrEdit(ctx, `🔄 البينج التلقائي\nالحالة: ${enabled === "on" ? "✅ مفعّل" : "❌ موقوف"}\nالمستهدف: ${target || "غير محدد"}\nالفاصل: ${interval} دقيقة`,
-      Markup.inlineKeyboard([[Markup.button.callback(enabled === "on" ? "❌ إيقاف" : "✅ تفعيل", "adm:pingToggle")], [Markup.button.callback("🎯 تعيين المستهدف", "adm:pingTarget")], [Markup.button.callback("⏱ تعيين الفاصل", "adm:pingInterval")], [Markup.button.callback("⬅️ رجوع", "admin:menu")]]));
+    await sendOrEdit(ctx, `ًں”„ ط§ظ„ط¨ظٹظ†ط¬ ط§ظ„طھظ„ظ‚ط§ط¦ظٹ\nط§ظ„ط­ط§ظ„ط©: ${enabled === "on" ? "âœ… ظ…ظپط¹ظ‘ظ„" : "â‌Œ ظ…ظˆظ‚ظˆظپ"}\nط§ظ„ظ…ط³طھظ‡ط¯ظپ: ${target || "ط؛ظٹط± ظ…ط­ط¯ط¯"}\nط§ظ„ظپط§طµظ„: ${interval} ط¯ظ‚ظٹظ‚ط©`,
+      Markup.inlineKeyboard([[Markup.button.callback(enabled === "on" ? "â‌Œ ط¥ظٹظ‚ط§ظپ" : "âœ… طھظپط¹ظٹظ„", "adm:pingToggle")], [Markup.button.callback("ًںژ¯ طھط¹ظٹظٹظ† ط§ظ„ظ…ط³طھظ‡ط¯ظپ", "adm:pingTarget")], [Markup.button.callback("âڈ± طھط¹ظٹظٹظ† ط§ظ„ظپط§طµظ„", "adm:pingInterval")], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]]));
   });
-  bot.action("adm:pingToggle", async ctx => { if (!(await requireAdmin(ctx))) return; const cur = await getSetting("auto_ping_enabled"); await setSetting("auto_ping_enabled", cur === "on" ? "off" : "on"); await ctx.reply(cur === "on" ? "❌ تم إيقاف البينج." : "✅ تم تفعيل البينج."); });
-  bot.action("adm:pingTarget", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:pingTarget" }); await ctx.reply("🎯 أرسل ID المستخدم الهدف:"); });
-  bot.action("adm:pingInterval", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:pingInterval" }); await ctx.reply("⏱ أرسل الفاصل الزمني بالدقائق:"); });
+  bot.action("adm:pingToggle", async ctx => { if (!(await requireAdmin(ctx))) return; const cur = await getSetting("auto_ping_enabled"); await setSetting("auto_ping_enabled", cur === "on" ? "off" : "on"); await ctx.reply(cur === "on" ? "â‌Œ طھظ… ط¥ظٹظ‚ط§ظپ ط§ظ„ط¨ظٹظ†ط¬." : "âœ… طھظ… طھظپط¹ظٹظ„ ط§ظ„ط¨ظٹظ†ط¬."); });
+  bot.action("adm:pingTarget", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:pingTarget" }); await ctx.reply("ًںژ¯ ط£ط±ط³ظ„ ID ط§ظ„ظ…ط³طھط®ط¯ظ… ط§ظ„ظ‡ط¯ظپ:"); });
+  bot.action("adm:pingInterval", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:pingInterval" }); await ctx.reply("âڈ± ط£ط±ط³ظ„ ط§ظ„ظپط§طµظ„ ط§ظ„ط²ظ…ظ†ظٹ ط¨ط§ظ„ط¯ظ‚ط§ط¦ظ‚:"); });
 
-  // ── Admin: contacts ───────────────────────────────────────
+  // â”€â”€ Admin: contacts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action("adm:contacts", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const links = (await q("SELECT * FROM contact_links ORDER BY id")).rows;
-    const rows = links.map(l => [Markup.button.callback(`${l.active ? "🟢" : "🔴"} ${l.name}`, `adm:contactEdit:${l.id}`)]);
-    rows.push([Markup.button.callback("➕ إضافة", "adm:addContact")]); rows.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
-    await sendOrEdit(ctx, "📞 وسائل التواصل:", Markup.inlineKeyboard(rows));
+    const rows = links.map(l => [Markup.button.callback(`${l.active ? "ًںں¢" : "ًں”´"} ${l.name}`, `adm:contactEdit:${l.id}`)]);
+    rows.push([Markup.button.callback("â‍• ط¥ط¶ط§ظپط©", "adm:addContact")]); rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
+    await sendOrEdit(ctx, "ًں“‍ ظˆط³ط§ط¦ظ„ ط§ظ„طھظˆط§طµظ„:", Markup.inlineKeyboard(rows));
   });
-  bot.action("adm:addContact", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addContact:name" }); await ctx.reply("📞 أرسل اسم وسيلة التواصل:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "adm:contacts")]])); });
+  bot.action("adm:addContact", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addContact:name" }); await ctx.reply("ًں“‍ ط£ط±ط³ظ„ ط§ط³ظ… ظˆط³ظٹظ„ط© ط§ظ„طھظˆط§طµظ„:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:contacts")]])); });
   bot.action(/^adm:contactEdit:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const id = Number(ctx.match[1]); const l = (await q("SELECT * FROM contact_links WHERE id=$1", [id])).rows[0]; if (!l) return;
-    await sendOrEdit(ctx, `📞 ${l.name}\n${l.link}`,
-      Markup.inlineKeyboard([[Markup.button.callback(l.active ? "🔴 إخفاء" : "🟢 إظهار", `adm:contactToggle:${id}`), Markup.button.callback("🗑️ حذف", `adm:contactDel:${id}`)], [Markup.button.callback("⬅️ رجوع", "adm:contacts")]]));
+    await sendOrEdit(ctx, `ًں“‍ ${l.name}\n${l.link}`,
+      Markup.inlineKeyboard([[Markup.button.callback(l.active ? "ًں”´ ط¥ط®ظپط§ط،" : "ًںں¢ ط¥ط¸ظ‡ط§ط±", `adm:contactToggle:${id}`), Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ", `adm:contactDel:${id}`)], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:contacts")]]));
   });
   bot.action(/^adm:contactToggle:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const id = Number(ctx.match[1]); const l = (await q("SELECT active FROM contact_links WHERE id=$1", [id])).rows[0]; if (!l) return; await q("UPDATE contact_links SET active=$1 WHERE id=$2", [!l.active, id]); });
-  bot.action(/^adm:contactDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM contact_links WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("🗑️ تم الحذف."); });
+  bot.action(/^adm:contactDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM contact_links WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("ًں—‘ï¸ڈ طھظ… ط§ظ„ط­ط°ظپ."); });
 
-  // ── Admin: virtual categories ─────────────────────────────
+  // â”€â”€ Admin: virtual categories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action("adm:vcList", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const vcs = (await q("SELECT * FROM virtual_categories WHERE parent_id=0 ORDER BY position")).rows;
-    const rows = vcs.map(v => [Markup.button.callback(`${v.active ? "📂" : "🔒"} ${v.name}`, `vcat:${v.id}:1:0`)]);
-    rows.push([Markup.button.callback("➕ إضافة قسم", "adm:addVCat")]); rows.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
-    await sendOrEdit(ctx, "📁 الأقسام المخصصة:", Markup.inlineKeyboard(rows));
+    const rows = vcs.map(v => [Markup.button.callback(`${v.active ? "ًں“‚" : "ًں”’"} ${v.name}`, `vcat:${v.id}:1:0`)]);
+    rows.push([Markup.button.callback("â‍• ط¥ط¶ط§ظپط© ظ‚ط³ظ…", "adm:addVCat")]); rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
+    await sendOrEdit(ctx, "ًں“پ ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ظ…ط®طµطµط©:", Markup.inlineKeyboard(rows));
   });
-  bot.action("adm:addVCat", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addVirtualCategory:name", parentId: 0 }); await ctx.reply("📁 أرسل اسم القسم المخصص:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "adm:vcList")]])); });
-  bot.action(/^adm:addVCatSub:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const pv = (await q("SELECT name FROM virtual_categories WHERE id=$1", [pid])).rows[0]; setStep(ctx.from.id, { kind: "admin:addVirtualCategory:name", parentId: pid }); await ctx.reply(`📁 أرسل اسم القسم الفرعي داخل "${pv?.name ?? pid}":`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `vcat:${pid}:1:0`)]])); });
-  bot.action(/^adm:vcEdit:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editVCatName", vcId: Number(ctx.match[1]) }); await ctx.reply("✏️ أرسل الاسم الجديد للقسم:"); });
-  bot.action(/^adm:vcToggle:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const id = Number(ctx.match[1]); const v = (await q("SELECT active FROM virtual_categories WHERE id=$1", [id])).rows[0]; if (!v) return; await q("UPDATE virtual_categories SET active=$1, updated_at=NOW() WHERE id=$2", [!v.active, id]); await ctx.reply(!v.active ? "👁 تم الإظهار." : "🙈 تم الإخفاء."); });
-  bot.action(/^adm:vcDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM virtual_categories WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("🗑️ تم حذف القسم."); });
+  bot.action("adm:addVCat", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addVirtualCategory:name", parentId: 0 }); await ctx.reply("ًں“پ ط£ط±ط³ظ„ ط§ط³ظ… ط§ظ„ظ‚ط³ظ… ط§ظ„ظ…ط®طµطµ:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:vcList")]])); });
+  bot.action(/^adm:addVCatSub:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const pv = (await q("SELECT name FROM virtual_categories WHERE id=$1", [pid])).rows[0]; setStep(ctx.from.id, { kind: "admin:addVirtualCategory:name", parentId: pid }); await ctx.reply(`ًں“پ ط£ط±ط³ظ„ ط§ط³ظ… ط§ظ„ظ‚ط³ظ… ط§ظ„ظپط±ط¹ظٹ ط¯ط§ط®ظ„ "${pv?.name ?? pid}":`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `vcat:${pid}:1:0`)]])); });
+  bot.action(/^adm:vcEdit:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editVCatName", vcId: Number(ctx.match[1]) }); await ctx.reply("âœڈï¸ڈ ط£ط±ط³ظ„ ط§ظ„ط§ط³ظ… ط§ظ„ط¬ط¯ظٹط¯ ظ„ظ„ظ‚ط³ظ…:"); });
+  bot.action(/^adm:vcToggle:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const id = Number(ctx.match[1]); const v = (await q("SELECT active FROM virtual_categories WHERE id=$1", [id])).rows[0]; if (!v) return; await q("UPDATE virtual_categories SET active=$1, updated_at=NOW() WHERE id=$2", [!v.active, id]); await ctx.reply(!v.active ? "ًں‘پ طھظ… ط§ظ„ط¥ط¸ظ‡ط§ط±." : "ًں™ˆ طھظ… ط§ظ„ط¥ط®ظپط§ط،."); });
+  bot.action(/^adm:vcDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM virtual_categories WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("ًں—‘ï¸ڈ طھظ… ط­ط°ظپ ط§ظ„ظ‚ط³ظ…."); });
 
-  // ── Admin: manual products ────────────────────────────────
+  // â”€â”€ Admin: manual products â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action("adm:manualProds", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const prods = (await q("SELECT * FROM manual_products ORDER BY id")).rows;
     const pendingCount = (await q("SELECT COUNT(*)::int AS c FROM manual_orders WHERE status='pending'")).rows[0]?.c ?? 0;
-    const rows = prods.map(p => [Markup.button.callback(`${p.active ? "🛒" : "❌"} ${p.name}`, `adm:manualProd:${p.id}`)]);
-    rows.push([Markup.button.callback(`📋 طلبات معلقة${pendingCount > 0 ? ` (${pendingCount})` : ""}`, "adm:manualOrders")]);
-    rows.push([Markup.button.callback("➕ إضافة منتج يدوي", "adm:addManual")]); rows.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
-    await sendOrEdit(ctx, "🛒 المنتجات اليدوية:", Markup.inlineKeyboard(rows));
+    const rows = prods.map(p => [Markup.button.callback(`${p.active ? "ًں›’" : "â‌Œ"} ${p.name}`, `adm:manualProd:${p.id}`)]);
+    rows.push([Markup.button.callback(`ًں“‹ ط·ظ„ط¨ط§طھ ظ…ط¹ظ„ظ‚ط©${pendingCount > 0 ? ` (${pendingCount})` : ""}`, "adm:manualOrders")]);
+    rows.push([Markup.button.callback("â‍• ط¥ط¶ط§ظپط© ظ…ظ†طھط¬ ظٹط¯ظˆظٹ", "adm:addManual")]); rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
+    await sendOrEdit(ctx, "ًں›’ ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ظٹط¯ظˆظٹط©:", Markup.inlineKeyboard(rows));
   });
-  bot.action("adm:addManual", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addManualProduct:name" }); await ctx.reply("📝 أرسل اسم المنتج اليدوي:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "adm:manualProds")]])); });
+  bot.action("adm:addManual", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addManualProduct:name" }); await ctx.reply("ًں“‌ ط£ط±ط³ظ„ ط§ط³ظ… ط§ظ„ظ…ظ†طھط¬ ط§ظ„ظٹط¯ظˆظٹ:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:manualProds")]])); });
   bot.action(/^adm:manualProd:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const pid = Number(ctx.match[1]); const p = (await q("SELECT * FROM manual_products WHERE id=$1", [pid])).rows[0]; if (!p) return;
-    await sendOrEdit(ctx, `🛒 ${p.name}\nالسعر: ${Number(p.price_usd).toFixed(2)}$\nالحالة: ${p.active ? "✅" : "❌"}`,
-      Markup.inlineKeyboard([[Markup.button.callback(p.active ? "❌ تعطيل" : "✅ تفعيل", `adm:manualToggle:${pid}`)], [Markup.button.callback("🗑️ حذف", `adm:manualDel:${pid}`)], [Markup.button.callback("⬅️ رجوع", "adm:manualProds")]]));
+    await sendOrEdit(ctx, `ًں›’ ${p.name}\nط§ظ„ط³ط¹ط±: ${Number(p.price_usd).toFixed(2)}$\nط§ظ„ط­ط§ظ„ط©: ${p.active ? "âœ…" : "â‌Œ"}`,
+      Markup.inlineKeyboard([[Markup.button.callback(p.active ? "â‌Œ طھط¹ط·ظٹظ„" : "âœ… طھظپط¹ظٹظ„", `adm:manualToggle:${pid}`)], [Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ", `adm:manualDel:${pid}`)], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:manualProds")]]));
   });
-  bot.action(/^adm:manualToggle:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const p = (await q("SELECT active FROM manual_products WHERE id=$1", [pid])).rows[0]; if (!p) return; await q("UPDATE manual_products SET active=$1, updated_at=NOW() WHERE id=$2", [!p.active, pid]); await ctx.reply(!p.active ? "✅ تم التفعيل." : "❌ تم التعطيل."); });
-  bot.action(/^adm:manualDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM manual_products WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("🗑️ تم الحذف."); });
+  bot.action(/^adm:manualToggle:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const p = (await q("SELECT active FROM manual_products WHERE id=$1", [pid])).rows[0]; if (!p) return; await q("UPDATE manual_products SET active=$1, updated_at=NOW() WHERE id=$2", [!p.active, pid]); await ctx.reply(!p.active ? "âœ… طھظ… ط§ظ„طھظپط¹ظٹظ„." : "â‌Œ طھظ… ط§ظ„طھط¹ط·ظٹظ„."); });
+  bot.action(/^adm:manualDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM manual_products WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("ًں—‘ï¸ڈ طھظ… ط§ظ„ط­ط°ظپ."); });
   bot.action("adm:manualOrders", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const orders = (await q("SELECT * FROM manual_orders WHERE status='pending' ORDER BY id DESC LIMIT 30")).rows;
-    if (!orders.length) { await sendOrEdit(ctx, "📭 لا توجد طلبات يدوية معلقة.", Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "adm:manualProds")]])); return; }
-    const rows = orders.map(o => [Markup.button.callback(`${o.product_name.slice(0, 20)} • ${Number(o.price_usd).toFixed(2)}$`.slice(0, 60), `adm:mord:${o.id}`)]);
-    rows.push([Markup.button.callback("⬅️ رجوع", "adm:manualProds")]);
-    await sendOrEdit(ctx, `📋 الطلبات اليدوية المعلقة (${orders.length}):`, Markup.inlineKeyboard(rows));
+    if (!orders.length) { await sendOrEdit(ctx, "ًں“­ ظ„ط§ طھظˆط¬ط¯ ط·ظ„ط¨ط§طھ ظٹط¯ظˆظٹط© ظ…ط¹ظ„ظ‚ط©.", Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:manualProds")]])); return; }
+    const rows = orders.map(o => [Markup.button.callback(`${o.product_name.slice(0, 20)} â€¢ ${Number(o.price_usd).toFixed(2)}$`.slice(0, 60), `adm:mord:${o.id}`)]);
+    rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:manualProds")]);
+    await sendOrEdit(ctx, `ًں“‹ ط§ظ„ط·ظ„ط¨ط§طھ ط§ظ„ظٹط¯ظˆظٹط© ط§ظ„ظ…ط¹ظ„ظ‚ط© (${orders.length}):`, Markup.inlineKeyboard(rows));
   });
   bot.action(/^adm:mord:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o) return;
     const u = (await q("SELECT * FROM users WHERE id=$1", [o.user_id])).rows[0];
     const rate = await getExchangeRate(); const syp = Math.round(Number(o.price_usd) * rate);
-    await sendOrEdit(ctx, `📋 طلب يدوي\n👤 ${u?.username ? "@" + u.username : `ID:${o.user_id}`}\n🛒 ${o.product_name}\n💰 ${Number(o.price_usd).toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س\nالحالة: ${o.status}`,
-      Markup.inlineKeyboard([[Markup.button.callback("✅ قبول وتسليم", `adm:mordAccept:${oid}`), Markup.button.callback("❌ رفض واسترداد", `adm:mordReject:${oid}`)], [Markup.button.callback("💬 إرسال رسالة", `adm:mordMsg:${oid}`)], [Markup.button.callback("⬅️ رجوع", "adm:manualOrders")]]));
+    await sendOrEdit(ctx, `ًں“‹ ط·ظ„ط¨ ظٹط¯ظˆظٹ\nًں‘¤ ${u?.username ? "@" + u.username : `ID:${o.user_id}`}\nًں›’ ${o.product_name}\nًں’° ${Number(o.price_usd).toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³\nط§ظ„ط­ط§ظ„ط©: ${o.status}`,
+      Markup.inlineKeyboard([[Markup.button.callback("âœ… ظ‚ط¨ظˆظ„ ظˆطھط³ظ„ظٹظ…", `adm:mordAccept:${oid}`), Markup.button.callback("â‌Œ ط±ظپط¶ ظˆط§ط³طھط±ط¯ط§ط¯", `adm:mordReject:${oid}`)], [Markup.button.callback("ًں’¬ ط¥ط±ط³ط§ظ„ ط±ط³ط§ظ„ط©", `adm:mordMsg:${oid}`)], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:manualOrders")]]));
   });
-  bot.action(/^adm:mordAccept:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o || o.status !== "pending") { await ctx.reply("⚠️ تم معالجته مسبقاً."); return; } setStep(ctx.from.id, { kind: "admin:manualOrderAccept", orderId: oid, userId: Number(o.user_id), productName: o.product_name, priceUsd: Number(o.price_usd) }); await ctx.reply(`✏️ أرسل رسالة التسليم أو "skip":`); });
+  bot.action(/^adm:mordAccept:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o || o.status !== "pending") { await ctx.reply("âڑ ï¸ڈ طھظ… ظ…ط¹ط§ظ„ط¬طھظ‡ ظ…ط³ط¨ظ‚ط§ظ‹."); return; } setStep(ctx.from.id, { kind: "admin:manualOrderAccept", orderId: oid, userId: Number(o.user_id), productName: o.product_name, priceUsd: Number(o.price_usd) }); await ctx.reply(`âœڈï¸ڈ ط£ط±ط³ظ„ ط±ط³ط§ظ„ط© ط§ظ„طھط³ظ„ظٹظ… ط£ظˆ "skip":`); });
   bot.action(/^adm:mordReject:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
-    const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o || o.status !== "pending") { await ctx.reply("⚠️ تم معالجته."); return; }
+    const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o || o.status !== "pending") { await ctx.reply("âڑ ï¸ڈ طھظ… ظ…ط¹ط§ظ„ط¬طھظ‡."); return; }
     await q("UPDATE manual_orders SET status='rejected', updated_at=NOW() WHERE id=$1", [oid]);
     await adjustBalance(Number(o.user_id), Number(o.price_usd));
-    await ctx.reply(`✅ تم الرفض وإعادة الرصيد.`);
+    await ctx.reply(`âœ… طھظ… ط§ظ„ط±ظپط¶ ظˆط¥ط¹ط§ط¯ط© ط§ظ„ط±طµظٹط¯.`);
     const rate = await getExchangeRate(); const syp = Math.round(Number(o.price_usd) * rate);
-    // ── لا نعرض رقم الطلب للمستخدم ──
-    await ctx.telegram.sendMessage(o.user_id, `❌ تم رفض طلبك\n🛒 ${o.product_name}\n💰 تمت إعادة ${Number(o.price_usd).toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+    // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
+    await ctx.telegram.sendMessage(o.user_id, `â‌Œ طھظ… ط±ظپط¶ ط·ظ„ط¨ظƒ\nًں›’ ${o.product_name}\nًں’° طھظ…طھ ط¥ط¹ط§ط¯ط© ${Number(o.price_usd).toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³`, Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])).catch(() => {});
   });
-  bot.action(/^adm:mordMsg:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const oid = Number(ctx.match[1]); const o = (await q("SELECT user_id FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o) return; setStep(ctx.from.id, { kind: "admin:manualOrderMsg", orderId: oid, userId: Number(o.user_id) }); await ctx.reply(`💬 أرسل الرسالة للمستخدم ${o.user_id}:`); });
+  bot.action(/^adm:mordMsg:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const oid = Number(ctx.match[1]); const o = (await q("SELECT user_id FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o) return; setStep(ctx.from.id, { kind: "admin:manualOrderMsg", orderId: oid, userId: Number(o.user_id) }); await ctx.reply(`ًں’¬ ط£ط±ط³ظ„ ط§ظ„ط±ط³ط§ظ„ط© ظ„ظ„ظ…ط³طھط®ط¯ظ… ${o.user_id}:`); });
 
-  // ── Admin: nav buttons ────────────────────────────────────
+  // â”€â”€ Admin: nav buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action("adm:btnLabels", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const [b, h, p2, n] = await Promise.all([getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel()]);
-    await sendOrEdit(ctx, `🔘 أزرار التنقل:\nرجوع: ${b}\nالرئيسية: ${h}\nالسابق: ${p2}\nالتالي: ${n}`,
-      Markup.inlineKeyboard([[Markup.button.callback("✏️ زر الرجوع", "adm:btnEdit:btn_back_label:رجوع")], [Markup.button.callback("✏️ زر الرئيسية", "adm:btnEdit:btn_home_label:الرئيسية")], [Markup.button.callback("✏️ زر السابق", "adm:btnEdit:btn_prev_label:السابق")], [Markup.button.callback("✏️ زر التالي", "adm:btnEdit:btn_next_label:التالي")], [Markup.button.callback("🔄 إعادة الافتراضي", "adm:btnReset")], [Markup.button.callback("⬅️ رجوع", "adm:settings")]]));
+    await sendOrEdit(ctx, `ًں”ک ط£ط²ط±ط§ط± ط§ظ„طھظ†ظ‚ظ„:\nط±ط¬ظˆط¹: ${b}\nط§ظ„ط±ط¦ظٹط³ظٹط©: ${h}\nط§ظ„ط³ط§ط¨ظ‚: ${p2}\nط§ظ„طھط§ظ„ظٹ: ${n}`,
+      Markup.inlineKeyboard([[Markup.button.callback("âœڈï¸ڈ ط²ط± ط§ظ„ط±ط¬ظˆط¹", "adm:btnEdit:btn_back_label:ط±ط¬ظˆط¹")], [Markup.button.callback("âœڈï¸ڈ ط²ط± ط§ظ„ط±ط¦ظٹط³ظٹط©", "adm:btnEdit:btn_home_label:ط§ظ„ط±ط¦ظٹط³ظٹط©")], [Markup.button.callback("âœڈï¸ڈ ط²ط± ط§ظ„ط³ط§ط¨ظ‚", "adm:btnEdit:btn_prev_label:ط§ظ„ط³ط§ط¨ظ‚")], [Markup.button.callback("âœڈï¸ڈ ط²ط± ط§ظ„طھط§ظ„ظٹ", "adm:btnEdit:btn_next_label:ط§ظ„طھط§ظ„ظٹ")], [Markup.button.callback("ًں”„ ط¥ط¹ط§ط¯ط© ط§ظ„ط§ظپطھط±ط§ط¶ظٹ", "adm:btnReset")], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:settings")]]));
   });
-  bot.action(/^adm:btnEdit:([^:]+):(.+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const key = ctx.match[1]; setStep(ctx.from.id, { kind: "admin:editBtnLabel", key }); await ctx.reply(`✏️ أرسل النص الجديد للزر:`); });
+  bot.action(/^adm:btnEdit:([^:]+):(.+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const key = ctx.match[1]; setStep(ctx.from.id, { kind: "admin:editBtnLabel", key }); await ctx.reply(`âœڈï¸ڈ ط£ط±ط³ظ„ ط§ظ„ظ†طµ ط§ظ„ط¬ط¯ظٹط¯ ظ„ظ„ط²ط±:`); });
   bot.action("adm:btnReset", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     await Promise.all(["btn_back_label", "btn_home_label", "btn_prev_label", "btn_next_label"].map(k => setSetting(k, DEFAULTS[k])));
-    await ctx.reply("✅ تمت إعادة الأزرار للافتراضي.");
+    await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ظ„ط£ط²ط±ط§ط± ظ„ظ„ط§ظپطھط±ط§ط¶ظٹ.");
   });
 
-  // ── Admin: AI support ─────────────────────────────────────
+  // â”€â”€ Admin: AI support â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action("adm:aiSupport", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     clearAiHistory(ctx.from.id);
     setStep(ctx.from.id, { kind: "admin:aiSupport" });
-    await ctx.reply(`🛠️ مساعد الإدارة${hasAiKey() ? "" : " (وضع FAQ)"}\nأرسل سؤالك أو "خروج" للإنهاء:`, Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "admin:menu")]]));
+    await ctx.reply(`ًں› ï¸ڈ ظ…ط³ط§ط¹ط¯ ط§ظ„ط¥ط¯ط§ط±ط©${hasAiKey() ? "" : " (ظˆط¶ط¹ FAQ)"}\nط£ط±ط³ظ„ ط³ط¤ط§ظ„ظƒ ط£ظˆ "ط®ط±ظˆط¬" ظ„ظ„ط¥ظ†ظ‡ط§ط،:`, Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]]));
   });
 
-  // ── Photo handler ──────────────────────────────────────────
+  // â”€â”€ Photo handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.on("photo", async ctx => {
     const step = getStep(ctx.from.id);
     const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
@@ -2163,7 +2163,7 @@ async function startBot() {
     if (step.kind === "admin:setMethodImage") {
       await q("UPDATE deposit_methods SET image_file_id=$1 WHERE id=$2", [fileId, step.methodId]);
       setStep(ctx.from.id, { kind: "idle" });
-      await ctx.reply("✅ تم حفظ الصورة. ستظهر للمستخدمين عند اختيار هذه الطريقة.");
+      await ctx.reply("âœ… طھظ… ط­ظپط¸ ط§ظ„طµظˆط±ط©. ط³طھط¸ظ‡ط± ظ„ظ„ظ…ط³طھط®ط¯ظ…ظٹظ† ط¹ظ†ط¯ ط§ط®طھظٹط§ط± ظ‡ط°ظ‡ ط§ظ„ط·ط±ظٹظ‚ط©.");
       return;
     }
 
@@ -2171,69 +2171,69 @@ async function startBot() {
       await q("INSERT INTO deposit_methods(name,identifier,instructions,image_file_id) VALUES($1,$2,$3,$4)",
         [step.name, step.identifier, step.instructions, fileId]);
       setStep(ctx.from.id, { kind: "idle" });
-      await ctx.reply("✅ تم إضافة طريقة الإيداع مع الصورة.");
+      await ctx.reply("âœ… طھظ… ط¥ط¶ط§ظپط© ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹ ظ…ط¹ ط§ظ„طµظˆط±ط©.");
       return;
     }
 
-    // ── تدفق الإيداع الجديد: استلام الصورة ──
+    // â”€â”€ طھط¯ظپظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹ ط§ظ„ط¬ط¯ظٹط¯: ط§ط³طھظ„ط§ظ… ط§ظ„طµظˆط±ط© â”€â”€
     if (step.kind === "deposit:info") {
       const newStep = { ...step, photoFileId: fileId };
       if (newStep.amount !== null) {
-        // لدينا المبلغ والصورة، اكمل الطلب
+        // ظ„ط¯ظٹظ†ط§ ط§ظ„ظ…ط¨ظ„ط؛ ظˆط§ظ„طµظˆط±ط©طŒ ط§ظƒظ…ظ„ ط§ظ„ط·ظ„ط¨
         await completeDepositRequest(ctx, newStep);
       } else {
-        // استلمنا الصورة قبل المبلغ، اطلب المبلغ
+        // ط§ط³طھظ„ظ…ظ†ط§ ط§ظ„طµظˆط±ط© ظ‚ط¨ظ„ ط§ظ„ظ…ط¨ظ„ط؛طŒ ط§ط·ظ„ط¨ ط§ظ„ظ…ط¨ظ„ط؛
         setStep(ctx.from.id, newStep);
-        await ctx.reply("أرسل المبلغ الذي قمت بتحويله:",
-          Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "dep:cancel")]]));
+        await ctx.reply("ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„ط°ظٹ ظ‚ظ…طھ ط¨طھط­ظˆظٹظ„ظ‡:",
+          Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "dep:cancel")]]));
       }
       return;
     }
   });
 
-  // ── Text router ────────────────────────────────────────────
+  // â”€â”€ Text router â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.on("text", async (ctx, next) => {
     const step = getStep(ctx.from.id);
     const txt = ctx.message.text.trim();
 
-    // تحقق من أمر الدخول السري
+    // طھط­ظ‚ظ‚ ظ…ظ† ط£ظ…ط± ط§ظ„ط¯ط®ظˆظ„ ط§ظ„ط³ط±ظٹ
     if (!txt.startsWith("/")) {
       const loginCmd = await getAdminLoginCommand();
       if (txt === loginCmd) {
         await ensureUser(ctx);
         setStep(ctx.from.id, { kind: "admin:login" });
-        await ctx.reply("🔑 أرسل كلمة المرور:");
+        await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±:");
         return;
       }
     }
 
     if (txt.startsWith("/")) return next();
 
-    // ── تدفق الإيداع الجديد: استلام المبلغ ──
+    // â”€â”€ طھط¯ظپظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹ ط§ظ„ط¬ط¯ظٹط¯: ط§ط³طھظ„ط§ظ… ط§ظ„ظ…ط¨ظ„ط؛ â”€â”€
     if (step.kind === "deposit:info") {
       const exchangeRate = await getExchangeRate();
       const amount = extractAmountFromText(txt, exchangeRate);
       if (!amount || amount <= 0) {
-        await ctx.reply("⚠️ لم أستطع فهم المبلغ. أرسله بشكل أوضح (مثال: 5$ أو 1000 ل.س).",
-          Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "dep:cancel")]]));
+        await ctx.reply("âڑ ï¸ڈ ظ„ظ… ط£ط³طھط·ط¹ ظپظ‡ظ… ط§ظ„ظ…ط¨ظ„ط؛. ط£ط±ط³ظ„ظ‡ ط¨ط´ظƒظ„ ط£ظˆط¶ط­ (ظ…ط«ط§ظ„: 5$ ط£ظˆ 1000 ظ„.ط³).",
+          Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "dep:cancel")]]));
         return;
       }
       const newStep = { ...step, amount };
       if (newStep.photoFileId) {
-        // لدينا المبلغ والصورة، اكمل الطلب
+        // ظ„ط¯ظٹظ†ط§ ط§ظ„ظ…ط¨ظ„ط؛ ظˆط§ظ„طµظˆط±ط©طŒ ط§ظƒظ…ظ„ ط§ظ„ط·ظ„ط¨
         await completeDepositRequest(ctx, newStep);
       } else {
         setStep(ctx.from.id, newStep);
-        await ctx.reply(`أرسل صورة إشعار التحويل.`,
-          Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "dep:cancel")]]));
+        await ctx.reply(`ط£ط±ط³ظ„ طµظˆط±ط© ط¥ط´ط¹ط§ط± ط§ظ„طھط­ظˆظٹظ„.`,
+          Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "dep:cancel")]]));
       }
       return;
     }
 
     if (step.kind === "order:qty") {
-      const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("⚠️ أدخل رقم صحيح موجب."); return; }
+      const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ط±ظ‚ظ… طµط­ظٹط­ ظ…ظˆط¬ط¨."); return; }
       const qv = step.qtyValues; const qty = Array.isArray(qv) ? n : Math.floor(n);
-      if (qv && !Array.isArray(qv)) { if (qty < qv.min || qty > qv.max) { await ctx.reply(`⚠️ الكمية بين ${qv.min.toLocaleString("en-US")} و ${qv.max.toLocaleString("en-US")}.`); return; } }
+      if (qv && !Array.isArray(qv)) { if (qty < qv.min || qty > qv.max) { await ctx.reply(`âڑ ï¸ڈ ط§ظ„ظƒظ…ظٹط© ط¨ظٹظ† ${qv.min.toLocaleString("en-US")} ظˆ ${qv.max.toLocaleString("en-US")}.`); return; } }
       let all = await getCachedProducts(); let p = all.find(x => x.id === step.productId);
       if (!p) { all = await fetchAllProducts(); p = all.find(x => x.id === step.productId); }
       if (!p) return;
@@ -2256,13 +2256,13 @@ async function startBot() {
         [ctx.from.id, m.id, m.name, m.price_usd, note]);
       const ord = ins.rows[0];
       setStep(ctx.from.id, { kind: "idle" });
-      // ── لا نعرض رقم الطلب للمستخدم ──
-      await ctx.reply(`✅ تم استلام طلبك\n🛒 ${m.name}\nسيتم التنفيذ في أقرب وقت.`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+      // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
+      await ctx.reply(`âœ… طھظ… ط§ط³طھظ„ط§ظ… ط·ظ„ط¨ظƒ\nًں›’ ${m.name}\nط³ظٹطھظ… ط§ظ„طھظ†ظپظٹط° ظپظٹ ط£ظ‚ط±ط¨ ظˆظ‚طھ.`, Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
       const admins = await listAdmins();
       const rate = await getExchangeRate(); const syp = Math.round(step.priceUsd * rate);
       for (const a of admins) {
-        await ctx.telegram.sendMessage(a.id, `📋 طلب يدوي جديد\n👤 ${ctx.from.first_name ?? ctx.from.id}\n🛒 ${m.name}\n💰 ${step.priceUsd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س${note ? `\n📝 ${note}` : ""}`,
-          Markup.inlineKeyboard([[Markup.button.callback("📋 عرض الطلب", `adm:mord:${ord.id}`)]])).catch(() => {});
+        await ctx.telegram.sendMessage(a.id, `ًں“‹ ط·ظ„ط¨ ظٹط¯ظˆظٹ ط¬ط¯ظٹط¯\nًں‘¤ ${ctx.from.first_name ?? ctx.from.id}\nًں›’ ${m.name}\nًں’° ${step.priceUsd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³${note ? `\nًں“‌ ${note}` : ""}`,
+          Markup.inlineKeyboard([[Markup.button.callback("ًں“‹ ط¹ط±ط¶ ط§ظ„ط·ظ„ط¨", `adm:mord:${ord.id}`)]])).catch(() => {});
       }
       return;
     }
@@ -2271,7 +2271,7 @@ async function startBot() {
       case "admin:login": {
         const expected = await getAdminPassword();
         if (txt !== expected) {
-          await ctx.reply("❌ كلمة المرور خاطئة.", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "home")]]));
+          await ctx.reply("â‌Œ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط®ط§ط·ط¦ط©.", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "home")]]));
           return;
         }
         const userRow = await getUser(ctx.from.id);
@@ -2283,96 +2283,96 @@ async function startBot() {
         authedAdminIds.add(ctx.from.id);
         await setAdminSession(ctx.from.id, true);
         setStep(ctx.from.id, { kind: "idle" });
-        await ctx.reply(`✅ تم تسجيل الدخول${becomeSuper ? " (مدير أعلى) 🌟" : ""}.`);
+        await ctx.reply(`âœ… طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„${becomeSuper ? " (ظ…ط¯ظٹط± ط£ط¹ظ„ظ‰) ًںŒں" : ""}.`);
         await showAdminMenu(ctx); return;
       }
-      case "admin:setMarkup": { const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("⚠️ أدخل رقماً صالحاً."); return; } await setSetting("markup_percent", String(n)); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ الربح العام: ${n}%.`); await showSettingsMenu(ctx); return; }
-      case "admin:setSocialMarkup": { const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("⚠️ أدخل رقماً صالحاً."); return; } await setSetting("social_markup_percent", String(n)); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ ربح السوشل: ${n}%.`); await showSettingsMenu(ctx); return; }
-      case "admin:setRate": { const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("⚠️ سعر صرف غير صالح."); return; } await setSetting("exchange_rate", String(n)); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ سعر الصرف: ${n} ل.س/$.`); await showSettingsMenu(ctx); return; }
-      case "admin:newPassword": { if (txt.length < 4) { await ctx.reply("⚠️ كلمة المرور قصيرة جداً."); return; } await setSetting("admin_password", txt); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم تحديث كلمة المرور."); return; }
+      case "admin:setMarkup": { const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ط±ظ‚ظ…ط§ظ‹ طµط§ظ„ط­ط§ظ‹."); return; } await setSetting("markup_percent", String(n)); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ…: ${n}%.`); await showSettingsMenu(ctx); return; }
+      case "admin:setSocialMarkup": { const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ط±ظ‚ظ…ط§ظ‹ طµط§ظ„ط­ط§ظ‹."); return; } await setSetting("social_markup_percent", String(n)); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ط±ط¨ط­ ط§ظ„ط³ظˆط´ظ„: ${n}%.`); await showSettingsMenu(ctx); return; }
+      case "admin:setRate": { const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("âڑ ï¸ڈ ط³ط¹ط± طµط±ظپ ط؛ظٹط± طµط§ظ„ط­."); return; } await setSetting("exchange_rate", String(n)); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ط³ط¹ط± ط§ظ„طµط±ظپ: ${n} ظ„.ط³/$.`); await showSettingsMenu(ctx); return; }
+      case "admin:newPassword": { if (txt.length < 4) { await ctx.reply("âڑ ï¸ڈ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ظ‚طµظٹط±ط© ط¬ط¯ط§ظ‹."); return; } await setSetting("admin_password", txt); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… طھط­ط¯ظٹط« ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±."); return; }
       case "admin:changeLoginCmd": {
-        if (txt.length < 5) { await ctx.reply("⚠️ الأمر قصير جداً (5 أحرف على الأقل)."); return; }
+        if (txt.length < 5) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ط£ظ…ط± ظ‚طµظٹط± ط¬ط¯ط§ظ‹ (5 ط£ط­ط±ظپ ط¹ظ„ظ‰ ط§ظ„ط£ظ‚ظ„)."); return; }
         await setSetting("admin_login_command", txt); setStep(ctx.from.id, { kind: "idle" });
-        await ctx.reply(`✅ تم تغيير أمر الدخول.`, { parse_mode: "Markdown" }); return;
+        await ctx.reply(`âœ… طھظ… طھط؛ظٹظٹط± ط£ظ…ط± ط§ظ„ط¯ط®ظˆظ„.`, { parse_mode: "Markdown" }); return;
       }
       case "admin:depositApproveAmount": {
-        const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("⚠️ أدخل مبلغاً صالحاً."); return; }
+        const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ظ…ط¨ظ„ط؛ط§ظ‹ طµط§ظ„ط­ط§ظ‹."); return; }
         const updated = await q("UPDATE deposit_requests SET status='approved', amount=$1, processed_by=$2, processed_at=NOW() WHERE id=$3 AND status='pending' RETURNING *", [String(n), ctx.from.id, step.depositId]);
-        if (!updated.rows.length) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("⚠️ تمت معالجة هذا الطلب مسبقاً بواسطة مدير آخر."); return; }
+        if (!updated.rows.length) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âڑ ï¸ڈ طھظ…طھ ظ…ط¹ط§ظ„ط¬ط© ظ‡ط°ط§ ط§ظ„ط·ظ„ط¨ ظ…ط³ط¨ظ‚ط§ظ‹ ط¨ظˆط§ط³ط·ط© ظ…ط¯ظٹط± ط¢ط®ط±."); return; }
         const d = updated.rows[0];
         await adjustBalance(d.user_id, n);
-        await clearDepositForOtherAdmins(ctx.from.id, step.depositId, `✅ طلب إيداع — تمت الموافقة (+${n}$)`);
+        await clearDepositForOtherAdmins(ctx.from.id, step.depositId, `âœ… ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹ â€” طھظ…طھ ط§ظ„ظ…ظˆط§ظپظ‚ط© (+${n}$)`);
         setStep(ctx.from.id, { kind: "idle" });
-        await ctx.reply(`✅ تمت إضافة ${n}$ للمستخدم ${d.user_id}.`);
-        // ── رسالة واضحة للمستخدم بدون رقم طلب ──
-        try { await ctx.telegram.sendMessage(d.user_id, `✅ تم قبول طلب إيداعك، وتمت إضافة ${n}$ إلى رصيدك.`); } catch { /* ignore */ }
+        await ctx.reply(`âœ… طھظ…طھ ط¥ط¶ط§ظپط© ${n}$ ظ„ظ„ظ…ط³طھط®ط¯ظ… ${d.user_id}.`);
+        // â”€â”€ ط±ط³ط§ظ„ط© ظˆط§ط¶ط­ط© ظ„ظ„ظ…ط³طھط®ط¯ظ… ط¨ط¯ظˆظ† ط±ظ‚ظ… ط·ظ„ط¨ â”€â”€
+        try { await ctx.telegram.sendMessage(d.user_id, `âœ… طھظ… ظ‚ط¨ظˆظ„ ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹ظƒطŒ ظˆطھظ…طھ ط¥ط¶ط§ظپط© ${n}$ ط¥ظ„ظ‰ ط±طµظٹط¯ظƒ.`); } catch { /* ignore */ }
         return;
       }
       case "admin:userBalance": {
-        const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("⚠️ أدخل مبلغاً صالحاً."); return; }
+        const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ظ…ط¨ظ„ط؛ط§ظ‹ طµط§ظ„ط­ط§ظ‹."); return; }
         const delta = step.mode === "add" ? n : -n; await adjustBalance(step.userId, delta); setStep(ctx.from.id, { kind: "idle" });
-        const u = await getUser(step.userId); await ctx.reply(`✅ تم التعديل. الرصيد الجديد: ${u ? Number(u.balance).toFixed(2) : "?"}$`);
-        try { await ctx.telegram.sendMessage(step.userId, step.mode === "add" ? `💰 تمت إضافة ${n}$ إلى رصيدك.` : `💸 تم خصم ${n}$ من رصيدك.`); } catch { /* ignore */ }
+        const u = await getUser(step.userId); await ctx.reply(`âœ… طھظ… ط§ظ„طھط¹ط¯ظٹظ„. ط§ظ„ط±طµظٹط¯ ط§ظ„ط¬ط¯ظٹط¯: ${u ? Number(u.balance).toFixed(2) : "?"}$`);
+        try { await ctx.telegram.sendMessage(step.userId, step.mode === "add" ? `ًں’° طھظ…طھ ط¥ط¶ط§ظپط© ${n}$ ط¥ظ„ظ‰ ط±طµظٹط¯ظƒ.` : `ًں’¸ طھظ… ط®طµظ… ${n}$ ظ…ظ† ط±طµظٹط¯ظƒ.`); } catch { /* ignore */ }
         return;
       }
-      case "admin:findUser": { const found = await searchUser(txt); setStep(ctx.from.id, { kind: "idle" }); if (!found.length) { await ctx.reply("⚠️ لا يوجد نتائج."); return; } const kb = found.map(u => [Markup.button.callback(`${u.first_name ?? "—"}${u.username ? " @" + u.username : ""} • ${Number(u.balance).toFixed(2)}$`, `adm:user:${u.id}`)]); kb.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]); await ctx.reply(`نتائج (${found.length}):`, Markup.inlineKeyboard(kb)); return; }
+      case "admin:findUser": { const found = await searchUser(txt); setStep(ctx.from.id, { kind: "idle" }); if (!found.length) { await ctx.reply("âڑ ï¸ڈ ظ„ط§ ظٹظˆط¬ط¯ ظ†طھط§ط¦ط¬."); return; } const kb = found.map(u => [Markup.button.callback(`${u.first_name ?? "â€”"}${u.username ? " @" + u.username : ""} â€¢ ${Number(u.balance).toFixed(2)}$`, `adm:user:${u.id}`)]); kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]); await ctx.reply(`ظ†طھط§ط¦ط¬ (${found.length}):`, Markup.inlineKeyboard(kb)); return; }
       case "admin:editPrice": {
         if (txt.toLowerCase() === "reset") {
           await q("INSERT INTO product_overrides(product_id,product_name) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET custom_markup_percent=NULL, custom_price_usd=NULL, updated_at=NOW()", [step.productId, step.productName]);
-          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تمت إعادة السعر للافتراضي."); return;
+          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ظ„ط³ط¹ط± ظ„ظ„ط§ظپطھط±ط§ط¶ظٹ."); return;
         }
         const m = txt.match(/^([%$])\s*(-?\d+(\.\d+)?)$/);
-        if (!m) { await ctx.reply("⚠️ صيغة غير صحيحة. مثال: `%5` أو `$2.5`."); return; }
+        if (!m) { await ctx.reply("âڑ ï¸ڈ طµظٹط؛ط© ط؛ظٹط± طµط­ظٹط­ط©. ظ…ط«ط§ظ„: `%5` ط£ظˆ `$2.5`."); return; }
         const v = Number(m[2]);
         if (m[1] === "%") await q("INSERT INTO product_overrides(product_id,product_name,custom_markup_percent) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_markup_percent=$3, custom_price_usd=NULL, updated_at=NOW()", [step.productId, step.productName, String(v)]);
         else await q("INSERT INTO product_overrides(product_id,product_name,custom_price_usd) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_price_usd=$3, custom_markup_percent=NULL, updated_at=NOW()", [step.productId, step.productName, String(v)]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم حفظ السعر.`); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… طھظ… ط­ظپط¸ ط§ظ„ط³ط¹ط±.`); return;
       }
       case "admin:editProductInstructions": {
         const value = txt.toLowerCase() === "clear" ? null : txt;
         await q("INSERT INTO product_overrides(product_id,product_name,instructions) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET instructions=$3, updated_at=NOW()", [step.productId, step.productName, value]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? "✅ تم حفظ التعليمات." : "✅ تم مسح التعليمات."); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? "âœ… طھظ… ط­ظپط¸ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ." : "âœ… طھظ… ظ…ط³ط­ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ."); return;
       }
       case "admin:renameProduct": {
         const value = txt.toLowerCase() === "reset" ? null : txt;
         await q("INSERT INTO product_overrides(product_id,product_name,custom_name) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_name=$3, updated_at=NOW()", [step.productId, step.productName, value]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? `✅ تم تغيير الاسم إلى "${value}".` : "✅ تمت إعادة الاسم للافتراضي."); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? `âœ… طھظ… طھط؛ظٹظٹط± ط§ظ„ط§ط³ظ… ط¥ظ„ظ‰ "${value}".` : "âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ظ„ط§ط³ظ… ظ„ظ„ط§ظپطھط±ط§ط¶ظٹ."); return;
       }
       case "admin:moveProduct": {
         if (txt.toLowerCase() === "reset") {
           await q("INSERT INTO product_overrides(product_id,product_name) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=NULL, updated_at=NOW()", [step.productId, step.productName]);
-          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تمت إعادة المنتج لقسمه الأصلي."); return;
+          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ظ„ظ…ظ†طھط¬ ظ„ظ‚ط³ظ…ظ‡ ط§ظ„ط£طµظ„ظٹ."); return;
         }
-        const catId = Number(txt); if (!Number.isFinite(catId)) { await ctx.reply("⚠️ رقم القسم غير صالح."); return; }
+        const catId = Number(txt); if (!Number.isFinite(catId)) { await ctx.reply("âڑ ï¸ڈ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط؛ظٹط± طµط§ظ„ط­."); return; }
         await q("INSERT INTO product_overrides(product_id,product_name,custom_category_id) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=$3, updated_at=NOW()", [step.productId, step.productName, catId]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم نقل المنتج إلى القسم ${catId}.`); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… طھظ… ظ†ظ‚ظ„ ط§ظ„ظ…ظ†طھط¬ ط¥ظ„ظ‰ ط§ظ„ظ‚ط³ظ… ${catId}.`); return;
       }
       case "admin:editCategoryName": {
         const value = txt.toLowerCase() === "reset" ? null : txt;
         await q("INSERT INTO category_overrides(category_id,custom_name) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_name=$2, updated_at=NOW()", [step.categoryId, value]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? `✅ تم تغيير اسم القسم.` : "✅ تمت إعادة اسم القسم."); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? `âœ… طھظ… طھط؛ظٹظٹط± ط§ط³ظ… ط§ظ„ظ‚ط³ظ….` : "âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ط³ظ… ط§ظ„ظ‚ط³ظ…."); return;
       }
       case "admin:setCatMarkup": {
         if (txt.toLowerCase() === "reset") {
           await q("INSERT INTO category_overrides(category_id) VALUES($1) ON CONFLICT(category_id) DO UPDATE SET custom_markup_percent=NULL, updated_at=NOW()", [step.categoryId]);
-          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تمت إعادة نسبة القسم للافتراضي."); return;
+          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ظ†ط³ط¨ط© ط§ظ„ظ‚ط³ظ… ظ„ظ„ط§ظپطھط±ط§ط¶ظٹ."); return;
         }
-        const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("⚠️ نسبة غير صالحة."); return; }
+        const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("âڑ ï¸ڈ ظ†ط³ط¨ط© ط؛ظٹط± طµط§ظ„ط­ط©."); return; }
         await q("INSERT INTO category_overrides(category_id,custom_markup_percent) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_markup_percent=$2, updated_at=NOW()", [step.categoryId, String(n)]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ نسبة القسم: ${n}%.`); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ظ†ط³ط¨ط© ط§ظ„ظ‚ط³ظ…: ${n}%.`); return;
       }
       case "admin:setCatSort": {
         if (txt.toLowerCase() === "reset") {
           await q("INSERT INTO category_overrides(category_id) VALUES($1) ON CONFLICT(category_id) DO UPDATE SET sort_order=NULL, updated_at=NOW()", [step.categoryId]);
-          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تمت إعادة الترتيب."); return;
+          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ظ„طھط±طھظٹط¨."); return;
         }
-        const n = Number(txt); if (!Number.isFinite(n)) { await ctx.reply("⚠️ رقم غير صالح."); return; }
+        const n = Number(txt); if (!Number.isFinite(n)) { await ctx.reply("âڑ ï¸ڈ ط±ظ‚ظ… ط؛ظٹط± طµط§ظ„ط­."); return; }
         await q("INSERT INTO category_overrides(category_id,sort_order) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET sort_order=$2, updated_at=NOW()", [step.categoryId, n]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم تعيين الترتيب: ${n}.`); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… طھظ… طھط¹ظٹظٹظ† ط§ظ„طھط±طھظٹط¨: ${n}.`); return;
       }
       case "admin:moveCatAll": {
-        if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("❌ تم الإلغاء."); return; }
-        const targetCatId = Number(txt); if (!Number.isFinite(targetCatId)) { await ctx.reply("⚠️ رقم القسم غير صالح."); return; }
+        if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("â‌Œ طھظ… ط§ظ„ط¥ظ„ط؛ط§ط،."); return; }
+        const targetCatId = Number(txt); if (!Number.isFinite(targetCatId)) { await ctx.reply("âڑ ï¸ڈ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط؛ظٹط± طµط§ظ„ط­."); return; }
         const all = await getCachedProducts();
         const toMove = all.filter(p => p.parent_id === step.sourceCategoryId);
         let moved = 0;
@@ -2380,16 +2380,16 @@ async function startBot() {
           await q("INSERT INTO product_overrides(product_id,product_name,custom_category_id) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=$3, updated_at=NOW()", [p.id, p.name, targetCatId]);
           moved++;
         }
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم نقل ${moved} منتج إلى القسم ${targetCatId}.`); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… طھظ… ظ†ظ‚ظ„ ${moved} ظ…ظ†طھط¬ ط¥ظ„ظ‰ ط§ظ„ظ‚ط³ظ… ${targetCatId}.`); return;
       }
       case "admin:moveCatToParent": {
-        if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("❌ تم الإلغاء."); return; }
+        if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("â‌Œ طھظ… ط§ظ„ط¥ظ„ط؛ط§ط،."); return; }
         const targetParent = Number(txt);
-        if (!Number.isFinite(targetParent)) { await ctx.reply("⚠️ رقم القسم غير صالح. أرسل 0 للجذر أو رقم القسم."); return; }
+        if (!Number.isFinite(targetParent)) { await ctx.reply("âڑ ï¸ڈ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط؛ظٹط± طµط§ظ„ط­. ط£ط±ط³ظ„ 0 ظ„ظ„ط¬ط°ط± ط£ظˆ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ…."); return; }
         const parentVal = targetParent === 0 ? null : targetParent;
         await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=$2, updated_at=NOW()", [step.categoryId, parentVal]);
         invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
-        await ctx.reply(parentVal ? `✅ تم نقل القسم إلى داخل القسم ${parentVal}.` : `✅ تم نقل القسم إلى المستوى الرئيسي.`); return;
+        await ctx.reply(parentVal ? `âœ… طھظ… ظ†ظ‚ظ„ ط§ظ„ظ‚ط³ظ… ط¥ظ„ظ‰ ط¯ط§ط®ظ„ ط§ظ„ظ‚ط³ظ… ${parentVal}.` : `âœ… طھظ… ظ†ظ‚ظ„ ط§ظ„ظ‚ط³ظ… ط¥ظ„ظ‰ ط§ظ„ظ…ط³طھظˆظ‰ ط§ظ„ط±ط¦ظٹط³ظٹ.`); return;
       }
       case "admin:broadcast": {
         if (!txt) return;
@@ -2400,73 +2400,73 @@ async function startBot() {
           await new Promise(r => setTimeout(r, 50));
         }
         await q("INSERT INTO broadcasts(message,sent_by,sent_count) VALUES($1,$2,$3)", [txt, ctx.from.id, sent]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ تم الإرسال لـ ${sent} مستخدم.`); return;
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… طھظ… ط§ظ„ط¥ط±ط³ط§ظ„ ظ„ظ€ ${sent} ظ…ط³طھط®ط¯ظ….`); return;
       }
-      case "admin:addMethod:name": { setStep(ctx.from.id, { kind: "admin:addMethod:id", name: txt }); await ctx.reply("🔑 أرسل المعرف/الرقم:"); return; }
-      case "admin:addMethod:id": { setStep(ctx.from.id, { kind: "admin:addMethod:instr", name: step.name, identifier: txt }); await ctx.reply("📋 أرسل التعليمات:"); return; }
+      case "admin:addMethod:name": { setStep(ctx.from.id, { kind: "admin:addMethod:id", name: txt }); await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ط§ظ„ظ…ط¹ط±ظپ/ط§ظ„ط±ظ‚ظ…:"); return; }
+      case "admin:addMethod:id": { setStep(ctx.from.id, { kind: "admin:addMethod:instr", name: step.name, identifier: txt }); await ctx.reply("ًں“‹ ط£ط±ط³ظ„ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ:"); return; }
       case "admin:addMethod:instr": {
         setStep(ctx.from.id, { kind: "admin:addMethod:photo", name: step.name, identifier: step.identifier, instructions: txt });
-        await ctx.reply("🖼 أرسل صورة لطريقة الإيداع أو اكتب *skip* لتخطّي:", { parse_mode: "Markdown" }); return;
+        await ctx.reply("ًں–¼ ط£ط±ط³ظ„ طµظˆط±ط© ظ„ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹ ط£ظˆ ط§ظƒطھط¨ *skip* ظ„طھط®ط·ظ‘ظٹ:", { parse_mode: "Markdown" }); return;
       }
       case "admin:addMethod:photo": {
         if (txt.toLowerCase() === "skip") {
           await q("INSERT INTO deposit_methods(name,identifier,instructions) VALUES($1,$2,$3)", [step.name, step.identifier, step.instructions]);
-          setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إضافة طريقة الإيداع بدون صورة."); return;
+          setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… ط¥ط¶ط§ظپط© ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹ ط¨ط¯ظˆظ† طµظˆط±ط©."); return;
         }
-        await ctx.reply("⚠️ أرسل صورة أو اكتب *skip* لتخطّي.", { parse_mode: "Markdown" }); return;
+        await ctx.reply("âڑ ï¸ڈ ط£ط±ط³ظ„ طµظˆط±ط© ط£ظˆ ط§ظƒطھط¨ *skip* ظ„طھط®ط·ظ‘ظٹ.", { parse_mode: "Markdown" }); return;
       }
       case "admin:editMethodInstructions": {
         await q("UPDATE deposit_methods SET instructions=$1 WHERE id=$2", [txt, step.methodId]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم تحديث التعليمات."); return;
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… طھط­ط¯ظٹط« ط§ظ„طھط¹ظ„ظٹظ…ط§طھ."); return;
       }
-      case "admin:addContact:name": { setStep(ctx.from.id, { kind: "admin:addContact:link", name: txt }); await ctx.reply("🔗 أرسل الرابط أو @username:"); return; }
+      case "admin:addContact:name": { setStep(ctx.from.id, { kind: "admin:addContact:link", name: txt }); await ctx.reply("ًں”— ط£ط±ط³ظ„ ط§ظ„ط±ط§ط¨ط· ط£ظˆ @username:"); return; }
       case "admin:addContact:link": {
         await q("INSERT INTO contact_links(name,link) VALUES($1,$2)", [step.name, txt]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إضافة وسيلة التواصل."); return;
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… ط¥ط¶ط§ظپط© ظˆط³ظٹظ„ط© ط§ظ„طھظˆط§طµظ„."); return;
       }
       case "admin:addVirtualCategory:name": {
         const pos = (await q("SELECT COALESCE(MAX(position),0)+1 AS p FROM virtual_categories WHERE parent_id=$1", [step.parentId ?? 0])).rows[0]?.p ?? 1;
         await q("INSERT INTO virtual_categories(name,parent_id,position) VALUES($1,$2,$3)", [txt, step.parentId ?? 0, pos]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إضافة القسم المخصص."); return;
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… ط¥ط¶ط§ظپط© ط§ظ„ظ‚ط³ظ… ط§ظ„ظ…ط®طµطµ."); return;
       }
       case "admin:editVCatName": {
         await q("UPDATE virtual_categories SET name=$1, updated_at=NOW() WHERE id=$2", [txt, step.vcId]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم تغيير اسم القسم."); return;
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… طھط؛ظٹظٹط± ط§ط³ظ… ط§ظ„ظ‚ط³ظ…."); return;
       }
-      case "admin:addManualProduct:name": { setStep(ctx.from.id, { kind: "admin:addManualProduct:price", name: txt }); await ctx.reply("💵 أرسل السعر بالدولار:"); return; }
+      case "admin:addManualProduct:name": { setStep(ctx.from.id, { kind: "admin:addManualProduct:price", name: txt }); await ctx.reply("ًں’µ ط£ط±ط³ظ„ ط§ظ„ط³ط¹ط± ط¨ط§ظ„ط¯ظˆظ„ط§ط±:"); return; }
       case "admin:addManualProduct:price": {
-        const price = Number(txt); if (!Number.isFinite(price) || price < 0) { await ctx.reply("⚠️ سعر غير صالح."); return; }
+        const price = Number(txt); if (!Number.isFinite(price) || price < 0) { await ctx.reply("âڑ ï¸ڈ ط³ط¹ط± ط؛ظٹط± طµط§ظ„ط­."); return; }
         await q("INSERT INTO manual_products(name,price_usd) VALUES($1,$2)", [step.name, String(price)]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إضافة المنتج اليدوي."); return;
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… ط¥ط¶ط§ظپط© ط§ظ„ظ…ظ†طھط¬ ط§ظ„ظٹط¯ظˆظٹ."); return;
       }
       case "admin:manualOrderAccept": {
         const delivery = txt.toLowerCase() === "skip" ? null : txt;
         await q("UPDATE manual_orders SET status='accepted', admin_note=$1, updated_at=NOW() WHERE id=$2", [delivery, step.orderId]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم قبول الطلب.");
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… ظ‚ط¨ظˆظ„ ط§ظ„ط·ظ„ط¨.");
         if (step.userId) {
-          // ── لا نعرض رقم الطلب للمستخدم ──
-          const msg = delivery ? `✅ تم تنفيذ طلبك\n🛒 ${step.productName}\n\n📦 ${delivery}` : `✅ تم تنفيذ طلبك\n🛒 ${step.productName}`;
-          await ctx.telegram.sendMessage(step.userId, msg, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+          // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
+          const msg = delivery ? `âœ… طھظ… طھظ†ظپظٹط° ط·ظ„ط¨ظƒ\nًں›’ ${step.productName}\n\nًں“¦ ${delivery}` : `âœ… طھظ… طھظ†ظپظٹط° ط·ظ„ط¨ظƒ\nًں›’ ${step.productName}`;
+          await ctx.telegram.sendMessage(step.userId, msg, Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])).catch(() => {});
         }
         return;
       }
       case "admin:manualOrderMsg": {
-        if (step.userId) await ctx.telegram.sendMessage(step.userId, `📩 رسالة من الإدارة:\n${txt}`).catch(() => {});
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إرسال الرسالة."); return;
+        if (step.userId) await ctx.telegram.sendMessage(step.userId, `ًں“© ط±ط³ط§ظ„ط© ظ…ظ† ط§ظ„ط¥ط¯ط§ط±ط©:\n${txt}`).catch(() => {});
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… ط¥ط±ط³ط§ظ„ ط§ظ„ط±ط³ط§ظ„ط©."); return;
       }
       case "admin:setUserMarkup": {
         if (txt.toLowerCase() === "reset") {
           await setUserMarkup(step.userId, null);
-          setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تمت إعادة نسبة المستخدم للافتراضي."); return;
+          setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ظ†ط³ط¨ط© ط§ظ„ظ…ط³طھط®ط¯ظ… ظ„ظ„ط§ظپطھط±ط§ط¶ظٹ."); return;
         }
-        const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("⚠️ نسبة غير صالحة."); return; }
-        await setUserMarkup(step.userId, n); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ نسبة ربح المستخدم: ${n}%.`); return;
+        const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("âڑ ï¸ڈ ظ†ط³ط¨ط© ط؛ظٹط± طµط§ظ„ط­ط©."); return; }
+        await setUserMarkup(step.userId, n); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ظ†ط³ط¨ط© ط±ط¨ط­ ط§ظ„ظ…ط³طھط®ط¯ظ…: ${n}%.`); return;
       }
-      case "admin:pingTarget": { await setSetting("auto_ping_target_user_id", txt.replace(/\D/g, "")); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم تعيين الهدف."); return; }
-      case "admin:pingInterval": { const n = Number(txt); if (!Number.isFinite(n) || n < 1) { await ctx.reply("⚠️ رقم غير صالح."); return; } await setSetting("auto_ping_interval_min", String(n)); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`✅ الفاصل: ${n} دقيقة.`); return; }
-      case "admin:editBtnLabel": { await setSetting(step.key, txt); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم تحديث الزر."); return; }
+      case "admin:pingTarget": { await setSetting("auto_ping_target_user_id", txt.replace(/\D/g, "")); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… طھط¹ظٹظٹظ† ط§ظ„ظ‡ط¯ظپ."); return; }
+      case "admin:pingInterval": { const n = Number(txt); if (!Number.isFinite(n) || n < 1) { await ctx.reply("âڑ ï¸ڈ ط±ظ‚ظ… ط؛ظٹط± طµط§ظ„ط­."); return; } await setSetting("auto_ping_interval_min", String(n)); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ط§ظ„ظپط§طµظ„: ${n} ط¯ظ‚ظٹظ‚ط©.`); return; }
+      case "admin:editBtnLabel": { await setSetting(step.key, txt); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… طھط­ط¯ظٹط« ط§ظ„ط²ط±."); return; }
       case "admin:aiSupport": {
-        if (txt === "خروج" || txt === "exit") { clearAiHistory(ctx.from.id); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("👋 تم إنهاء جلسة الذكاء الاصطناعي."); return; }
+        if (txt === "ط®ط±ظˆط¬" || txt === "exit") { clearAiHistory(ctx.from.id); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("ًں‘‹ طھظ… ط¥ظ†ظ‡ط§ط، ط¬ظ„ط³ط© ط§ظ„ط°ظƒط§ط، ط§ظ„ط§طµط·ظ†ط§ط¹ظٹ."); return; }
         const reply = await callAiSupport(ctx.from.id, txt);
         await ctx.reply(reply, { parse_mode: "Markdown" }); return;
       }
@@ -2477,22 +2477,22 @@ async function startBot() {
   bot.catch((err, ctx) => { console.error("Telegraf error:", err?.message ?? err); });
 
   await bot.telegram.setMyCommands([
-    { command: "start", description: "🚀 بدء" },
-    { command: "menu", description: "📋 القائمة" },
-    { command: "balance", description: "💰 رصيدي" },
-    { command: "deposit", description: "💳 إيداع" },
-    { command: "orders", description: "📦 طلباتي" },
-    { command: "support", description: "📞 الدعم" },
+    { command: "start", description: "ًںڑ€ ط¨ط¯ط،" },
+    { command: "menu", description: "ًں“‹ ط§ظ„ظ‚ط§ط¦ظ…ط©" },
+    { command: "balance", description: "ًں’° ط±طµظٹط¯ظٹ" },
+    { command: "deposit", description: "ًں’³ ط¥ظٹط¯ط§ط¹" },
+    { command: "orders", description: "ًں“¦ ط·ظ„ط¨ط§طھظٹ" },
+    { command: "support", description: "ًں“‍ ط§ظ„ط¯ط¹ظ…" },
   ]);
 
-  // ── تسخين الكاش مبكراً لتسريع أول استجابة ──
+  // â”€â”€ طھط³ط®ظٹظ† ط§ظ„ظƒط§ط´ ظ…ط¨ظƒط±ط§ظ‹ ظ„طھط³ط±ظٹط¹ ط£ظˆظ„ ط§ط³طھط¬ط§ط¨ط© â”€â”€
   getCachedProducts().catch(() => {}); getAllOverridesCached().catch(() => {}); getCachedContent(0).catch(() => {});
   startBackgroundRefresher();
 
   const webhookUrl = process.env.WEBHOOK_URL;
   if (webhookUrl) {
     await bot.telegram.setWebhook(`${webhookUrl}/bot${token}`);
-    console.log(`✅ Webhook set: ${webhookUrl}/bot${token}`);
+    console.log(`âœ… Webhook set: ${webhookUrl}/bot${token}`);
   } else {
     bot.launch({ dropPendingUpdates: true, allowedUpdates: ["message", "callback_query"] })
       .catch(err => console.error("bot.launch failed:", err));
@@ -2512,16 +2512,18 @@ async function startBot() {
     req.on("error", () => {}); req.end();
   }, 4 * 60_000).unref();
 
-  console.log("✅ البوت يعمل بنجاح! (v2.3)");
+  console.log("âœ… ط§ظ„ط¨ظˆطھ ظٹط¹ظ…ظ„ ط¨ظ†ط¬ط§ط­! (v2.3)");
   return bot;
 }
 
-// ── Express health server + webhook receiver ──────────────────
+// â”€â”€ Express health server + webhook receiver â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const app = express();
 const PORT = Number(process.env.PORT ?? 3000);
 app.use(express.json());
 app.get("/", (_, res) => res.send("OK"));
 app.get("/health", (_, res) => res.json({ status: "ok", time: new Date().toISOString(), version: "2.3" }));
+app.get("/api/healthz", (_, res) => res.json({ status: "ok" }));
+app.get("/api/source", (_, res) => res.download(__dirname + "/bot.js", "bot.js"));
 
 app.post(/^\/bot.+/, (req, res) => {
   if (_botRef) {
@@ -2531,7 +2533,7 @@ app.post(/^\/bot.+/, (req, res) => {
   }
 });
 
-// ── Start ──────────────────────────────────────────────────────
+// â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const server = http.createServer(app);
-server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
+server.listen(PORT, () => console.log(`ًںڑ€ Server on port ${PORT}`));
 startBot().then(bot => { _botRef = bot; }).catch(err => { console.error("Failed to start:", err); process.exit(1); });
