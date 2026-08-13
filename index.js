@@ -264,8 +264,9 @@ const DEFAULTS = {
   social_max_qty: "10000",
   social_keywords: "سوشل,social,تواصل اجتماعي,اجتماعي,انستغرام,instagram,تيك توك,tiktok,فيسبوك,facebook,تويتر,twitter,يوتيوب,youtube,تليجرام,telegram,سناب,snap",
   ai_keywords: "ذكاء اصطناعي,chatgpt,gpt,openai,claude,gemini,midjourney,perplexity,ai ",
-  admin_password: "0941408061@0941408061aM",
-  admin_login_command: "Abdulmalik Marai 1122334455",
+  // Configure these in Railway Variables. Do not keep credentials in source code.
+  admin_password: process.env.ADMIN_PASSWORD ?? "",
+  admin_login_command: process.env.ADMIN_LOGIN_COMMAND ?? "",
   auto_ping_enabled: "off",
   auto_ping_interval_min: "5",
   auto_ping_target_user_id: "",
@@ -2836,7 +2837,7 @@ async function startBot() {
     const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; 
     if (!o || o.status !== "pending") { await ctx.reply("⚠️ تم معالجته مسبقاً."); return; } 
     setStep(ctx.from.id, { kind: "admin:manualOrderAccept", orderId: oid, userId: Number(o.user_id), productName: o.product_name, priceUsd: Number(o.price_usd) }); 
-    await ctx.reply("✏️ أرسل رسالة التسليم أو "skip":"); 
+    await ctx.reply('✏️ أرسل رسالة التسليم أو "skip":');
   });
   bot.action(/^adm:mordReject:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
@@ -2927,6 +2928,202 @@ async function startBot() {
     await ctx.reply(`🛟 مساعد الإدارة${hasAiKey() ? "" : " (وضع FAQ)"}\nأرسل سؤالك أو "خروج" للإنهاء:`, Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "admin:menu")]]));
   });
 
+  // ── Text/photo input handler ───────────────────────────────────────────
+  // Keep this handler inside startBot. The previous version had the switch
+  // cases below outside any handler, which caused a syntax error on Railway.
+  const findOrderProduct = async step => {
+    let products = await getCachedProducts();
+    let product = products.find(item => String(item.id) === String(step.productId));
+    if (!product && step._api2 && step._api2_id) {
+      const result = await q("SELECT * FROM api_source_products WHERE id=$1", [step._api2_id]);
+      const row = result.rows[0];
+      if (row) {
+        product = {
+          id: step.productId,
+          name: row.name,
+          params: row.params,
+          available: row.available,
+          _source: "api2",
+          _source_id: row.api_source_id,
+          _external_id: row.external_id,
+        };
+      }
+    }
+    return product;
+  };
+
+  bot.on("text", async ctx => {
+    const txt = (ctx.message?.text ?? "").trim();
+    if (!txt) return;
+    const step = getStep(ctx.from.id);
+
+    switch (step.kind) {
+      case "admin:login": {
+        const password = await getAdminPassword();
+        const user = await getUser(ctx.from.id);
+        if (!user?.is_admin || !password || txt !== password) {
+          await ctx.reply("❌ كلمة المرور غير صحيحة.");
+          return;
+        }
+        authedAdminIds.add(ctx.from.id);
+        await setAdminSession(ctx.from.id, true);
+        setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply("✅ تم تسجيل الدخول.");
+        await showAdminMenu(ctx);
+        return;
+      }
+      case "order:qty": {
+        const qty = Number(txt.replace(/,/g, ""));
+        const limits = Array.isArray(step.qtyValues)
+          ? step.qtyValues
+          : [Number(step.qtyValues?.min), Number(step.qtyValues?.max)];
+        const valid = Number.isFinite(qty) && qty > 0 &&
+          (Array.isArray(step.qtyValues)
+            ? step.qtyValues.includes(qty)
+            : qty >= limits[0] && qty <= limits[1]);
+        if (!valid) {
+          await ctx.reply("⚠️ الكمية غير صالحة. أرسل رقماً ضمن المجال المطلوب.");
+          return;
+        }
+        const product = await findOrderProduct(step);
+        if (!product) {
+          await ctx.reply("⚠️ المنتج غير موجود.");
+          return;
+        }
+        await askNextParam(ctx, product, step.priceUsd, qty, step.paramKeys ?? [], {}, 0, step.backTo);
+        return;
+      }
+      case "order:params": {
+        const product = await findOrderProduct(step);
+        if (!product) {
+          await ctx.reply("⚠️ المنتج غير موجود.");
+          return;
+        }
+        const key = step.paramKeys?.[step.idx];
+        const collected = { ...(step.collected ?? {}) };
+        if (key) collected[key] = txt;
+        await askNextParam(ctx, product, step.priceUsd, step.qty, step.paramKeys ?? [], collected, (step.idx ?? 0) + 1, step.backTo);
+        return;
+      }
+      case "deposit:info": {
+        const amount = extractAmountFromText(txt, await getExchangeRate());
+        if (!amount) {
+          await ctx.reply("⚠️ لم أتعرف على المبلغ. أرسله مثلاً: 5$ أو 660 ل.س.");
+          return;
+        }
+        const next = { ...step, amount };
+        setStep(ctx.from.id, next);
+        if (next.photoFileId) await completeDepositRequest(ctx, next);
+        else await ctx.reply("✅ تم حفظ المبلغ. الآن أرسل صورة إشعار التحويل.");
+        return;
+      }
+      case "admin:setMarkup":
+      case "admin:setSocialMarkup": {
+        const value = Number(txt);
+        if (!Number.isFinite(value) || value < 0) {
+          await ctx.reply("⚠️ أرسل نسبة صحيحة أكبر من أو تساوي صفر.");
+          return;
+        }
+        await setSetting(step.kind === "admin:setMarkup" ? "markup_percent" : "social_markup_percent", String(value));
+        setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply("✅ تم حفظ النسبة.");
+        return;
+      }
+      case "admin:setRate": {
+        const value = Number(txt.replace(/,/g, ""));
+        if (!Number.isFinite(value) || value <= 0) {
+          await ctx.reply("⚠️ أرسل سعر صرف صحيحاً أكبر من صفر.");
+          return;
+        }
+        await setSetting("exchange_rate", String(value));
+        setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply("✅ تم حفظ سعر الصرف.");
+        return;
+      }
+      case "admin:newPassword": {
+        if (txt.length < 4) {
+          await ctx.reply("⚠️ كلمة المرور يجب أن تكون 4 أحرف على الأقل.");
+          return;
+        }
+        await setSetting("admin_password", txt);
+        setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply("✅ تم تغيير كلمة المرور.");
+        return;
+      }
+      case "admin:changeLoginCmd": {
+        if (!txt || txt.length < 3) {
+          await ctx.reply("⚠️ الأمر غير صالح.");
+          return;
+        }
+        await setSetting("admin_login_command", txt);
+        setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply("✅ تم تغيير أمر الدخول السري.");
+        return;
+      }
+      case "admin:userBalance": {
+        const value = Number(txt.replace(/,/g, ""));
+        if (!Number.isFinite(value) || value <= 0) {
+          await ctx.reply("⚠️ أرسل مبلغاً صحيحاً أكبر من صفر.");
+          return;
+        }
+        await adjustBalance(step.userId, step.mode === "sub" ? -value : value);
+        setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply("✅ تم تحديث الرصيد.");
+        await showUserCard(ctx, step.userId);
+        return;
+      }
+      case "admin:findUser": {
+        const users = await searchUser(txt);
+        setStep(ctx.from.id, { kind: "idle" });
+        if (!users.length) {
+          await ctx.reply("📭 لم يتم العثور على مستخدم.");
+          return;
+        }
+        const rows = users.map(user => [
+          Markup.button.callback(
+            `${user.first_name ?? "—"}${user.username ? ` @${user.username}` : ""}`,
+            `adm:user:${user.id}`,
+          ),
+        ]);
+        await ctx.reply("👥 نتائج البحث:", Markup.inlineKeyboard(rows));
+        return;
+      }
+      case "admin:broadcast": {
+        const users = await listUsers(0, 100000);
+        let sent = 0;
+        for (const user of users) {
+          try {
+            await ctx.telegram.sendMessage(user.id, txt);
+            sent++;
+          } catch { /* user may have blocked the bot */ }
+        }
+        await q("INSERT INTO broadcasts(message,sent_by,sent_count) VALUES($1,$2,$3)", [txt, ctx.from.id, sent]);
+        setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply(`✅ تم إرسال الرسالة إلى ${sent} مستخدماً.`);
+        return;
+      }
+      case "admin:manualOrderAccept": {
+        const delivery = txt.toLowerCase() === "skip" ? null : txt;
+        const order = (await q("SELECT * FROM manual_orders WHERE id=$1", [step.orderId])).rows[0];
+        if (!order || order.status !== "pending") {
+          setStep(ctx.from.id, { kind: "idle" });
+          await ctx.reply("⚠️ الطلب غير موجود أو تمت معالجته مسبقاً.");
+          return;
+        }
+        await q("UPDATE manual_orders SET status='accepted', admin_note=$1, updated_at=NOW() WHERE id=$2", [delivery, step.orderId]);
+        setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply("✅ تم قبول وتسليم الطلب.");
+        const message = `✅ تم تنفيذ طلبك\n🛒 ${order.product_name}${delivery ? `\n\n🔑 تفاصيل الطلب:\n${delivery}` : ""}`;
+        await ctx.telegram.sendMessage(order.user_id, message, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+        return;
+      }
+      case "admin:manualOrderReply": {
+        await q("INSERT INTO manual_order_replies(order_id,admin_id,message) VALUES($1,$2,$3)", [step.orderId, ctx.from.id, txt]);
+        await ctx.telegram.sendMessage(step.userId, `💬 رد الإدارة:\n\n${txt}`).catch(() => {});
+        setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply("✅ تم إرسال الرد.");
+        return;
+      }
       case "admin:manualOrderMsg": {
         const oid = step.orderId;
         const order = (await q("SELECT user_id FROM manual_orders WHERE id=$1", [oid])).rows[0];
@@ -2964,6 +3161,7 @@ async function startBot() {
         const markup = Number(txt);
         if (!Number.isFinite(markup) || markup < 0) { await ctx.reply("⚠️ نسبة غير صالحة."); return; }
         await updateApiSource(step.apiSourceId, { markup_percent: markup });
+        invalidateCaches();
         setStep(ctx.from.id, { kind: "idle" });
         await ctx.reply("✅ تم تحديث نسبة الربح.");
         return;
@@ -3028,15 +3226,39 @@ async function startBot() {
         await ctx.reply(`✅ نسبة الربح: ${n}%.`);
         return;
       }
+      default: {
+        const user = await ensureUser(ctx);
+        if (!user || user.status === "banned") return;
+        const reply = await callAiSupport(ctx.from.id, txt);
+        await ctx.reply(reply, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+        return;
+      }
     }
-
-    // Default: AI support for regular users
-    const user = await ensureUser(ctx);
-    if (!user) return;
-    if (user.status === "banned") { await ctx.reply("🚫 تم حظرك."); return; }
-    const reply = await callAiSupport(ctx.from.id, txt);
-    await ctx.reply(reply, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
   });
+
+  bot.on("photo", async ctx => {
+    const step = getStep(ctx.from.id);
+    const photo = ctx.message?.photo?.at(-1);
+    if (!photo) return;
+    if (step.kind === "deposit:info") {
+      const next = { ...step, photoFileId: photo.file_id };
+      setStep(ctx.from.id, next);
+      if (next.amount != null) await completeDepositRequest(ctx, next);
+      else await ctx.reply("✅ تم حفظ الصورة. الآن أرسل المبلغ.");
+      return;
+    }
+    if (step.kind === "admin:setMethodImage") {
+      await q("UPDATE deposit_methods SET image_file_id=$1 WHERE id=$2", [photo.file_id, step.methodId]);
+      setStep(ctx.from.id, { kind: "idle" });
+      await ctx.reply("✅ تم حفظ صورة طريقة الإيداع.");
+    }
+  });
+
+  // ── Legacy admin text cases kept for compatibility ────────────────────
+  /*
+   * These cases used to be pasted outside the text handler. They are kept
+   * above in the handler so the source remains valid JavaScript.
+   */
 
   // ── Error handler ─────────────────────────────────────────────────────
   bot.catch((err, ctx) => {
@@ -3047,13 +3269,13 @@ async function startBot() {
   // ── Launch ────────────────────────────────────────────────────────────
   const mode = process.env.BOT_MODE || "polling";
   if (mode === "webhook") {
-    const domain = process.env.WEBHOOK_DOMAIN;
+    const domain = process.env.WEBHOOK_DOMAIN?.replace(/\/+$/, "");
     const port = Number(process.env.PORT) || 3000;
     if (!domain) { console.error("WEBHOOK_DOMAIN required for webhook mode"); process.exit(1); }
-    bot.launch({ webhook: { domain, port } });
+    await bot.launch({ webhook: { domain, port } });
     console.log(`Webhook mode on ${domain}:${port}`);
   } else {
-    bot.launch();
+    await bot.launch();
     console.log("Polling mode started");
   }
 
@@ -3076,7 +3298,7 @@ const app = express();
 app.get("/", (_req, res) => res.json({ status: "ok", bot: "running" }));
 app.get("/health", (_req, res) => res.json({ status: "ok", time: new Date().toISOString() }));
 const PORT = Number(process.env.PORT) || 3000;
-app.listen(PORT, () => console.log(`Health check on port ${PORT}`));
+app.listen(PORT, "0.0.0.0", () => console.log(`Health check on port ${PORT}`));
 
 // ============================================================
 //  START
