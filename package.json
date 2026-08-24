@@ -1,19 +1,20 @@
 {
-  "name": "marwan-store-bot",
-  "version": "1.0.0",
-  "description": "بوت متجر المروان - تيليجرام",
+  "name": "marwan-telegram-store-bot",
+  "version": "3.1.0",
+  "private": true,
+  "description": "متجر المروان — Telegram bot powered by Telegraf and PostgreSQL",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "telegraf": "^4.16.3",
-    "drizzle-orm": "0.30.10",
-    "pg": "^8.13.0",
-    "axios": "^1.7.9",
-    "express": "^4.21.2"
+    "start": "node index.js",
+    "check": "node --check index.js"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=18.17.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "express": "^4.21.2",
+    "pg": "^8.13.1",
+    "telegraf": "^4.16.3"
   }
 }
