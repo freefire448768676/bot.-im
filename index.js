@@ -658,6 +658,10 @@ async function syncApiSource(sourceId) {
 
   // Fetch products
   const products = await fetchApiSourceProducts(src);
+  // Only hide old products after a successful response. Each product returned
+  // below is marked available again, so deleted/removed source products do not
+  // remain visible in the store.
+  await q("UPDATE api_source_products SET available=false, updated_at=NOW() WHERE api_source_id=$1", [src.id]);
   for (const p of products) {
     await q(`
       INSERT INTO api_source_products(api_source_id, external_id, name, category_name, category_id, parent_id, price, base_price, rate, qty_values, params, notes, available)
@@ -671,6 +675,7 @@ async function syncApiSource(sourceId) {
   try {
     const content = await fetchApiSourceContent(src, 0);
     const cats = content.categories || [];
+    await q("DELETE FROM api_source_categories WHERE api_source_id=$1", [src.id]);
     for (const c of cats) {
       await q(`
         INSERT INTO api_source_categories(api_source_id, external_id, name, parent_id)
@@ -684,6 +689,21 @@ async function syncApiSource(sourceId) {
   }
 
   return products.length;
+}
+
+let apiSyncInFlight = null;
+async function syncAllApiSources() {
+  if (apiSyncInFlight) return apiSyncInFlight;
+  apiSyncInFlight = (async () => {
+    const sources = await listApiSources();
+    await Promise.allSettled(
+      sources.filter(src => src.active).map(src => syncApiSource(src.id)),
+    );
+    invalidateCaches();
+  })().finally(() => {
+    apiSyncInFlight = null;
+  });
+  return apiSyncInFlight;
 }
 
 async function testApiSourceConnection(source) {
@@ -889,19 +909,33 @@ let refresherStarted = false;
 function startBackgroundRefresher() {
   if (refresherStarted) return;
   refresherStarted = true;
-  setInterval(() => {
-    Promise.all([
-      fetchAllProducts().then(p => { productsCache = { products: p, expiry: Date.now() + PRODUCTS_TTL }; }),
-      loadAllOverrides().then(m => { allOverridesCache = { map: m, expiry: Date.now() + OVERRIDES_TTL }; }),
-      fetchContent(0).then(c => { contentCache.set(0, { content: c, expiry: Date.now() + CONTENT_TTL }); }),
-    ]).catch(() => {});
-  }, 11 * 60_000).unref();
+  const refresh = () => Promise.allSettled([
+    // The cache functions deduplicate concurrent refreshes and keep failures
+    // isolated, so one sleeping/unavailable API cannot block the other source.
+    getCachedProducts(),
+    loadAllOverrides().then(m => { allOverridesCache = { map: m, expiry: Date.now() + OVERRIDES_TTL }; }),
+    fetchContent(0).then(c => { contentCache.set(0, { content: c, expiry: Date.now() + CONTENT_TTL }); }),
+    q("SELECT 1"),
+  ]).catch(() => {});
+
+  // Warm the caches immediately after launch and check them frequently enough
+  // that an idle instance does not leave the first user with a cold cache.
+  refresh();
+  // API 2 is persisted locally for fast reads, but it must be refreshed
+  // automatically so new prices/products are not dependent on an admin click.
+  syncAllApiSources().catch(() => {});
+  setInterval(refresh, 2 * 60_000).unref();
+  setInterval(() => syncAllApiSources().catch(() => {}), 10 * 60_000).unref();
 }
 
 function isExcludedProduct(p, kws) {
   const n = (p.name ?? "").toLowerCase();
   return kws.some(k => k && n.includes(k));
 }
+
+// API 2 rows have their own database IDs. Negative override keys prevent a
+// collision with API 1 product IDs while retaining the existing schema.
+function api2OverrideId(id) { return -Math.abs(Number(id)); }
 
 async function loadCategoryOverrides(ids) {
   if (!ids.length) return new Map();
@@ -1587,19 +1621,23 @@ async function showApi2Category(ctx, catId, page, backTo) {
   else backBtn = Markup.button.callback(backLabel, `cat:${backTo}:1:0`);
 
   // Sub categories
-  const subRes = await q("SELECT * FROM api_source_categories WHERE parent_id=$1", [catId]);
+  const subRes = await q("SELECT * FROM api_source_categories WHERE api_source_id=$1 AND parent_id=$2", [cat.api_source_id, cat.external_id]);
   const subBtns = subRes.rows.map(c => Markup.button.callback(`ًں“‚ ${c.name}`.slice(0, 60), `api2cat:${c.id}:1:${catId}`));
 
   // Products
-  const prodRes = await q("SELECT * FROM api_source_products WHERE category_id=$1 AND available=true", [catId]);
+  const prodRes = await q("SELECT * FROM api_source_products WHERE api_source_id=$1 AND category_id=$2 AND available=true", [cat.api_source_id, cat.external_id]);
   const src = await getApiSource(cat.api_source_id);
   const srcMarkup = src?.markup_percent ?? 3;
+  const api2Overrides = await loadOverrideMap(prodRes.rows.map(p => api2OverrideId(p.id)));
 
   const prodBtns = prodRes.rows.map(p => {
+    const ov = api2Overrides.get(api2OverrideId(p.id));
     const rawPrice = Number(p.price) || Number(p.base_price) || 0;
-    const usd = Number((rawPrice * (1 + srcMarkup / 100)).toFixed(6));
+    const usd = ov?.customPriceUsd != null
+      ? ov.customPriceUsd
+      : Number((rawPrice * (1 + (ov?.customMarkupPercent ?? srcMarkup) / 100)).toFixed(6));
     const syp = Math.round(usd * rate);
-    return Markup.button.callback(`ًں›’ ${p.name} â€¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³`.slice(0, 60), `api2prod:${p.id}:${catId}`);
+    return Markup.button.callback(`ًں›’ ${ov?.customName ?? p.name} â€¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³`.slice(0, 60), `api2prod:${p.id}:${catId}`);
   });
 
   const allBtns = [...subBtns, ...prodBtns];
@@ -1631,10 +1669,15 @@ async function showApi2Product(ctx, prodId, backTo) {
   const p = pRes.rows[0];
   if (!p || !p.available) { await sendOrEdit(ctx, "âڑ ï¸ڈ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…طھط§ط­.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
 
-  const [rate, src] = await Promise.all([getExchangeRate(), getApiSource(p.api_source_id)]);
+  const [rate, src, u, ovMap] = await Promise.all([
+    getExchangeRate(), getApiSource(p.api_source_id), getUser(ctx.from.id), loadOverrideMap([api2OverrideId(p.id)]),
+  ]);
   const srcMarkup = src?.markup_percent ?? 3;
   const rawPrice = Number(p.price) || Number(p.base_price) || 0;
-  const usd = Number((rawPrice * (1 + srcMarkup / 100)).toFixed(6));
+  const ov = ovMap.get(api2OverrideId(p.id));
+  const usd = ov?.customPriceUsd != null
+    ? ov.customPriceUsd
+    : Number((rawPrice * (1 + (ov?.customMarkupPercent ?? srcMarkup) / 100)).toFixed(6));
   const syp = Math.round(usd * rate);
 
   let qtyInfo = "";
@@ -1643,16 +1686,19 @@ async function showApi2Product(ctx, prodId, backTo) {
     else if (p.qty_values.min != null && p.qty_values.max != null) qtyInfo = `ط§ظ„ظƒظ…ظٹط© ط¨ظٹظ† ${p.qty_values.min} ظˆ ${p.qty_values.max}`;
   }
 
-  let text = `ًں›’ ${p.name}\n`;
+  const displayName = ov?.customName ?? p.name;
+  let text = `ًں›’ ${displayName}\n`;
   if (p.category_name) text += `ط§ظ„ظ‚ط³ظ…: ${p.category_name}\n`;
   text += `ط§ظ„ط³ط¹ط±: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³\n`;
   if (qtyInfo) text += `${qtyInfo}\n`;
   if (p.notes) text += `\nًں“‹ ${p.notes}`;
 
-  const rows = [
-    [Markup.button.callback("ًں›’ ط·ظ„ط¨ ط§ظ„ط¢ظ†", `api2buy:${p.id}:${backTo}`)],
-    [backBtn, Markup.button.callback(homeLabel, "home")]
-  ];
+  const rows = [[Markup.button.callback("ًں›’ ط·ظ„ط¨ ط§ظ„ط¢ظ†", `api2buy:${p.id}:${backTo}`)]];
+  if (u?.is_admin && (authedAdminIds.has(ctx.from.id) || await isAdminSessionActive(ctx.from.id))) {
+    rows.push([Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ظ„ط³ط¹ط±", `adm:api2EditPrice:${p.id}`), Markup.button.callback("ًں“‹ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ", `adm:api2EditInstr:${p.id}`)]);
+    rows.push([Markup.button.callback("ًں“‌ طھط¹ط¯ظٹظ„ ط§ظ„ط§ط³ظ…", `adm:api2Rename:${p.id}`), Markup.button.callback("ًںڑڑ ظ†ظ‚ظ„ ظ„ظ‚ط³ظ…", `adm:api2Move:${p.id}`)]);
+  }
+  rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
   await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
 }
 
@@ -2511,7 +2557,8 @@ async function startBot() {
 
     // Deduct stock if limited
     if (m.stock_qty > 0) {
-      await q("UPDATE manual_products SET stock_qty=stock_qty-1 WHERE id=$1", [mid]);
+      const stockUpdate = await q("UPDATE manual_products SET stock_qty=stock_qty-1, updated_at=NOW() WHERE id=$1 AND stock_qty > 0 RETURNING id", [mid]);
+      if (!stockUpdate.rows.length) { await ctx.reply("â‌Œ ظ†ظپط° ط§ظ„ظ…ط®ط²ظˆظ†."); return; }
     }
 
     await adjustBalance(ctx.from.id, -priceUsd);
@@ -2883,6 +2930,30 @@ async function startBot() {
     await ctx.reply(`ًں’¬ ط£ط±ط³ظ„ ط§ظ„ط±ط³ط§ظ„ط© ظ„ظ„ظ…ط³طھط®ط¯ظ… ${o.user_id}:`); 
   });
 
+  // API 2 uses negative override keys so its product settings stay separate
+  // from API 1 while using the same editing text handlers.
+  bot.action(/^adm:api2EditPrice:(\d+)$/, async ctx => {
+    if (!(await requireAdmin(ctx))) return;
+    const id = api2OverrideId(ctx.match[1]);
+    setStep(ctx.from.id, { kind: "admin:editPrice", productId: id });
+    await ctx.reply("âœڈï¸ڈ ط£ط±ط³ظ„: %5 ط£ظˆ $2.5 ط«ط§ط¨طھ ط£ظˆ reset:");
+  });
+  bot.action(/^adm:api2EditInstr:(\d+)$/, async ctx => {
+    if (!(await requireAdmin(ctx))) return;
+    setStep(ctx.from.id, { kind: "admin:editProductInstructions", productId: api2OverrideId(ctx.match[1]) });
+    await ctx.reply("ًں“‹ ط£ط±ط³ظ„ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ ط§ظ„ط¬ط¯ظٹط¯ط© ط£ظˆ clear ظ„ظ„ظ…ط³ط­:");
+  });
+  bot.action(/^adm:api2Rename:(\d+)$/, async ctx => {
+    if (!(await requireAdmin(ctx))) return;
+    setStep(ctx.from.id, { kind: "admin:renameProduct", productId: api2OverrideId(ctx.match[1]) });
+    await ctx.reply("ًں“‌ ط£ط±ط³ظ„ ط§ظ„ط§ط³ظ… ط§ظ„ط¬ط¯ظٹط¯ ط£ظˆ reset:");
+  });
+  bot.action(/^adm:api2Move:(\d+)$/, async ctx => {
+    if (!(await requireAdmin(ctx))) return;
+    setStep(ctx.from.id, { kind: "admin:moveProduct", productId: api2OverrideId(ctx.match[1]) });
+    await ctx.reply("ًںڑڑ ط£ط±ط³ظ„ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط§ظ„ظ‡ط¯ظپ ط£ظˆ reset:");
+  });
+
   // â”€â”€ Admin: API Sources â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bot.action("adm:apiSources", async ctx => { await showApiSources(ctx); });
   bot.action("adm:addApi", async ctx => { 
@@ -3151,6 +3222,198 @@ async function startBot() {
         setStep(ctx.from.id, { kind: "idle" });
         await ctx.reply("âœ… طھظ… ط¥ط±ط³ط§ظ„ ط§ظ„ط±ط³ط§ظ„ط©.");
         return;
+      }
+      case "admin:addManualProduct:name": {
+        if (txt.length < 1) { await ctx.reply("âڑ ï¸ڈ ط£ط±ط³ظ„ ط§ط³ظ…ط§ظ‹ طµط­ظٹط­ط§ظ‹."); return; }
+        setStep(ctx.from.id, { ...step, kind: "admin:addManualProduct:price", name: txt });
+        await ctx.reply("ًں’µ ط£ط±ط³ظ„ ط³ط¹ط± ط§ظ„ظ…ظ†طھط¬ ط¨ط§ظ„ط¯ظˆظ„ط§ط±:");
+        return;
+      }
+      case "admin:addManualProduct:price": {
+        const price = Number(txt.replace(/,/g, ""));
+        if (!Number.isFinite(price) || price < 0) { await ctx.reply("âڑ ï¸ڈ ط£ط±ط³ظ„ ط³ط¹ط±ط§ظ‹ طµط­ظٹط­ط§ظ‹."); return; }
+        setStep(ctx.from.id, { ...step, kind: "admin:addManualProduct:markup", price });
+        await ctx.reply("ًں“ˆ ط£ط±ط³ظ„ ظ†ط³ط¨ط© ط§ظ„ط±ط¨ط­ ط£ظˆ 0:");
+        return;
+      }
+      case "admin:addManualProduct:markup": {
+        const markup = Number(txt);
+        if (!Number.isFinite(markup) || markup < 0) { await ctx.reply("âڑ ï¸ڈ ط£ط±ط³ظ„ ظ†ط³ط¨ط© طµط­ظٹط­ط©."); return; }
+        setStep(ctx.from.id, { ...step, kind: "admin:addManualProduct:stock", markup });
+        await ctx.reply("ًں“¦ ط£ط±ط³ظ„ ط§ظ„ظ…ط®ط²ظˆظ†طŒ ط£ظˆ -1 ظ„ظ…ط®ط²ظˆظ† ط؛ظٹط± ظ…ط­ط¯ظˆط¯:");
+        return;
+      }
+      case "admin:addManualProduct:stock": {
+        const stock = Number(txt);
+        if (!Number.isInteger(stock) || stock < -1) { await ctx.reply("âڑ ï¸ڈ ط£ط±ط³ظ„ ط±ظ‚ظ…ط§ظ‹ طµط­ظٹط­ط§ظ‹ (ط£ظˆ -1)."); return; }
+        setStep(ctx.from.id, { ...step, kind: "admin:addManualProduct:description", stock });
+        await ctx.reply("ًں“‌ ط£ط±ط³ظ„ ظˆطµظپ ط§ظ„ظ…ظ†طھط¬طŒ ط£ظˆ skip:");
+        return;
+      }
+      case "admin:addManualProduct:description": {
+        setStep(ctx.from.id, { ...step, kind: "admin:addManualProduct:instructions", description: txt.toLowerCase() === "skip" ? null : txt });
+        await ctx.reply("ًں“‹ ط£ط±ط³ظ„ ط§ظ„طھط¹ظ„ظٹظ…ط§طھطŒ ط£ظˆ skip:");
+        return;
+      }
+      case "admin:addManualProduct:instructions": {
+        const instructions = txt.toLowerCase() === "skip" ? null : txt;
+        await q(
+          `INSERT INTO manual_products
+             (name, category_id, category_is_virtual, manual_category_id, price_usd, markup_percent, description, instructions, stock_qty)
+           VALUES($1,0,false,$2,$3,$4,$5,$6,$7)`,
+          [step.name, step.categoryId ?? null, step.price, step.markup, step.description, instructions, step.stock],
+        );
+        setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply("âœ… طھظ… ط¥ط¶ط§ظپط© ط§ظ„ظ…ظ†طھط¬ ط§ظ„ظٹط¯ظˆظٹ ط¨ظ†ط¬ط§ط­.");
+        return;
+      }
+      case "admin:editManualProduct": {
+        const current = step.product;
+        const values = txt.split("|").map(v => v.trim());
+        if (values.length !== 6) {
+          await ctx.reply("âڑ ï¸ڈ ط§ظ„طµظٹط؛ط© ظٹط¬ط¨ ط£ظ† طھظƒظˆظ†: name|price|markup|stock|description|instructions");
+          return;
+        }
+        const [name, priceText, markupText, stockText, description, instructions] = values;
+        const price = priceText.toLowerCase() === "skip" ? Number(current.price_usd) : Number(priceText);
+        const markup = markupText.toLowerCase() === "skip" ? current.markup_percent : Number(markupText);
+        const stock = stockText.toLowerCase() === "skip" ? current.stock_qty : Number(stockText);
+        if (!name || !Number.isFinite(price) || price < 0 || (markup != null && (!Number.isFinite(Number(markup)) || Number(markup) < 0)) || !Number.isInteger(Number(stock)) || Number(stock) < -1) {
+          await ctx.reply("âڑ ï¸ڈ طھظˆط¬ط¯ ظ‚ظٹظ…ط© ط؛ظٹط± طµط­ظٹط­ط© ظپظٹ ط§ظ„ط¨ظٹط§ظ†ط§طھ.");
+          return;
+        }
+        await q(
+          `UPDATE manual_products
+           SET name=$1, price_usd=$2, markup_percent=$3, stock_qty=$4,
+               description=$5, instructions=$6, updated_at=NOW()
+           WHERE id=$7`,
+          [
+            name.toLowerCase() === "skip" ? current.name : name,
+            price,
+            markup == null || String(markup).toLowerCase() === "skip" ? null : markup,
+            stock,
+            description.toLowerCase() === "skip" ? current.description : description,
+            instructions.toLowerCase() === "skip" ? current.instructions : instructions,
+            step.productId,
+          ],
+        );
+        setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply("âœ… طھظ… طھط¹ط¯ظٹظ„ ط§ظ„ظ…ظ†طھط¬ ط§ظ„ظٹط¯ظˆظٹ.");
+        return;
+      }
+      case "admin:depositApproveAmount": {
+        const amount = Number(txt.replace(/,/g, ""));
+        if (!Number.isFinite(amount) || amount <= 0) { await ctx.reply("âڑ ï¸ڈ ط£ط±ط³ظ„ ظ…ط¨ظ„ط؛ط§ظ‹ طµط­ظٹط­ط§ظ‹ ط£ظƒط¨ط± ظ…ظ† طµظپط±."); return; }
+        const result = await q(
+          `UPDATE deposit_requests
+           SET status='approved', amount=COALESCE(amount,$1), processed_by=$2, processed_at=NOW()
+           WHERE id=$3 AND status='pending' RETURNING *`,
+          [amount, ctx.from.id, step.depositId],
+        );
+        if (!result.rows.length) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âڑ ï¸ڈ طھظ…طھ ظ…ط¹ط§ظ„ط¬ط© ط§ظ„ط·ظ„ط¨ ظ…ط³ط¨ظ‚ط§ظ‹."); return; }
+        const deposit = result.rows[0];
+        await adjustBalance(deposit.user_id, amount);
+        await clearDepositForOtherAdmins(ctx.from.id, deposit.id, "âœ… ط·ظ„ط¨ ط§ظ„ط¥ظٹط¯ط§ط¹ â€” طھظ…طھ ط§ظ„ظ…ظˆط§ظپظ‚ط©");
+        setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply("âœ… طھظ…طھ ط§ظ„ظ…ظˆط§ظپظ‚ط© ظˆط´ط­ظ† ط§ظ„ط±طµظٹط¯.");
+        await ctx.telegram.sendMessage(deposit.user_id, `âœ… طھظ…طھ ط§ظ„ظ…ظˆط§ظپظ‚ط© ط¹ظ„ظ‰ ط¥ظٹط¯ط§ط¹ظƒ ظˆط¥ط¶ط§ظپط© ${amount.toFixed(2)}$ ط¥ظ„ظ‰ ط±طµظٹط¯ظƒ.`).catch(() => {});
+        return;
+      }
+      case "admin:editPrice": {
+        const value = txt.toLowerCase();
+        const row = (await q("SELECT * FROM product_overrides WHERE product_id=$1", [step.productId])).rows[0];
+        if (value === "reset") {
+          await q("UPDATE product_overrides SET custom_price_usd=NULL, custom_markup_percent=NULL, updated_at=NOW() WHERE product_id=$1", [step.productId]);
+        } else if (/^\s*\$?\d+(?:\.\d+)?\s*$/.test(txt)) {
+          await q("INSERT INTO product_overrides(product_id,custom_price_usd) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET custom_price_usd=$2, custom_markup_percent=NULL, updated_at=NOW()", [step.productId, Number(txt.replace("$", ""))]);
+        } else {
+          const match = txt.match(/^%?\s*(\d+(?:\.\d+)?)\s*%?$/);
+          if (!match) { await ctx.reply("âڑ ï¸ڈ ط§ط³طھط®ط¯ظ…: %5 ط£ظˆ $2.5 ط£ظˆ reset."); return; }
+          await q("INSERT INTO product_overrides(product_id,custom_markup_percent) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET custom_markup_percent=$2, custom_price_usd=NULL, updated_at=NOW()", [step.productId, Number(match[1])]);
+        }
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply("âœ… طھظ… طھط­ط¯ظٹط« ط³ط¹ط± ط§ظ„ظ…ظ†طھط¬.");
+        return;
+      }
+      case "admin:editProductInstructions":
+      case "admin:renameProduct":
+      case "admin:moveProduct": {
+        const value = txt.toLowerCase() === "reset" || txt.toLowerCase() === "clear" ? null : txt;
+        if (!value && step.kind === "admin:moveProduct") {
+          await q("UPDATE product_overrides SET custom_category_id=NULL, updated_at=NOW() WHERE product_id=$1", [step.productId]);
+        } else if (step.kind === "admin:editProductInstructions") {
+          await q("INSERT INTO product_overrides(product_id,instructions) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET instructions=$2, updated_at=NOW()", [step.productId, value]);
+        } else if (step.kind === "admin:renameProduct") {
+          await q("INSERT INTO product_overrides(product_id,custom_name) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET custom_name=$2, updated_at=NOW()", [step.productId, value]);
+        } else {
+          const categoryId = Number(txt);
+          if (!Number.isInteger(categoryId) || categoryId < 0) { await ctx.reply("âڑ ï¸ڈ ط£ط±ط³ظ„ ط±ظ‚ظ… ظ‚ط³ظ… طµط­ظٹط­ط§ظ‹ ط£ظˆ reset."); return; }
+          await q("INSERT INTO product_overrides(product_id,custom_category_id) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=$2, updated_at=NOW()", [step.productId, categoryId || null]);
+        }
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply("âœ… طھظ… ط­ظپط¸ ط§ظ„طھط¹ط¯ظٹظ„.");
+        return;
+      }
+      case "admin:setCatMarkup":
+      case "admin:setCatSort":
+      case "admin:editCategoryName":
+      case "admin:moveCatToParent":
+      case "admin:moveCatAll": {
+        if (step.kind === "admin:setCatMarkup") {
+          if (txt.toLowerCase() === "reset") await q("UPDATE category_overrides SET custom_markup_percent=NULL WHERE category_id=$1", [step.categoryId]);
+          else {
+            const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("âڑ ï¸ڈ ظ†ط³ط¨ط© ط؛ظٹط± طµط§ظ„ط­ط©."); return; }
+            await q("INSERT INTO category_overrides(category_id,custom_markup_percent) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_markup_percent=$2, updated_at=NOW()", [step.categoryId, n]);
+          }
+        } else if (step.kind === "admin:setCatSort") {
+          const n = Number(txt); if (txt.toLowerCase() !== "reset" && !Number.isInteger(n)) { await ctx.reply("âڑ ï¸ڈ ط£ط±ط³ظ„ ط±ظ‚ظ…ط§ظ‹ طµط­ظٹط­ط§ظ‹ ط£ظˆ reset."); return; }
+          await q("INSERT INTO category_overrides(category_id,sort_order) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET sort_order=$2, updated_at=NOW()", [step.categoryId, txt.toLowerCase() === "reset" ? null : n]);
+        } else if (step.kind === "admin:editCategoryName") {
+          await q("INSERT INTO category_overrides(category_id,custom_name) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_name=$2, updated_at=NOW()", [step.categoryId, txt.toLowerCase() === "reset" ? null : txt]);
+        } else {
+          const target = Number(txt); if (!Number.isInteger(target) || target < 0) { await ctx.reply("âڑ ï¸ڈ ط£ط±ط³ظ„ ط±ظ‚ظ… ظ‚ط³ظ… طµط­ظٹط­ط§ظ‹."); return; }
+          if (step.kind === "admin:moveCatToParent") await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=$2, updated_at=NOW()", [step.categoryId, target || null]);
+          else await q("UPDATE product_overrides SET custom_category_id=$1 WHERE custom_category_id=$2", [target || null, step.sourceCategoryId]);
+        }
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
+        await ctx.reply("âœ… طھظ… ط­ظپط¸ ط§ظ„طھط¹ط¯ظٹظ„.");
+        return;
+      }
+      case "admin:addContact:name": {
+        setStep(ctx.from.id, { ...step, kind: "admin:addContact:link", name: txt });
+        await ctx.reply("ًں”— ط£ط±ط³ظ„ ط§ظ„ط±ط§ط¨ط· ط£ظˆ ط§ط³ظ… ط§ظ„ظ…ط³طھط®ط¯ظ…:");
+        return;
+      }
+      case "admin:addContact:link": {
+        await q("INSERT INTO contact_links(name,link) VALUES($1,$2)", [step.name, txt]);
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¶ط§ظپط© ظˆط³ظٹظ„ط© ط§ظ„طھظˆط§طµظ„."); return;
+      }
+      case "admin:addMethod:name": {
+        setStep(ctx.from.id, { ...step, kind: "admin:addMethod:identifier", name: txt });
+        await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ط±ظ‚ظ…/ظ…ط¹ط±ظ‘ظپ ط·ط±ظٹظ‚ط© ط§ظ„ط¯ظپط¹:");
+        return;
+      }
+      case "admin:addMethod:identifier": {
+        setStep(ctx.from.id, { ...step, kind: "admin:addMethod:instructions", identifier: txt });
+        await ctx.reply("ًں“‹ ط£ط±ط³ظ„ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ:");
+        return;
+      }
+      case "admin:addMethod:instructions": {
+        await q("INSERT INTO deposit_methods(name,identifier,instructions) VALUES($1,$2,$3)", [step.name, step.identifier, txt]);
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¶ط§ظپط© ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹."); return;
+      }
+      case "admin:editMethodInstructions": {
+        await q("UPDATE deposit_methods SET instructions=$1 WHERE id=$2", [txt, step.methodId]);
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… طھط­ط¯ظٹط« ط§ظ„طھط¹ظ„ظٹظ…ط§طھ."); return;
+      }
+      case "admin:addVirtualCategory:name": {
+        const pos = (await q("SELECT COALESCE(MAX(position),0)+1 AS p FROM virtual_categories WHERE parent_id=$1", [step.parentId ?? 0])).rows[0]?.p ?? 1;
+        await q("INSERT INTO virtual_categories(name,parent_id,position) VALUES($1,$2,$3)", [txt, step.parentId ?? 0, pos]);
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¶ط§ظپط© ط§ظ„ظ‚ط³ظ… ط§ظ„ظ…ط®طµطµ."); return;
+      }
+      case "admin:editVCatName": {
+        await q("UPDATE virtual_categories SET name=$1, updated_at=NOW() WHERE id=$2", [txt, step.vcId]);
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… طھط؛ظٹظٹط± ط§ط³ظ… ط§ظ„ظ‚ط³ظ…."); return;
       }
       case "admin:addApiSource:name": {
         setStep(ctx.from.id, { kind: "admin:addApiSource:url", name: txt });
