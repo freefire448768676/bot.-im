@@ -3195,21 +3195,21 @@ async function startBot() {
 
   let telegramShutdownRequested = false;
   const shouldStopTelegram = () => telegramShutdownRequested;
+
+  // إعداد polling صريح: Telegraf يستخدم timeout=50 في طلب getUpdates.
   // لا نحذف التحديثات المعلقة عند إعادة الاتصال حتى لا تضيع رسائل المستخدم.
   const pollingConfig = {
+    timeout: 50,
     dropPendingUpdates: false,
     allowedUpdates: ["message", "callback_query"],
-    timeout: TELEGRAM_LONG_POLL_TIMEOUT_SECONDS,
- rr => { console.error("webhook error:", err); });
-  } else {
-    res.sendStatus(200);
-  }
-});
+  };
 
-// ── Start ──────────────────────────────────────────────────────
-const server = http.createServer(app);
-server.requestTimeout = 15_000;
-server.headersTimeout = 10_000;
-server.on("error", err => console.error("HTTP server error:", err?.message ?? err));
-server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
+  const stopTelegram = reason => {
+    telegramShutdownRequested = true;
+    // في وضع webhook لا ينشئ Telegraf خادماً داخلياً.
+    if (!bot.polling && !bot.webhookServer) return;
+    try {
+      bot.stop(reason);
+    } catch (err) {
+      console.error("Telegram stop warning:", err?.message ?? err);onsole.log(`🚀 Server on port ${PORT}`));
 startBot().then(bot => { _botRef = bot; }).catch(err => { console.error("Failed to start:", err); process.exit(1); });
