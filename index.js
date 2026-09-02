@@ -2207,6 +2207,38 @@ function startPingScheduler(bot) {
 }
 
 // ============================================================
+//  BOT LAUNCSECONDS = 50;
+const POLLING_RETRY_BASE_MS = 2_000;
+const POLLING_RETRY_MAX_MS = 30_000;
+
+function waitMs(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function runPollingWithReconnect(bot, launchConfig, shouldStop) {
+  let attempt = 0;
+  while (!shouldStop()) {
+    const startedAt = Date.now();
+    try {
+      console.log("🔄 بدء اتصال Telegram polling...");
+      await bot.launch(launchConfig);
+      if (shouldStop()) break;
+      const livedMs = Date.now() - startedAt;
+      attempt = livedMs >= 60_000 ? 0 : attempt + 1;
+      console.error("⚠️ انتهى اتصال Telegram polling، ستتم إعادة المحاولة.");
+    } catch (err) {
+      if (shouldStop()) break;
+      attempt += 1;
+      console.error(`⚠️ تعذر اتصال Telegram polling (محاولة ${attempt}):`, err?.message ?? err);
+    }
+    if (shouldStop()) break;
+    const delay = Math.min(POLLING_RETRY_MAX_MS, POLLING_RETRY_BASE_MS * (2 ** Math.min(attempt - 1, 4)));
+    console.log(`⏳ إعادة اتصال Telegram بعد ${Math.ceil(delay / 1000)} ثوانٍ...`);
+    await waitMs(delay);
+  }
+}
+
+// ============================================================
 //  BOT LAUNCH
 // ============================================================
 async function startBot() {
@@ -2224,12 +2256,33 @@ async function startBot() {
   // توحيد كل النصوص الخارجة إلى Telegram قبل الإرسال، بما فيها الأزرار
   const originalCallApi = bot.telegram.callApi.bind(bot.telegram);
   bot.telegram.callApi = (method, payload, ...rest) => {
+    // Telegraf يرسل getUpdates كـ long polling بمهلة 50 ثانية.
+    // لا نضع عليه Promise.race أو AbortController خارجياً، لأن أي مهلة
+    // إضافية هنا قد تقطع الطلب قبل أن تنتهي مهلة Telegram الطبيعية.
+    if (method === "getUpdates") {
+      const normalizedPayload = normalizeTelegramPayload(payload);
+      return originalCallApi(method, {
+        ...normalizedPayload,
+        timeout: TELEGRAM_LONG_POLL_TIMEOUT_SECONDS,
+      }, ...rest);
+    }
+
+    const timeoutMs = TELEGRAM_REQUEST_TIMEOUT_MS;
+    const requestController = new AbortController();
+    const parentSignal = rest[0]?.signal;
+    const signal = parentSignal && AbortSignal.any
+      ? AbortSignal.any([parentSignal, requestController.signal])
+      : requestController.signal;
     let timer;
     const timeout = new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`Telegram ${method} timed out`)), 8_000);
+      timer = setTimeout(() => {
+        requestController.abort();
+        reject(new Error(`Telegram ${method} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
     });
+    const callOptions = { ...(rest[0] ?? {}), signal };
     return Promise.race([
-      originalCallApi(method, normalizeTelegramPayload(payload), ...rest),
+      originalCallApi(method, normalizeTelegramPayload(payload), callOptions, ...rest.slice(1)),
       timeout,
     ]).finally(() => clearTimeout(timer));
   };
@@ -3140,52 +3193,14 @@ async function startBot() {
   startBackgroundRefresher();
   void syncAllApiSources().catch(err => console.error("Initial product sync failed:", err?.message ?? err));
 
-  const webhookUrl = process.env.WEBHOOK_URL;
-  if (webhookUrl) {
-    try {
-      await bot.telegram.setWebhook(`${webhookUrl.replace(/\/+$/, "")}/bot${token}`);
-      console.log(`✅ Webhook set: ${webhookUrl}/bot${token}`);
-    } catch (err) {
-      // إذا كان رابط Railway غير صحيح لا يتوقف البوت بالكامل؛ نعود للتشغيل polling
-      console.error("setWebhook failed, switching to polling:", err?.message ?? err);
-      await bot.telegram.deleteWebhook().catch(() => {});
-      await bot.launch({ dropPendingUpdates: true, allowedUpdates: ["message", "callback_query"] });
-    }
-  } else {
-    bot.launch({ dropPendingUpdates: true, allowedUpdates: ["message", "callback_query"] })
-      .catch(err => console.error("bot.launch failed:", err));
-  }
-
-  startOrderPoller(bot);
-  startPingScheduler(bot);
-
-  process.once("SIGINT", () => bot.stop("SIGINT"));
-  process.once("SIGTERM", () => bot.stop("SIGTERM"));
-  process.on("uncaughtException", err => console.error("uncaughtException:", err));
-  process.on("unhandledRejection", reason => console.error("unhandledRejection:", reason));
-
-  setInterval(() => {
-    const port = Number(process.env.PORT ?? "3000");
-    const req = http.get({ hostname: "localhost", port, path: "/health", timeout: 5000 }, () => {});
-    req.on("error", () => {}); req.end();
-  }, 4 * 60_000).unref();
-
-  console.log("✅ البوت يعمل بنجاح! (v2.3)");
-  return bot;
-}
-
-// ── Express health server + webhook receiver ──────────────────
-const app = express();
-const PORT = Number(process.env.PORT ?? 3000);
-app.use(express.json({ limit: "256kb" }));
-app.get("/", (_, res) => res.send("OK"));
-app.get("/health", (_, res) => res.json({ status: "ok", time: new Date().toISOString(), version: "2.3" }));
-
-app.post(/^\/bot.+/, (req, res) => {
-  if (_botRef) {
-    // الرد مباشرة على Telegram يمنع إعادة إرسال نفس التحديث عند بطء قاعدة البيانات أو API
-    res.sendStatus(200);
-    _botRef.handleUpdate(req.body).catch(err => { console.error("webhook error:", err); });
+  let telegramShutdownRequested = false;
+  const shouldStopTelegram = () => telegramShutdownRequested;
+  // لا نحذف التحديثات المعلقة عند إعادة الاتصال حتى لا تضيع رسائل المستخدم.
+  const pollingConfig = {
+    dropPendingUpdates: false,
+    allowedUpdates: ["message", "callback_query"],
+    timeout: TELEGRAM_LONG_POLL_TIMEOUT_SECONDS,
+ rr => { console.error("webhook error:", err); });
   } else {
     res.sendStatus(200);
   }
