@@ -29,7 +29,8 @@ const pool = new Pool({
   min: 2,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
-  statement_timeout: 15_000,
+  query_timeout: 8_000,
+  statement_timeout: 8_000,
   // إجبار PostgreSQL على استخدام UTF-8 في كل اتصال
   options: "-c client_encoding=UTF8",
 });
@@ -231,6 +232,7 @@ async function ensureTables() {
 // ============================================================
 const settingsCache = new Map();
 let _settingsCacheExpiry = 0;
+let _settingsInFlight = null;
 const SETTINGS_TTL = 2 * 60_000; // 2 دقيقة
 
 const DEFAULTS = {
@@ -258,9 +260,13 @@ const DEFAULTS = {
 };
 
 async function loadAllSettings() {
+  if (_settingsInFlight) return _settingsInFlight;
+  _settingsInFlight = (async () => {
   const res = await q("SELECT key, value FROM bot_settings");
   settingsCache.clear();
   for (const r of res.rows) settingsCache.set(r.key, r.value);
+  })().finally(() => { _settingsInFlight = null; });
+  return _settingsInFlight;
 }
 
 async function ensureDefaults() {
@@ -468,6 +474,7 @@ function formatBalance(usd, rate) {
 
 // ── إصلاح النص العربي الذي يصل أحياناً بترميز Windows/UTF-8 خاطئ ──
 let cp1256Reverse = null;
+let windows1252Reverse = null;
 try {
   cp1256Reverse = new Map();
   const decoder = new TextDecoder("windows-1256");
@@ -475,8 +482,15 @@ try {
     const decoded = decoder.decode(Uint8Array.of(byte));
     if (decoded.length === 1) cp1256Reverse.set(decoded, byte);
   }
+  windows1252Reverse = new Map();
+  const latinDecoder = new TextDecoder("windows-1252");
+  for (let byte = 0; byte <= 255; byte++) {
+    const decoded = latinDecoder.decode(Uint8Array.of(byte));
+    if (decoded.length === 1) windows1252Reverse.set(decoded, byte);
+  }
 } catch {
   cp1256Reverse = null;
+  windows1252Reverse = null;
 }
 
 function repairArabicEncoding(value) {
@@ -492,37 +506,71 @@ function repairArabicEncoding(value) {
   };
   for (const [bad, good] of Object.entries(replacements)) text = text.split(bad).join(good);
 
-  const looksMojibake = /[طظ…âÃÂð]/.test(text);
-  if (looksMojibake && cp1256Reverse) {
+  const mojibakeScore = s => (String(s).match(/[طظ…„†‡ˆ‰ŠšŒœŸâÃÂð�]/g) || []).length;
+  const decodeCp1256Run = run => {
+    if (!run || !cp1256Reverse) return run;
+    const bytes = [];
+    for (const char of Array.from(run)) {
+      if (char.codePointAt(0) <= 127) bytes.push(char.codePointAt(0));
+      else if (cp1256Reverse.has(char)) bytes.push(cp1256Reverse.get(char));
+      else return run;
+    }
     try {
-      const bytes = [];
-      for (const char of text) {
-        if (char.codePointAt(0) <= 127) bytes.push(char.codePointAt(0));
-        else if (cp1256Reverse.has(char)) bytes.push(cp1256Reverse.get(char));
-        else { bytes.length = 0; break; }
-      }
-      if (bytes.length) {
-        const decoded = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes));
-        const score = s => (String(s).match(/[طظ…âÃÂð�]/g) || []).length;
-        if (decoded.includes("ا") || decoded.includes("م") || decoded.includes("ل") || score(decoded) < score(text)) text = decoded;
-      }
-    } catch { /* النص سليم أو لا يمكن إصلاحه آلياً */ }
+      const decoded = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes));
+      return decoded && mojibakeScore(decoded) < mojibakeScore(run) ? decoded : run;
+    } catch {
+      return run;
+    }
+  };
+
+  // افصل الرموز مثل 📂 عن النص قبل التحويل؛ وجود emoji كان يمنع إصلاح الزر كاملاً.
+  if (/[طظ…âÃÂð]/.test(text) && cp1256Reverse) {
+    let converted = "";
+    let run = "";
+    const flush = () => { converted += decodeCp1256Run(run); run = ""; };
+    for (const char of Array.from(text)) {
+      if (char.codePointAt(0) <= 127 || cp1256Reverse.has(char)) run += char;
+      else { flush(); converted += char; }
+    }
+    flush();
+    text = converted;
   }
 
-  // حالة Latin-1 الشائعة: âœ… / Ã˜ ونحوها
-  if (/[âÃÂð]/.test(text)) {
-    try {
-      const decoded = Buffer.from(text, "latin1").toString("utf8");
-      if (!decoded.includes("�") && decoded !== text) text = decoded;
-    } catch { /* ignore */ }
+  // حالة Windows-1252/Latin-1 الشائعة: أصلح كل مقطع دون لمس الرموز.
+  if (/[âÃÂð]/.test(text) && windows1252Reverse) {
+    let converted = "";
+    let run = "";
+    const flush = () => {
+      if (!run) return;
+      const bytes = [];
+      for (const char of Array.from(run)) {
+        if (char.codePointAt(0) <= 127) bytes.push(char.codePointAt(0));
+        else if (windows1252Reverse.has(char)) bytes.push(windows1252Reverse.get(char));
+        else { converted += run; run = ""; return; }
+      }
+      try {
+        const decoded = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes));
+        converted += decoded && mojibakeScore(decoded) < mojibakeScore(run) ? decoded : run;
+      } catch { converted += run; }
+      run = "";
+    };
+    for (const char of Array.from(text)) {
+      if (char.codePointAt(0) <= 127 || windows1252Reverse.has(char)) run += char;
+      else { flush(); converted += char; }
+    }
+    flush();
+    text = converted;
   }
   return text;
 }
 
 function normalizeTelegramPayload(value, key = "") {
   if (typeof value === "string") {
-    const textKeys = new Set(["text", "caption", "description", "title", "first_name", "last_name"]);
-    return textKeys.has(key) || !key ? repairArabicEncoding(value) : value;
+    const protectedKeys = new Set([
+      "callback_data", "url", "file_id", "parse_mode", "chat_id", "message_id",
+      "inline_message_id", "callback_query_id", "media", "token", "method",
+    ]);
+    return protectedKeys.has(key) ? value : repairArabicEncoding(value);
   }
   if (Array.isArray(value)) return value.map(item => normalizeTelegramPayload(item, key));
   if (!value || typeof value !== "object" || Buffer.isBuffer(value)) return value;
@@ -634,7 +682,7 @@ async function getPrimaryApiSource() {
 function apiClientFor(source) {
   return axios.create({
     baseURL: normalizeApiBase(source.base_url),
-    timeout: 12_000,
+    timeout: 8_000,
     headers: { "api-token": decryptApiToken(source.token_encrypted), Accept: "application/json" },
     httpAgent: new http.Agent({ keepAlive: true, maxSockets: 20 }),
     httpsAgent: new https.Agent({ keepAlive: true, maxSockets: 20 }),
@@ -672,7 +720,7 @@ function apiProductForDb(row) {
 }
 
 function categoryForDb(row) {
-  return { id: Number(row.id), name: row.name, parent_id: Number(row.parent_id || 0) };
+  return { id: Number(row.id), name: repairArabicEncoding(row.name), parent_id: Number(row.parent_id || 0) };
 }
 
 async function syncApiSource(source) {
@@ -718,16 +766,21 @@ async function syncApiSource(source) {
   return products.length;
 }
 
+let _syncAllInFlight = null;
 async function syncAllApiSources() {
-  const sources = await listApiSources(false);
-  const results = await Promise.allSettled(sources.map(source => syncApiSource(source)));
-  for (let i = 0; i < results.length; i++) {
-    const result = results[i];
-    if (result.status === "rejected") {
-      await q("UPDATE api_sources SET last_sync_error=$1,updated_at=NOW() WHERE id=$2", [String(result.reason?.message ?? result.reason).slice(0, 500), sources[i].id]).catch(() => {});
+  if (_syncAllInFlight) return _syncAllInFlight;
+  _syncAllInFlight = (async () => {
+    const sources = await listApiSources(false);
+    const results = await Promise.allSettled(sources.map(source => syncApiSource(source)));
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      if (result.status === "rejected") {
+        await q("UPDATE api_sources SET last_sync_error=$1,updated_at=NOW() WHERE id=$2", [String(result.reason?.message ?? result.reason).slice(0, 500), sources[i].id]).catch(() => {});
+      }
     }
-  }
-  invalidateCaches();
+    invalidateCaches();
+  })().finally(() => { _syncAllInFlight = null; });
+  return _syncAllInFlight;
 }
 
 async function getCachedCatalogProducts() {
@@ -735,9 +788,31 @@ async function getCachedCatalogProducts() {
   return res.rows.map(apiProductForDb);
 }
 
+async function buildFallbackContent(parentId) {
+  const products = await getCachedCatalogProducts().catch(() => []);
+  const directProducts = products.filter(p => Number(p.parent_id || 0) === Number(parentId));
+  if (parentId >= API_ROOT_CATEGORY) {
+    return { products: directProducts, categories: [] };
+  }
+  const categories = new Map();
+  for (const p of products) {
+    const id = Number(p.parent_id || 0);
+    if (id <= 0 || categories.has(id)) continue;
+    categories.set(id, {
+      id,
+      name: repairArabicEncoding(p.category_name) || `قسم ${id}`,
+      parent_id: 0,
+    });
+  }
+  return {
+    products: directProducts,
+    categories: parentId === 0 ? [...categories.values()] : [],
+  };
+}
+
 const oranosClient = axios.create({
   baseURL: ORANOS_BASE,
-  timeout: 12000,
+  timeout: 8_000,
   headers: { "api-token": ORANOS_TOKEN, Accept: "application/json" },
   httpAgent:  new http.Agent({ keepAlive: true, maxSockets: 20 }),
   httpsAgent: new https.Agent({ keepAlive: true, maxSockets: 20 }),
@@ -761,8 +836,15 @@ async function fetchContent(parentId) {
   const data = res.data ?? {};
   _maintenanceMode = false;
   return {
-    products: Array.isArray(data.products) ? data.products : [],
-    categories: Array.isArray(data.categories) ? data.categories : [],
+    products: Array.isArray(data.products) ? data.products.map(p => ({
+      ...p,
+      name: repairArabicEncoding(p.name),
+      category_name: repairArabicEncoding(p.category_name ?? p.categoryName ?? ""),
+    })) : [],
+    categories: Array.isArray(data.categories) ? data.categories.map(c => ({
+      ...c,
+      name: repairArabicEncoding(c.name),
+    })) : [],
   };
 }
 
@@ -954,7 +1036,8 @@ async function getCachedContent(parentId) {
         categories: [],
       };
     }
-    const content = await fetchContent(parentId);
+    // عند تعطل API نستخدم آخر بيانات محلية بدلاً من تعليق لوحة المستخدم.
+    const content = await fetchContent(parentId).catch(() => cached?.content ?? buildFallbackContent(parentId));
     const sources = await listApiSources(false);
     const extraSources = sources.filter(s => !s.is_primary && parentId === 0);
     if (extraSources.length) {
@@ -1127,6 +1210,8 @@ async function clearInlineKeyboard(ctx) {
 async function ensureUser(ctx) {
   const f = ctx.from;
   if (!f) return null;
+  const cached = userCacheGet(f.id);
+  if (cached !== undefined && cached !== null) return cached;
   return upsertUser({ id: f.id, username: f.username, first_name: f.first_name, last_name: f.last_name });
 }
 
@@ -1233,7 +1318,8 @@ async function completeDepositRequest(ctx, step) {
   const dep = res.rows[0];
   setStep(ctx.from.id, { kind: "idle" });
   await ctx.reply("سيتم مراجعة طلبك في أقرب وقت ممكن.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
-  await notifyAdminsDeposit(ctx, dep);
+  // لا نؤخر رد المستخدم بسبب إرسال الإشعارات لعدة مدراء.
+  void notifyAdminsDeposit(ctx, dep).catch(err => console.error("deposit notification failed:", err?.message ?? err));
 }
 
 async function notifyAdminsDeposit(ctx, depositRow) {
@@ -1276,16 +1362,16 @@ async function showCategory(ctx, parentId, page, backTo) {
   // ── إصلاح الأداء: استخرج مجموعة الأقسام الظاهرة مرة واحدة خارج الحلقة ──
   const visibleDirectSet = await buildVisibleCategoryIds(excludedCats, kws);
 
-  const visibleCats = [];
-  for (const c of content.categories) {
-    if (excludedCats.has(c.id)) continue;
+  const visibility = await Promise.all(
+    content.categories.map(c => isCategoryVisible(c.id, visibleDirectSet))
+  );
+  const visibleCats = content.categories.filter((c, index) => {
+    if (excludedCats.has(c.id)) return false;
     const ov = catOv.get(c.id);
-    if (ov?.hidden && !isAdmin) continue;
-    if (ov?.customParentId != null && ov.customParentId !== parentId) continue;
-    const visible = await isCategoryVisible(c.id, visibleDirectSet);
-    if (!visible && !isAdmin) continue;
-    visibleCats.push(c);
-  }
+    if (ov?.hidden && !isAdmin) return false;
+    if (ov?.customParentId != null && ov.customParentId !== parentId) return false;
+    return isAdmin || visibility[index];
+  });
 
   const visibleProds = content.products.filter(p => {
     if (!p.available && !isAdmin) return false;
@@ -1763,13 +1849,9 @@ async function executeOrderInternal(ctx) {
     if (ACCEPT_STATUSES.has(initialStatus) || REJECT_STATUSES.has(initialStatus)) {
       finalApiStatus = initialStatus;
     } else {
-      const waitResult = await waitForOrderCompletion(orderUuid, 30, 5000);
-      if (waitResult.completed) {
-        resp = waitResult.resp;
-        finalApiStatus = waitResult.finalStatus;
-      } else {
-        finalApiStatus = "pending";
-      }
+      // لا ننتظر نتيجة API داخل معالج ضغطة المستخدم؛ سيكملها الـpoller بالخلفية.
+      // الانتظار السابق كان يبقي معالج الطلب مفتوحاً حتى 150 ثانية.
+      finalApiStatus = "pending";
     }
   } catch {
     resp = { status: "ERR", message: "خطأ شبكة" };
@@ -2107,7 +2189,10 @@ async function showUserCard(ctx, uid) {
 }
 
 function startPingScheduler(bot) {
+  let running = false;
   setInterval(async () => {
+    if (running) return;
+    running = true;
     try {
       const enabled = (await getSetting("auto_ping_enabled")) === "on"; if (!enabled) return;
       const targetId = Number(await getSetting("auto_ping_target_user_id")); if (!targetId) return;
@@ -2117,6 +2202,7 @@ function startPingScheduler(bot) {
       await setSetting("auto_ping_last_sent", String(Date.now()));
       await bot.telegram.sendMessage(targetId, "/start").catch(() => {});
     } catch { /* silent */ }
+    finally { running = false; }
   }, 30_000).unref();
 }
 
@@ -2131,15 +2217,22 @@ async function startBot() {
   await ensureDefaults();
   await ensureDefaultDepositMethods();
   await ensurePrimaryApiSource();
-  // لا نوقف تشغيل البوت إذا كان أحد الـAPIs متوقفاً؛ الكتالوج القديم يبقى متاحاً
-  await syncAllApiSources().catch(err => console.error("Initial product sync failed:", err?.message ?? err));
+  // لا ننتظر مزامنة API الطويلة قبل تشغيل معالجات Telegram.
 
   const bot = new Telegraf(token, { handlerTimeout: 90_000 });
   _botRef = bot;
   // توحيد كل النصوص الخارجة إلى Telegram قبل الإرسال، بما فيها الأزرار
   const originalCallApi = bot.telegram.callApi.bind(bot.telegram);
-  bot.telegram.callApi = (method, payload, ...rest) =>
-    originalCallApi(method, normalizeTelegramPayload(payload), ...rest);
+  bot.telegram.callApi = (method, payload, ...rest) => {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`Telegram ${method} timed out`)), 8_000);
+    });
+    return Promise.race([
+      originalCallApi(method, normalizeTelegramPayload(payload), ...rest),
+      timeout,
+    ]).finally(() => clearTimeout(timer));
+  };
 
   // ── Rate limiter + رد فوري على callback ──────────────────────
   const _rateMap = new Map();
@@ -2152,16 +2245,18 @@ async function startBot() {
 
   bot.use((ctx, next) => {
     const uid = ctx.from?.id; if (!uid) return next();
+    // أزرار Telegram لا تُحجب بمحدد الرسائل؛ الضغط المتتابع يجب أن يصل للمعالج.
+    if (ctx.callbackQuery) {
+      ctx.answerCbQuery().catch(() => {});
+      return next();
+    }
     const now = Date.now();
-     const times = (_rateMap.get(uid) ?? []).filter(t => now - t < 3_000);
-     // لا نسقط النقرات الطبيعية؛ الحد القديم (5 نقرات/ثانيتين) كان يجعل
-     // المستخدم يضغط الزر ولا يحصل على أي استجابة.
-     if (times.length >= 15) {
-      if (ctx.callbackQuery) ctx.answerCbQuery("⏱️ الرجاء الانتظار...").catch(() => {});
+    const times = (_rateMap.get(uid) ?? []).filter(t => now - t < 3_000);
+    // نحد الرسائل النصية المزعجة فقط، ولا نسقط ضغطات الأزرار الطبيعية.
+    if (times.length >= 30) {
       return;
     }
     times.push(now); _rateMap.set(uid, times);
-    if (ctx.callbackQuery) ctx.answerCbQuery().catch(() => {});
     return next();
   });
 
@@ -3031,7 +3126,7 @@ async function startBot() {
     } catch { /* لا نسمح لخطأ الإشعار بإيقاف المعالج */ }
   });
 
-  await bot.telegram.setMyCommands([
+  void bot.telegram.setMyCommands([
     { command: "start", description: "🚀 بدء" },
     { command: "menu", description: "📋 القائمة" },
     { command: "balance", description: "💰 رصيدي" },
@@ -3043,6 +3138,7 @@ async function startBot() {
   // ── تسخين الكاش مبكراً لتسريع أول استجابة ──
   getCachedProducts().catch(() => {}); getAllOverridesCached().catch(() => {}); getCachedContent(0).catch(() => {});
   startBackgroundRefresher();
+  void syncAllApiSources().catch(err => console.error("Initial product sync failed:", err?.message ?? err));
 
   const webhookUrl = process.env.WEBHOOK_URL;
   if (webhookUrl) {
@@ -3081,7 +3177,7 @@ async function startBot() {
 // ── Express health server + webhook receiver ──────────────────
 const app = express();
 const PORT = Number(process.env.PORT ?? 3000);
-app.use(express.json());
+app.use(express.json({ limit: "256kb" }));
 app.get("/", (_, res) => res.send("OK"));
 app.get("/health", (_, res) => res.json({ status: "ok", time: new Date().toISOString(), version: "2.3" }));
 
@@ -3097,5 +3193,8 @@ app.post(/^\/bot.+/, (req, res) => {
 
 // ── Start ──────────────────────────────────────────────────────
 const server = http.createServer(app);
+server.requestTimeout = 15_000;
+server.headersTimeout = 10_000;
+server.on("error", err => console.error("HTTP server error:", err?.message ?? err));
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
 startBot().then(bot => { _botRef = bot; }).catch(err => { console.error("Failed to start:", err); process.exit(1); });
