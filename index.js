@@ -3203,27 +3203,13 @@ async function startBot() {
     dropPendingUpdates: false,
     allowedUpdates: ["message", "callback_query"],
   };
-const stopTelegram = reason => {
-  telegramShutdownRequested = true;
 
-  if (!bot.polling && !bot.webhookServer) return;
-
-  try {
-    bot.stop(reason);
-  } catch (err) {
-    console.error("Telegram stop warning:", err?.message ?? err);
-  }
-};
-
-server.listen(PORT, () => {
-  console.log(`🚀 Server on port ${PORT}`);
-});
-
-startBot()
-  .then(bot => {
-    botRef = bot;
-  })
-  .catch(err => {
-    console.error("Failed to start:", err);
-    process.exit(1);
-  });
+  const stopTelegram = reason => {
+    telegramShutdownRequested = true;
+    // في وضع webhook لا ينشئ Telegraf خادماً داخلياً.
+    if (!bot.polling && !bot.webhookServer) return;
+    try {
+      bot.stop(reason);
+    } catch (err) {
+      console.error("Telegram stop warning:", err?.message ?? err);onsole.log(`🚀 Server on port ${PORT}`));
+startBot().then(bot => { _botRef = bot; }).catch(err => { console.error("Failed to start:", err); process.exit(1); });
