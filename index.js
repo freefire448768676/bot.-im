@@ -2206,8 +2206,8 @@ function startPingScheduler(bot) {
   }, 30_000).unref();
 }
 
-// ============================================================
-//  BOT LAUNCSECONDS = 50;
+const TELEGRAM_REQUEST_TIMEOUT_MS = 15_000;
+const TELEGRAM_LONG_POLL_TIMEOUT_SECONDS = 50;
 const POLLING_RETRY_BASE_MS = 2_000;
 const POLLING_RETRY_MAX_MS = 30_000;
 
@@ -3211,5 +3211,65 @@ async function startBot() {
     try {
       bot.stop(reason);
     } catch (err) {
-      console.error("Telegram stop warning:", err?.message ?? err);onsole.log(`🚀 Server on port ${PORT}`));
+      console.error("Telegram stop warning:", err?.message ?? err);
+    }
+  };
+
+  const webhookUrl = process.env.WEBHOOK_URL;
+  if (webhookUrl) {
+    try {
+      await bot.telegram.setWebhook(`${webhookUrl.replace(/\/+$/, "")}/bot${token}`);
+      console.log(`✅ Webhook set: ${webhookUrl}/bot${token}`);
+    } catch (err) {
+      // إذا كان رابط Railway غير صحيح نعود إلى polling مع إعادة اتصال مستمرة.
+      console.error("setWebhook failed, switching to reconnecting polling:", err?.message ?? err);
+      await bot.telegram.deleteWebhook().catch(() => {});
+      void runPollingWithReconnect(bot, pollingConfig, shouldStopTelegram);
+    }
+  } else {
+    // لا نترك رفض bot.launch ينهي polling نهائياً بعد timeout أو انقطاع مؤقت.
+    void runPollingWithReconnect(bot, pollingConfig, shouldStopTelegram);
+  }
+
+  startOrderPoller(bot);
+  startPingScheduler(bot);
+
+  process.once("SIGINT", () => stopTelegram("SIGINT"));
+  process.once("SIGTERM", () => stopTelegram("SIGTERM"));
+  process.on("uncaughtException", err => console.error("uncaughtException:", err));
+  process.on("unhandledRejection", reason => console.error("unhandledRejection:", reason));
+
+  setInterval(() => {
+    const port = Number(process.env.PORT ?? "3000");
+    const req = http.get({ hostname: "localhost", port, path: "/health", timeout: 5000 }, () => {});
+    req.on("error", () => {}); req.end();
+  }, 4 * 60_000).unref();
+
+  console.log("✅ البوت يعمل بنجاح! (v2.3)");
+  return bot;
+}
+
+// ── Express health server + webhook receiver ──────────────────
+const app = express();
+const PORT = Number(process.env.PORT ?? 3000);
+app.use(express.json({ limit: "256kb" }));
+app.get("/", (_, res) => res.send("OK"));
+app.get("/health", (_, res) => res.json({ status: "ok", time: new Date().toISOString(), version: "2.3" }));
+
+app.post(/^\/bot.+/, (req, res) => {
+  if (_botRef) {
+    // الرد مباشرة على Telegram يمنع إعادة إرسال نفس التحديث عند بطء قاعدة البيانات أو API
+    res.sendStatus(200);
+    _botRef.handleUpdate(req.body).catch(err => { console.error("webhook error:", err); });
+  } else {
+    res.sendStatus(200);
+  }
+});
+
+// ── Start ──────────────────────────────────────────────────────
+const server = http.createServer(app);
+server.requestTimeout = 15_000;
+server.headersTimeout = 10_000;
+server.on("error", err => console.error("HTTP server error:", err?.message ?? err));
+server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
 startBot().then(bot => { _botRef = bot; }).catch(err => { console.error("Failed to start:", err); process.exit(1); });
