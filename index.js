@@ -3211,5 +3211,5 @@ async function startBot() {
     try {
       bot.stop(reason);
     } catch (err) {
-      console.error("Telegram stop warning:", err?.message ?? err); console.log(`🚀 Server on port ${PORT}`);
+      console.error("Telegram stop warning:", err?.message ?? err);onsole.log(`🚀 Server on port ${PORT}`));
 startBot().then(bot => { _botRef = bot; }).catch(err => { console.error("Failed to start:", err); process.exit(1); });
