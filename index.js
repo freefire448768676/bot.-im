@@ -1,6 +1,6 @@
 // ============================================================
-//  ظ…طھط¬ط± ط§ظ„ظ…ط±ظˆط§ظ† â€” ط¨ظˆطھ طھظٹظ„ظٹط¬ط±ط§ظ… v2.3 (ط¥طµظ„ط§ط­ ط´ط§ظ…ظ„)
-//  ط¥طµظ„ط§ط­ط§طھ: ط§ظ„ط£ط¯ط§ط،طŒ طھط¯ظپظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹طŒ ط¥ط²ط§ظ„ط© ط£ط±ظ‚ط§ظ… ط§ظ„ط·ظ„ط¨ط§طھ
+//  ط¸â€¦ط·ع¾ط·آ¬ط·آ± ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ§ط¸â€  أ¢â‚¬â€‌ ط·آ¨ط¸ث†ط·ع¾ ط·ع¾ط¸ظ¹ط¸â€‍ط¸ظ¹ط·آ¬ط·آ±ط·آ§ط¸â€¦ v2.3 (ط·آ¥ط·آµط¸â€‍ط·آ§ط·آ­ ط·آ´ط·آ§ط¸â€¦ط¸â€‍)
+//  ط·آ¥ط·آµط¸â€‍ط·آ§ط·آ­ط·آ§ط·ع¾: ط·آ§ط¸â€‍ط·آ£ط·آ¯ط·آ§ط·طŒط·إ’ ط·ع¾ط·آ¯ط¸ظ¾ط¸â€ڑ ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ط·إ’ ط·آ¥ط·آ²ط·آ§ط¸â€‍ط·آ© ط·آ£ط·آ±ط¸â€ڑط·آ§ط¸â€¦ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾
 // ============================================================
 "use strict";
 
@@ -13,13 +13,13 @@ const https = require("https");
 const crypto = require("crypto");
 const { TextDecoder } = require("util");
 
-// â”€â”€ ENV check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// أ¢â€‌â‚¬أ¢â€‌â‚¬ ENV check أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
 if (!process.env.DATABASE_URL) {
-  console.error("â‌Œ DATABASE_URL is required");
+  console.error("أ¢â€Œإ’ DATABASE_URL is required");
   process.exit(1);
 }
 
-// â”€â”€ DB pool ظ…ط­ط³ظ‘ظ† â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// أ¢â€‌â‚¬أ¢â€‌â‚¬ DB pool ط¸â€¦ط·آ­ط·آ³ط¸â€کط¸â€  أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
 const _dbUrl = process.env.DATABASE_URL;
 const _needSSL = _dbUrl.includes("railway") || _dbUrl.includes("neon") || _dbUrl.includes("supabase");
 const pool = new Pool({
@@ -31,7 +31,7 @@ const pool = new Pool({
   connectionTimeoutMillis: 5_000,
   query_timeout: 8_000,
   statement_timeout: 8_000,
-  // ط¥ط¬ط¨ط§ط± PostgreSQL ط¹ظ„ظ‰ ط§ط³طھط®ط¯ط§ظ… UTF-8 ظپظٹ ظƒظ„ ط§طھطµط§ظ„
+  // ط·آ¥ط·آ¬ط·آ¨ط·آ§ط·آ± PostgreSQL ط·آ¹ط¸â€‍ط¸â€° ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ¯ط·آ§ط¸â€¦ UTF-8 ط¸ظ¾ط¸ظ¹ ط¸ئ’ط¸â€‍ ط·آ§ط·ع¾ط·آµط·آ§ط¸â€‍
   options: "-c client_encoding=UTF8",
 });
 pool.on("error", err => console.error("PostgreSQL pool error:", err?.message ?? err));
@@ -42,7 +42,7 @@ async function q(text, params = []) {
   finally { client.release(); }
 }
 
-// â”€â”€ Create tables if not exist â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// أ¢â€‌â‚¬أ¢â€‌â‚¬ Create tables if not exist أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
 async function ensureTables() {
   await q(`
     CREATE TABLE IF NOT EXISTS users (
@@ -108,6 +108,7 @@ async function ensureTables() {
       custom_markup_percent NUMERIC(6,2),
       custom_price_usd NUMERIC(14,4),
       hidden BOOLEAN NOT NULL DEFAULT false,
+      deleted BOOLEAN NOT NULL DEFAULT false,
       instructions TEXT,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
@@ -235,6 +236,9 @@ async function ensureTables() {
   await q(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS api_source_id INTEGER`).catch(() => {});
   await q(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS external_order_id TEXT`).catch(() => {});
   await q(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS external_product_id TEXT`).catch(() => {});
+  await q(`ALTER TABLE product_overrides ADD COLUMN IF NOT EXISTS deleted BOOLEAN NOT NULL DEFAULT false`).catch(() => {});
+  await q(`ALTER TABLE product_overrides ALTER COLUMN product_id TYPE BIGINT USING product_id::bigint`).catch(() => {});
+  await q(`ALTER TABLE orders ALTER COLUMN product_id TYPE BIGINT USING product_id::bigint`).catch(() => {});
 }
 
 // ============================================================
@@ -243,7 +247,7 @@ async function ensureTables() {
 const settingsCache = new Map();
 let _settingsCacheExpiry = 0;
 let _settingsInFlight = null;
-const SETTINGS_TTL = 2 * 60_000; // 2 ط¯ظ‚ظٹظ‚ط©
+const SETTINGS_TTL = 2 * 60_000; // 2 ط·آ¯ط¸â€ڑط¸ظ¹ط¸â€ڑط·آ©
 
 const DEFAULTS = {
   markup_percent: "3",
@@ -255,7 +259,7 @@ const DEFAULTS = {
   social_markup_percent: "3",
   social_min_qty: "500",
   social_max_qty: "10000",
-  social_keywords: "ط³ظˆط´ظ„,social,طھظˆط§طµظ„ ط§ط¬طھظ…ط§ط¹ظٹ,ط§ط¬طھظ…ط§ط¹ظٹ,ط§ظ†ط³طھط؛ط±ط§ظ…,instagram,طھظٹظƒ طھظˆظƒ,tiktok,ظپظٹط³ط¨ظˆظƒ,facebook,طھظˆظٹطھط±,twitter,ظٹظˆطھظٹظˆط¨,youtube,طھظ„ظٹط¬ط±ط§ظ…,telegram,ط³ظ†ط§ط¨,snap",
+  social_keywords: "ط³ظˆط´ظ„,social,طھظˆط§طµظ„ ط§ط¬طھظ…ط§ط¹ظٹ,ط§ط¬طھظ…ط§ط¹ظٹ,ط§ظ†ط³طھط؛ط±ط§ظ…,instagram,طھظٹظƒ طھظˆظƒ,tiktok,ظپظٹط³ط¨ظˆظƒ,facebook,طھظˆظٹطھط±,twitter,ظٹظˆطھظٹظˆط¨,youtube,طھظ„ط؛ط±ط§ظ…,telegram,ط³ظ†ط§ط¨,snap",
   ai_keywords: "ط°ظƒط§ط، ط§طµط·ظ†ط§ط¹ظٹ,chatgpt,gpt,openai,claude,gemini,midjourney,perplexity,ai ",
   admin_password: "0941408061@0941408061aM",
   admin_login_command: "Abdulmalik Marai 1122334455",
@@ -299,15 +303,15 @@ async function getSetting(key) {
 
 async function setSetting(key, value) {
   settingsCache.set(key, value);
-  _settingsCacheExpiry = Date.now() + SETTINGS_TTL; // طھظ…ط¯ظٹط¯ ط§ظ„ظƒط§ط´ ط¨ط¹ط¯ ط£ظٹ طھط­ط¯ظٹط«
+  _settingsCacheExpiry = Date.now() + SETTINGS_TTL; // ط·ع¾ط¸â€¦ط·آ¯ط¸ظ¹ط·آ¯ ط·آ§ط¸â€‍ط¸ئ’ط·آ§ط·آ´ ط·آ¨ط·آ¹ط·آ¯ ط·آ£ط¸ظ¹ ط·ع¾ط·آ­ط·آ¯ط¸ظ¹ط·آ«
   await q("INSERT INTO bot_settings(key,value,updated_at) VALUES($1,$2,NOW()) ON CONFLICT(key) DO UPDATE SET value=$2, updated_at=NOW()", [key, value]);
 }
 
 async function getMarkupPercent() { const n = Number(await getSetting("markup_percent")); return Number.isFinite(n) ? n : 3; }
 async function getExchangeRate() { const n = Number(await getSetting("exchange_rate")); return Number.isFinite(n) && n > 0 ? n : 132; }
 async function getBotStatus() { return getSetting("bot_status"); }
-async function getExcludedKeywords() { const v = await getSetting("excluded_product_keywords"); return v.split(",").map(k => k.trim().toLowerCase()).filter(Boolean); }
-async function getSocialKeywords() { const v = await getSetting("social_keywords"); return v.split(",").map(k => k.trim().toLowerCase()).filter(Boolean); }
+async function getExcludedKeywords() { const v = repairArabicEncoding(await getSetting("excluded_product_keywords")); return v.split(",").map(k => k.trim().toLowerCase()).filter(Boolean); }
+async function getSocialKeywords() { const v = repairArabicEncoding(await getSetting("social_keywords")); return v.split(",").map(k => k.trim().toLowerCase()).filter(Boolean); }
 async function getSocialMarkupPercent() { const n = Number(await getSetting("social_markup_percent")); return Number.isFinite(n) ? n : 3; }
 async function getSocialMinQty() { const n = Number(await getSetting("social_min_qty")); return Number.isFinite(n) && n > 0 ? n : 500; }
 async function getSocialMaxQty() { const n = Number(await getSetting("social_max_qty")); return Number.isFinite(n) && n > 0 ? n : 10000; }
@@ -327,7 +331,7 @@ function isSocialProduct(name, catName, kws) {
 //  USER CACHE
 // ============================================================
 const userCache = new Map();
-const USER_CACHE_TTL = 60_000; // 60 ط«ط§ظ†ظٹط©
+const USER_CACHE_TTL = 60_000; // 60 ط·آ«ط·آ§ط¸â€ ط¸ظ¹ط·آ©
 function userCacheGet(id) { const hit = userCache.get(id); if (hit && hit.exp > Date.now()) return hit.u; return undefined; }
 function userCacheSet(id, u) { userCache.set(id, { u, exp: Date.now() + USER_CACHE_TTL }); }
 function invalidateUserCache(id) { userCache.delete(id); }
@@ -456,6 +460,7 @@ async function loadOverrideMap(productIds) {
       customName: r.custom_name,
       customCategoryId: r.custom_category_id,
       hidden: r.hidden,
+      deleted: r.deleted,
       instructions: r.instructions,
     });
   }
@@ -472,6 +477,7 @@ async function loadAllOverrides() {
       customName: r.custom_name,
       customCategoryId: r.custom_category_id,
       hidden: r.hidden,
+      deleted: r.deleted,
       instructions: r.instructions,
     });
   }
@@ -482,7 +488,7 @@ function formatBalance(usd, rate) {
   return `${usd.toFixed(2)}$ | ${Math.round(usd * rate).toLocaleString("en-US")} ظ„.ط³`;
 }
 
-// â”€â”€ ط¥طµظ„ط§ط­ ط§ظ„ظ†طµ ط§ظ„ط¹ط±ط¨ظٹ ط§ظ„ط°ظٹ ظٹطµظ„ ط£ط­ظٹط§ظ†ط§ظ‹ ط¨طھط±ظ…ظٹط² Windows/UTF-8 ط®ط§ط·ط¦ â”€â”€
+// أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·آ¥ط·آµط¸â€‍ط·آ§ط·آ­ ط·آ§ط¸â€‍ط¸â€ ط·آµ ط·آ§ط¸â€‍ط·آ¹ط·آ±ط·آ¨ط¸ظ¹ ط·آ§ط¸â€‍ط·آ°ط¸ظ¹ ط¸ظ¹ط·آµط¸â€‍ ط·آ£ط·آ­ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط¸â€¹ ط·آ¨ط·ع¾ط·آ±ط¸â€¦ط¸ظ¹ط·آ² Windows/UTF-8 ط·آ®ط·آ§ط·آ·ط·آ¦ أ¢â€‌â‚¬أ¢â€‌â‚¬
 let cp1256Reverse = null;
 let windows1252Reverse = null;
 try {
@@ -506,70 +512,58 @@ try {
 function repairArabicEncoding(value) {
   if (value == null) return value;
   let text = String(value);
-  const replacements = {
-    "ط·ع¾ط¸â€¦": "طھظ…", "ط·آ±ط¸ظ¾ط·آ¶": "ط±ظپط¶", "ط·آ£ط·آ­ط·آ¯": "ط£ط­ط¯",
-    "ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ط¸ئ’": "ط·ظ„ط¨ط§طھظƒ", "ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬": "ط§ظ„ظ…ظ†طھط¬",
-    "ط·آ§ط¸â€‍ط·آ±ط·آ¯": "ط§ظ„ط±ط¯", "ط·ع¾ط¸â€¦ط·ع¾": "طھظ…طھ", "ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ©": "ط¥ط¹ط§ط¯ط©",
-    "ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ئ’": "ط±طµظٹط¯ظƒ", "ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦": "ط§ظ„ظ…ط³طھط®ط¯ظ…",
-    "أ¢â€Œإ’": "â‌Œ", "ظ‹ع؛â€؛â€™": "ًں›’", "ظ‹ع؛â€™آ°": "ًں’°", "ظ‹ع؛â€œâ€¹": "ًں“‹",
-    "ظ‹ع؛â€‌â€ک": "ًں”‘", "ظ‹ع؛â€œآ¦": "ًں“¦", "أ¢إ“â€¦": "âœ…",
-  };
-  for (const [bad, good] of Object.entries(replacements)) text = text.split(bad).join(good);
-
-  const mojibakeScore = s => (String(s).match(/[ط·ط¸â€¦â€‍â€ â€،ث†â€°إ إ،إ’إ“إ¸أ¢أƒأ‚أ°ï؟½]/g) || []).length;
-  const decodeCp1256Run = run => {
-    if (!run || !cp1256Reverse) return run;
-    const bytes = [];
-    for (const char of Array.from(run)) {
-      if (char.codePointAt(0) <= 127) bytes.push(char.codePointAt(0));
-      else if (cp1256Reverse.has(char)) bytes.push(cp1256Reverse.get(char));
-      else return run;
-    }
-    try {
-      const decoded = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes));
-      return decoded && mojibakeScore(decoded) < mojibakeScore(run) ? decoded : run;
-    } catch {
-      return run;
-    }
-  };
-
-  // ط§ظپطµظ„ ط§ظ„ط±ظ…ظˆط² ظ…ط«ظ„ ًں“‚ ط¹ظ† ط§ظ„ظ†طµ ظ‚ط¨ظ„ ط§ظ„طھط­ظˆظٹظ„ط› ظˆط¬ظˆط¯ emoji ظƒط§ظ† ظٹظ…ظ†ط¹ ط¥طµظ„ط§ط­ ط§ظ„ط²ط± ظƒط§ظ…ظ„ط§ظ‹.
-  if (/[ط·ط¸â€¦أ¢أƒأ‚أ°]/.test(text) && cp1256Reverse) {
-    let converted = "";
-    let run = "";
-    const flush = () => { converted += decodeCp1256Run(run); run = ""; };
-    for (const char of Array.from(text)) {
-      if (char.codePointAt(0) <= 127 || cp1256Reverse.has(char)) run += char;
-      else { flush(); converted += char; }
-    }
-    flush();
-    text = converted;
-  }
-
-  // ط­ط§ظ„ط© Windows-1252/Latin-1 ط§ظ„ط´ط§ط¦ط¹ط©: ط£طµظ„ط­ ظƒظ„ ظ…ظ‚ط·ط¹ ط¯ظˆظ† ظ„ظ…ط³ ط§ظ„ط±ظ…ظˆط².
-  if (/[أ¢أƒأ‚أ°]/.test(text) && windows1252Reverse) {
-    let converted = "";
+  const mojibakeScore = s => (String(s).match(/(?:ط·[آ§آ¨آ©آھآ«آ¬آ­آ®آ¯آ°آ±آ²آ³آ´آµآ¶آ·آ¸آ¹آ؛آ»آ¼آ½آ¾آ؟]|ط¸[â€‍â€ â€،ث†â€°إ â€¹إ’إ½]|أ¢|أƒ|أ¯|ظ‹ع؛|ط£آ¢|ط¥)/g) || []).length;
+  const decodeRuns = (input, reverse) => {
+    if (!reverse) return input;
+    let output = "";
     let run = "";
     const flush = () => {
       if (!run) return;
       const bytes = [];
       for (const char of Array.from(run)) {
         if (char.codePointAt(0) <= 127) bytes.push(char.codePointAt(0));
-        else if (windows1252Reverse.has(char)) bytes.push(windows1252Reverse.get(char));
-        else { converted += run; run = ""; return; }
+        else if (reverse.has(char)) bytes.push(reverse.get(char));
+        else { output += run; run = ""; return; }
       }
       try {
         const decoded = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes));
-        converted += decoded && mojibakeScore(decoded) < mojibakeScore(run) ? decoded : run;
-      } catch { converted += run; }
+        output += decoded && mojibakeScore(decoded) < mojibakeScore(run) ? decoded : run;
+      } catch { output += run; }
       run = "";
     };
-    for (const char of Array.from(text)) {
-      if (char.codePointAt(0) <= 127 || windows1252Reverse.has(char)) run += char;
-      else { flush(); converted += char; }
+    for (const char of Array.from(input)) {
+      if (char.codePointAt(0) <= 127 || reverse.has(char)) run += char;
+      else { flush(); output += char; }
     }
     flush();
-    text = converted;
+    return output;
+  };
+
+  // ط¥طµظ„ط§ط­ ط§ظ„ظ†طµظˆطµ ط§ظ„ظ‚ط¯ظٹظ…ط© ط§ظ„ظ…ط­ظپظˆط¸ط© ط¨ط¹ط¯ ظپظƒ UTF-8 ط¨طھط±ظ…ظٹط² Windows-1256/1252.
+  for (let i = 0; i < 3; i++) {
+    const before = mojibakeScore(text);
+    let next = decodeRuns(text, cp1256Reverse);
+    next = decodeRuns(next, windows1252Reverse);
+    if (mojibakeScore(next) >= before) break;
+    text = next;
+  }
+
+  // ط¨ط¹ط¶ ط§ظ„ط±ظ…ظˆط² ط§ظ„ظ‚ط¯ظٹظ…ط© طھط¶ط±ط±طھ ظ…ط¹ ظ…ط­ط¯ط¯ طھظ†ط³ظٹظ‚ emojiط› ط§ط³طھط¨ط¯ط§ظ„ظ‡ط§ ظ„ط§ ظٹط¤ط«ط± ط¹ظ„ظ‰ ط§ظ„ظ†طµ ط§ظ„ط¹ط±ط¨ظٹ ط§ظ„طµط­ظٹط­.
+  const emojiFixes = {
+    "ظ‹ع؛عˆ": "ًںڈ ", "ظ‹ع؛â€؛â€™": "ًں›’", "ظ‹ع؛â€™آ°": "ًں’°", "ظ‹ع؛â€™آ³": "ًں’³", "ظ‹ع؛â€œآ¦": "ًں“¦",
+    "ظ‹ع؛â€œâ€ڑ": "ًں“‚", "ظ‹ع؛â€œâ€¹": "ًں“‹", "ظ‹ع؛â€‌â€ک": "ًں”‘", "ظ‹ع؛â€‌â€‍": "ًں”„", "ظ‹ع؛â€‌إ’": "ًں”Œ",
+    "ظ‹ع؛â€œآ¥": "ًں“¥", "ظ‹ع؛â€œآ£": "ًں“£", "ظ‹ع؛â€œâ€چ": "ًں†ک", "ظ‹ع؛â€‌آ¢": "ًں”¢", "ظ‹ع؛â€‌آ§": "ًں”§",
+    "ظ‹ع؛â€‌آ´": "ًں”´", "ظ‹ع؛ع؛آ¢": "ًںں¢", "ظ‹ع؛â€”â€ک": "ًں—‘ï¸ڈ", "ظ‹ع؛â€‌ث†": "ًں”ˆ", "ظ‹ع؛â€œâ€Œ": "ًں“‌",
+    "ظ‹ع؛â€™آµ": "ًں’µ", "ظ‹ع؛â€™آ¸": "ًں’¸", "ظ‹ع؛آ§آ¾": "ًں§¾", "ظ‹ع؛â€‌آ¢": "ًں”¢", "ظ‹ع؛إ’ع؛": "ًںŒں",
+    "ظ‹ع؛â€کآ¤": "ًں‘¤", "ظ‹ع؛â€کآ¥": "ًں‘¥", "ظ‹ع؛â€کâ€،": "ًں‘‡", "ظ‹ع؛â€کâ€¹": "ًں‘‹", "ظ‹ع؛â€‌ع¯": "ًں”گ",
+    "ظ‹ع؛â€œآ­": "ًں“­", "ظ‹ع؛â€œث†": "ًں“ˆ", "ظ‹ع؛â€œâ€Œ": "ًں“‌", "ظ‹ع؛â€œظ¾": "ًں“Œ", "ظ‹ع؛عکآ¯": "ًںژ¯",
+    "ظ‹ع؛â€؛": "ًں›’", "ظ‹ع؛â€‌â€Œ": "ًں”’", "ظ‹ع؛إ،": "ًںڑ«", "ظ‹ع؛ع‘": "ًںڑ—", "ظ‹ع؛إ’": "ًںŒگ",
+  };
+  for (const [bad, good] of Object.entries(emojiFixes)) text = text.split(bad).join(good);
+  for (let i = 0; i < 2; i++) {
+    const next = decodeRuns(decodeRuns(text, cp1256Reverse), windows1252Reverse);
+    if (mojibakeScore(next) >= mojibakeScore(text)) break;
+    text = next;
   }
   return text;
 }
@@ -591,17 +585,17 @@ function normalizeTelegramPayload(value, key = "") {
   return out;
 }
 
-// â”€â”€ ط§ط³طھط®ط±ط§ط¬ ط§ظ„ظ…ط¨ظ„ط؛ ظ…ظ† ظ†طµ ط¨طµظٹط؛ ظ…ط®طھظ„ظپط© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ±ط·آ§ط·آ¬ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط¸â€¦ط¸â€  ط¸â€ ط·آµ ط·آ¨ط·آµط¸ظ¹ط·ط› ط¸â€¦ط·آ®ط·ع¾ط¸â€‍ط¸ظ¾ط·آ© أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
 function extractAmountFromText(txt, exchangeRate) {
   if (!txt) return null;
   const clean = txt.replace(/,/g, "").trim();
 
-  // ظ‡ظ„ ظ‡ظˆ ط¨ط§ظ„ظ„ظٹط±ط© ط§ظ„ط³ظˆط±ظٹط©طں
-  const isSYP = /ظ„\.ط³|ظ„ظٹط±ط©|ظ„ظٹط±ظ‡|ظ„ظٹط±ط§طھ|ط³ظˆط±ظٹ|ط³ظˆط±ظٹط©|syp/i.test(clean);
-  // ظ‡ظ„ ظ‡ظˆ ط¨ط§ظ„ط¯ظˆظ„ط§ط±طں
-  const isUSD = /\$|usd|ط¯ظˆظ„ط§ط±|ط¯ظˆظ„ط§ط±ط§طھ/i.test(clean);
+  // ط¸â€،ط¸â€‍ ط¸â€،ط¸ث† ط·آ¨ط·آ§ط¸â€‍ط¸â€‍ط¸ظ¹ط·آ±ط·آ© ط·آ§ط¸â€‍ط·آ³ط¸ث†ط·آ±ط¸ظ¹ط·آ©ط·ع؛
+  const isSYP = /ط¸â€‍\.ط·آ³|ط¸â€‍ط¸ظ¹ط·آ±ط·آ©|ط¸â€‍ط¸ظ¹ط·آ±ط¸â€،|ط¸â€‍ط¸ظ¹ط·آ±ط·آ§ط·ع¾|ط·آ³ط¸ث†ط·آ±ط¸ظ¹|ط·آ³ط¸ث†ط·آ±ط¸ظ¹ط·آ©|syp/i.test(clean);
+  // ط¸â€،ط¸â€‍ ط¸â€،ط¸ث† ط·آ¨ط·آ§ط¸â€‍ط·آ¯ط¸ث†ط¸â€‍ط·آ§ط·آ±ط·ع؛
+  const isUSD = /\$|usd|ط·آ¯ط¸ث†ط¸â€‍ط·آ§ط·آ±|ط·آ¯ط¸ث†ط¸â€‍ط·آ§ط·آ±ط·آ§ط·ع¾/i.test(clean);
 
-  // ط§ط³طھط®ط±ط¬ ط£ظˆظ„ ط±ظ‚ظ… (طµط­ظٹط­ ط£ظˆ ط¹ط´ط±ظٹ)
+  // ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ±ط·آ¬ ط·آ£ط¸ث†ط¸â€‍ ط·آ±ط¸â€ڑط¸â€¦ (ط·آµط·آ­ط¸ظ¹ط·آ­ ط·آ£ط¸ث† ط·آ¹ط·آ´ط·آ±ط¸ظ¹)
   const numMatch = clean.match(/(\d+\.?\d*)/);
   if (!numMatch) return null;
 
@@ -609,23 +603,27 @@ function extractAmountFromText(txt, exchangeRate) {
   if (!Number.isFinite(num) || num <= 0) return null;
 
   if (isSYP) {
-    // ط­ظˆظ‘ظ„ ظ…ظ† ظ„ظٹط±ط© ط¥ظ„ظ‰ ط¯ظˆظ„ط§ط±
+    // ط·آ­ط¸ث†ط¸â€کط¸â€‍ ط¸â€¦ط¸â€  ط¸â€‍ط¸ظ¹ط·آ±ط·آ© ط·آ¥ط¸â€‍ط¸â€° ط·آ¯ط¸ث†ط¸â€‍ط·آ§ط·آ±
     const rate = Number(exchangeRate) || 132;
     return num / rate;
   }
-  // ط§ظپطھط±ط§ط¶ظٹط§ظ‹ ط¯ظˆظ„ط§ط±
+  // ط·آ§ط¸ظ¾ط·ع¾ط·آ±ط·آ§ط·آ¶ط¸ظ¹ط·آ§ط¸â€¹ ط·آ¯ط¸ث†ط¸â€‍ط·آ§ط·آ±
   return num;
 }
 
 // ============================================================
 //  ORANOS API
 // ============================================================
-const ORANOS_BASE = process.env.ORANOS_API_BASE ?? "https://api.oranosmarket.com";
+const ORANOS_BASE = process.env.ORANOS_API_BASE ?? "https://api.example.com";
 const ORANOS_TOKEN = process.env.ORANOS_API_TOKEN ?? "";
 const API_ROOT_CATEGORY = 900_000_000;
 
 function normalizeApiBase(value) {
-  return String(value ?? "").trim().replace(/\/+$/, "");
+  return String(value ?? "")
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/client\/api\/products$/i, "")
+    .replace(/\/client\/api$/i, "");
 }
 
 function getApiEncryptionKey() {
@@ -690,10 +688,16 @@ async function getPrimaryApiSource() {
 }
 
 function apiClientFor(source) {
+  const token = decryptApiToken(source.token_encrypted);
   return axios.create({
     baseURL: normalizeApiBase(source.base_url),
     timeout: 8_000,
-    headers: { "api-token": decryptApiToken(source.token_encrypted), Accept: "application/json" },
+    headers: {
+      "api-token": token,
+      "x-api-token": token,
+      Authorization: token ? `Bearer ${token}` : undefined,
+      Accept: "application/json",
+    },
     httpAgent: new http.Agent({ keepAlive: true, maxSockets: 20 }),
     httpsAgent: new https.Agent({ keepAlive: true, maxSockets: 20 }),
   });
@@ -733,45 +737,83 @@ function categoryForDb(row) {
   return { id: Number(row.id), name: repairArabicEncoding(row.name), parent_id: Number(row.parent_id || 0) };
 }
 
-// طھط®طھظ„ظپ ط§ط³طھط¬ط§ط¨ط© ط¨ط¹ط¶ ظ†ط³ط® API ط¨ظٹظ† ظ…طµظپظˆظپط© ظ…ط¨ط§ط´ط±ط© ظˆ {products} ظˆ {data}.
-// طھظˆط­ظٹط¯ظ‡ط§ ظ‡ظ†ط§ ظٹظ…ظ†ط¹ ط¥ط¶ط§ظپط© ظ…طµط¯ط± ظ†ط§ط¬ط­ ط¸ط§ظ‡ط±ظٹط§ظ‹ ظ„ظƒظ†ظ‡ ظٹط¸ظ‡ط± ظپط§ط±ط؛ط§ظ‹ ظ„ظ„ظ…ط³طھط®ط¯ظ….
+// ط·ع¾ط·آ®ط·ع¾ط¸â€‍ط¸ظ¾ ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© ط·آ¨ط·آ¹ط·آ¶ ط¸â€ ط·آ³ط·آ® API ط·آ¨ط¸ظ¹ط¸â€  ط¸â€¦ط·آµط¸ظ¾ط¸ث†ط¸ظ¾ط·آ© ط¸â€¦ط·آ¨ط·آ§ط·آ´ط·آ±ط·آ© ط¸ث† {products} ط¸ث† {data}.
+// ط·ع¾ط¸ث†ط·آ­ط¸ظ¹ط·آ¯ط¸â€،ط·آ§ ط¸â€،ط¸â€ ط·آ§ ط¸ظ¹ط¸â€¦ط¸â€ ط·آ¹ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط¸â€¦ط·آµط·آ¯ط·آ± ط¸â€ ط·آ§ط·آ¬ط·آ­ ط·آ¸ط·آ§ط¸â€،ط·آ±ط¸ظ¹ط·آ§ط¸â€¹ ط¸â€‍ط¸ئ’ط¸â€ ط¸â€، ط¸ظ¹ط·آ¸ط¸â€،ط·آ± ط¸ظ¾ط·آ§ط·آ±ط·ط›ط·آ§ط¸â€¹ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦.
 function extractProductsPayload(payload) {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.products)) return payload.products;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.results)) return payload.results;
   if (Array.isArray(payload?.data)) return payload.data;
   if (Array.isArray(payload?.data?.products)) return payload.data.products;
+  if (Array.isArray(payload?.data?.items)) return payload.data.items;
+  if (Array.isArray(payload?.data?.results)) return payload.data.results;
   if (Array.isArray(payload?.result)) return payload.result;
   if (Array.isArray(payload?.data?.result)) return payload.data.result;
   return [];
 }
 
+function externalProductId(raw) {
+  return raw?.id ?? raw?.product_id ?? raw?.productId ?? raw?.service_id ?? raw?.service ?? raw?.sku ?? raw?.code;
+}
+
+function externalProductName(raw, externalId) {
+  return raw?.name ?? raw?.title ?? raw?.product_name ?? raw?.productName ?? `ظ…ظ†طھط¬ ${externalId}`;
+}
+
+function externalCategoryName(raw) {
+  const category = raw?.category_name ?? raw?.categoryName ?? raw?.category ?? raw?.category_title ?? "";
+  if (category && typeof category === "object") return category.name ?? category.title ?? "";
+  return category;
+}
+
 async function fetchProductsFromApi(source) {
-  const response = await wrapRequest(() => apiClientFor(source).get("/client/api/products"));
-  return extractProductsPayload(response.data);
+  const client = apiClientFor(source);
+  const endpoints = ["/client/api/products", "/api/products", "/products"];
+  let lastError = null;
+  for (const endpoint of endpoints) {
+    try {
+      const response = await wrapRequest(() => client.get(endpoint));
+      const products = extractProductsPayload(response.data);
+      if (products.length) return products;
+      lastError = new Error(`API returned no products from ${endpoint}`);
+    } catch (err) {
+      lastError = err;
+      const status = err?.response?.status;
+      if (status && status !== 404 && status !== 405) throw err;
+    }
+  }
+  throw lastError ?? new Error("API returned no products");
 }
 
 async function syncApiSource(source, prefetchedProducts = null) {
   const products = prefetchedProducts ?? await fetchProductsFromApi(source);
   const seen = [];
   for (const raw of products) {
-    const externalId = String(raw.id ?? raw.product_id ?? raw.productId ?? "");
+    const externalId = String(externalProductId(raw) ?? "");
     if (!externalId) continue;
     const botId = stableProductId(source, externalId);
     const parentId = source.is_primary
       ? Number(raw.parent_id || 0)
       : sourceRootCategoryId(source.id);
-    const rawPrice = Number(raw.price) || Number(raw.base_price) || Number(raw.price_usd) || Number(raw.cost) || 0;
+    const rawPrice = Number(raw.price) || Number(raw.base_price) || Number(raw.price_usd) || Number(raw.cost) || Number(raw.amount) || 0;
     await q(
       `INSERT INTO cached_products
        (id,source_id,external_id,name,parent_id,category_name,price,available,qty_values,params,raw,deleted,last_seen_at,updated_at)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,false,NOW(),NOW())
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
+              COALESCE((SELECT deleted FROM product_overrides WHERE product_id=$1),false),
+              NOW(),NOW())
        ON CONFLICT(source_id,external_id) DO UPDATE SET
          id=$1,name=$4,parent_id=$5,category_name=$6,price=$7,available=$8,
-         qty_values=$9,params=$10,raw=$11,deleted=false,last_seen_at=NOW(),updated_at=NOW()`,
+          qty_values=$9,params=$10,raw=$11,
+          deleted=COALESCE((SELECT deleted FROM product_overrides WHERE product_id=$1),false),
+          last_seen_at=NOW(),updated_at=NOW()`,
       [
-        botId, source.id, externalId, repairArabicEncoding(String(raw.name ?? `ظ…ظ†طھط¬ ${externalId}`)), parentId,
-        repairArabicEncoding(raw.category_name ?? raw.categoryName ?? "") || null, rawPrice,
-        raw.available !== false, raw.qty_values ?? null, raw.params ?? null, JSON.stringify(raw),
+        botId, source.id, externalId, repairArabicEncoding(String(externalProductName(raw, externalId))), parentId,
+        repairArabicEncoding(externalCategoryName(raw)) || null, rawPrice,
+        raw.available !== false && raw.active !== false && raw.status !== "inactive",
+        raw.qty_values ?? raw.quantity_values ?? raw.quantities ?? null,
+        raw.params ?? raw.parameters ?? null, JSON.stringify(raw),
       ]
     );
     seen.push(externalId);
@@ -822,7 +864,7 @@ async function buildFallbackContent(parentId) {
     if (id <= 0 || categories.has(id)) continue;
     categories.set(id, {
       id,
-      name: repairArabicEncoding(p.category_name) || `ظ‚ط³ظ… ${id}`,
+      name: repairArabicEncoding(p.category_name) || `ط¸â€ڑط·آ³ط¸â€¦ ${id}`,
       parent_id: 0,
     });
   }
@@ -897,7 +939,7 @@ async function placeOrderForProduct(product, params, orderUuid) {
     return placeOrder(product.id, params, orderUuid);
   }
   const source = await getApiSource(Number(product.source_id));
-  if (!source || !source.active) return { status: "ERR", message: "ظ…طµط¯ط± ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…طھط§ط­" };
+  if (!source || !source.active) return { status: "ERR", message: "ط¸â€¦ط·آµط·آ¯ط·آ± ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·ع¾ط·آ§ط·آ­" };
   if (source.is_primary) return placeOrder(product.source_product_id ?? product.id, params, orderUuid);
   const search = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) search.set(k, String(v));
@@ -973,10 +1015,10 @@ function getProductApiNotes(p) {
 // ============================================================
 const convHistory = new Map();
 
-// ظ„ط§ ظ†ط°ظƒط± ط§ط³ظ… ط§ظ„ظ…ظˆظ‚ط¹ ط£ظˆ ط£ظٹ ط±ط§ط¨ط· ط®ط§ط±ط¬ظٹ ظپظٹ ط§ظ„ط¨ط±ظˆظ…ط¨طھ
-const AI_SYSTEM_PROMPT = `ط£ظ†طھ ظ…ط³ط§ط¹ط¯ ط°ظƒط§ط، ط§طµط·ظ†ط§ط¹ظٹ ظ…طھط®طµطµ ظپظٹ ط¥ط¯ط§ط±ط© ظ…طھط¬ط± "ظ…طھط¬ط± ط§ظ„ظ…ط±ظˆط§ظ†" ط¹ظ„ظ‰ طھظٹظ„ظٹط¬ط±ط§ظ….
-ط§ظ„ط¨ظˆطھ ظٹط¨ظٹط¹ ظ…ظ†طھط¬ط§طھ ط±ظ‚ظ…ظٹط© ط¨ط´ظƒظ„ ط¢ظ„ظٹ.
-ط£ط¬ط¨ ط¯ط§ط¦ظ…ط§ظ‹ ط¨ط§ظ„ط¹ط±ط¨ظٹط©. ظƒظ† ط¯ظ‚ظٹظ‚ط§ظ‹ ظˆط¹ظ…ظ„ظٹط§ظ‹. ظ„ط§ طھط°ظƒط± ط£ط³ظ…ط§ط، ظ…ظˆط§ظ‚ط¹ ط£ظˆ ط±ظˆط§ط¨ط· ط®ط§ط±ط¬ظٹط©.`;
+// ط¸â€‍ط·آ§ ط¸â€ ط·آ°ط¸ئ’ط·آ± ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط¸ث†ط¸â€ڑط·آ¹ ط·آ£ط¸ث† ط·آ£ط¸ظ¹ ط·آ±ط·آ§ط·آ¨ط·آ· ط·آ®ط·آ§ط·آ±ط·آ¬ط¸ظ¹ ط¸ظ¾ط¸ظ¹ ط·آ§ط¸â€‍ط·آ¨ط·آ±ط¸ث†ط¸â€¦ط·آ¨ط·ع¾
+const AI_SYSTEM_PROMPT = `ط·آ£ط¸â€ ط·ع¾ ط¸â€¦ط·آ³ط·آ§ط·آ¹ط·آ¯ ط·آ°ط¸ئ’ط·آ§ط·طŒ ط·آ§ط·آµط·آ·ط¸â€ ط·آ§ط·آ¹ط¸ظ¹ ط¸â€¦ط·ع¾ط·آ®ط·آµط·آµ ط¸ظ¾ط¸ظ¹ ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ© ط¸â€¦ط·ع¾ط·آ¬ط·آ± "ط¸â€¦ط·ع¾ط·آ¬ط·آ± ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ§ط¸â€ " ط·آ¹ط¸â€‍ط¸â€° ط·ع¾ط¸ظ¹ط¸â€‍ط¸ظ¹ط·آ¬ط·آ±ط·آ§ط¸â€¦.
+ط·آ§ط¸â€‍ط·آ¨ط¸ث†ط·ع¾ ط¸ظ¹ط·آ¨ط¸ظ¹ط·آ¹ ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ±ط¸â€ڑط¸â€¦ط¸ظ¹ط·آ© ط·آ¨ط·آ´ط¸ئ’ط¸â€‍ ط·آ¢ط¸â€‍ط¸ظ¹.
+ط·آ£ط·آ¬ط·آ¨ ط·آ¯ط·آ§ط·آ¦ط¸â€¦ط·آ§ط¸â€¹ ط·آ¨ط·آ§ط¸â€‍ط·آ¹ط·آ±ط·آ¨ط¸ظ¹ط·آ©. ط¸ئ’ط¸â€  ط·آ¯ط¸â€ڑط¸ظ¹ط¸â€ڑط·آ§ط¸â€¹ ط¸ث†ط·آ¹ط¸â€¦ط¸â€‍ط¸ظ¹ط·آ§ط¸â€¹. ط¸â€‍ط·آ§ ط·ع¾ط·آ°ط¸ئ’ط·آ± ط·آ£ط·آ³ط¸â€¦ط·آ§ط·طŒ ط¸â€¦ط¸ث†ط·آ§ط¸â€ڑط·آ¹ ط·آ£ط¸ث† ط·آ±ط¸ث†ط·آ§ط·آ¨ط·آ· ط·آ®ط·آ§ط·آ±ط·آ¬ط¸ظ¹ط·آ©.`;
 
 async function callAiSupport(userId, userMessage) {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -989,7 +1031,7 @@ async function callAiSupport(userId, userMessage) {
     const resp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: "gpt-4o-mini", max_completion_tokens: 1024, messages: [{ role: "system", content: AI_SYSTEM_PROMPT }, ...hist] }),
+     body: JSON.stringify({ model: "gpt-4o-mini", max_completion_tokens: 1024, messages: [{ role: "system", content: repairArabicEncoding(AI_SYSTEM_PROMPT) }, ...hist] }),
     });
     if (!resp.ok) { hist.pop(); convHistory.set(userId, hist); return buildSmartFaq(userMessage); }
     const data = await resp.json();
@@ -1004,28 +1046,33 @@ function clearAiHistory(userId) { convHistory.delete(userId); }
 function hasAiKey() { return !!process.env.OPENAI_API_KEY; }
 
 function buildSmartFaq(msg) {
-  const m = msg.toLowerCase();
-  if (m.includes("ط±طµظٹط¯") || m.includes("balance")) return "ًں’° ظ„ظ…ط¹ط±ظپط© ط±طµظٹط¯ظƒ ط§ط³طھط®ط¯ظ… ط²ط± *ط±طµظٹط¯ظٹ* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
-  if (m.includes("ط¥ظٹط¯ط§ط¹") || m.includes("ط´ط­ظ†") || m.includes("deposit")) return "ًں’³ ظ„ط´ط­ظ† ط±طµظٹط¯ظƒ ط§ط¶ط؛ط· ط²ط± *ط¥ظٹط¯ط§ط¹* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
-  if (m.includes("ط·ظ„ط¨") || m.includes("order")) return "ًں“¦ ظ„ظ…طھط§ط¨ط¹ط© ط·ظ„ط¨ط§طھظƒ ط§ط¶ط؛ط· ط²ط± *ط·ظ„ط¨ط§طھظٹ* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
-  if (m.includes("ط³ط¹ط±") || m.includes("price")) return "ًں’± *طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طµط±ظپ:*\nط§ظ„ط¥ط¯ط§ط±ط© â†’ âڑ™ï¸ڈ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ â†’ ًں’± طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طµط±ظپ";
-  if (m.includes("ط±ط¨ط­") || m.includes("markup")) return "ًں“ˆ *ظ†ط³ط¨ط© ط§ظ„ط±ط¨ط­:*\nط§ظ„ط¥ط¯ط§ط±ط© â†’ âڑ™ï¸ڈ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ â†’ âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ…";
-  return "ًں“‍ ظ„ظ„ظ…ط³ط§ط¹ط¯ط© طھظˆط§طµظ„ ظ…ط¹ ط§ظ„ط¯ط¹ظ… ط¹ط¨ط± ط²ط± *ط§ظ„ط¯ط¹ظ…* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط©.";
+  const m = repairArabicEncoding(msg).toLowerCase();
+  if (m.includes("ط±طµظٹط¯")) return "ًں’° ظ„ظ…ط¹ط±ظپط© ط±طµظٹط¯ظƒ ط§ط³طھط®ط¯ظ… ط²ط± *ط±طµظٹط¯ظٹ* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
+  if (m.includes("ط¥ظٹط¯ط§ط¹") || m.includes("ط´ط­ظ†")) return "ًں’³ ظ„ط´ط­ظ† ط±طµظٹط¯ظƒ ط§ط¶ط؛ط· ط²ط± *ط¥ظٹط¯ط§ط¹* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
+  if (m.includes("ط·ظ„ط¨")) return "ًں“¦ ظ„ظ…طھط§ط¨ط¹ط© ط·ظ„ط¨ط§طھظƒ ط§ط¶ط؛ط· ط²ط± *ط·ظ„ط¨ط§طھظٹ* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
+  if (m.includes("ط³ط¹ط±")) return "ًں’± ظ„طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طµط±ظپ: ط§ط°ظ‡ط¨ ط¥ظ„ظ‰ ط§ظ„ط¥ط¯ط§ط±ط© â†گ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ â†گ طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طµط±ظپ.";
+  if (m.includes("ط±ط¨ط­")) return "ًں“ˆ ظ„طھط¹ط¯ظٹظ„ ظ†ط³ط¨ط© ط§ظ„ط±ط¨ط­: ط§ط°ظ‡ط¨ ط¥ظ„ظ‰ ط§ظ„ط¥ط¯ط§ط±ط© â†گ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ â†گ طھط¹ط¯ظٹظ„ ط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ….";
+  if (m.includes("ط·آ±ط·آµط¸ظ¹ط·آ¯") || m.includes("balance")) return "ظ‹ع؛â€™آ° ط¸â€‍ط¸â€¦ط·آ¹ط·آ±ط¸ظ¾ط·آ© ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ئ’ ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ط·آ²ط·آ± *ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ظ¹* ط¸ظ¾ط¸ظ¹ ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©.";
+  if (m.includes("ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹") || m.includes("ط·آ´ط·آ­ط¸â€ ") || m.includes("deposit")) return "ظ‹ع؛â€™آ³ ط¸â€‍ط·آ´ط·آ­ط¸â€  ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ئ’ ط·آ§ط·آ¶ط·ط›ط·آ· ط·آ²ط·آ± *ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹* ط¸ظ¾ط¸ظ¹ ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©.";
+  if (m.includes("ط·آ·ط¸â€‍ط·آ¨") || m.includes("order")) return "ظ‹ع؛â€œآ¦ ط¸â€‍ط¸â€¦ط·ع¾ط·آ§ط·آ¨ط·آ¹ط·آ© ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ط¸ئ’ ط·آ§ط·آ¶ط·ط›ط·آ· ط·آ²ط·آ± *ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ط¸ظ¹* ط¸ظ¾ط¸ظ¹ ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©.";
+  if (m.includes("ط·آ³ط·آ¹ط·آ±") || m.includes("price")) return "ظ‹ع؛â€™آ± *ط·ع¾ط·آ¹ط·آ¯ط¸ظ¹ط¸â€‍ ط·آ³ط·آ¹ط·آ± ط·آ§ط¸â€‍ط·آµط·آ±ط¸ظ¾:*\nط·آ§ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ© أ¢â€ â€™ أ¢ع‘â„¢أ¯آ¸عˆ ط·آ§ط¸â€‍ط·آ¥ط·آ¹ط·آ¯ط·آ§ط·آ¯ط·آ§ط·ع¾ أ¢â€ â€™ ظ‹ع؛â€™آ± ط·ع¾ط·آ¹ط·آ¯ط¸ظ¹ط¸â€‍ ط·آ³ط·آ¹ط·آ± ط·آ§ط¸â€‍ط·آµط·آ±ط¸ظ¾";
+  if (m.includes("ط·آ±ط·آ¨ط·آ­") || m.includes("markup")) return "ظ‹ع؛â€œث† *ط¸â€ ط·آ³ط·آ¨ط·آ© ط·آ§ط¸â€‍ط·آ±ط·آ¨ط·آ­:*\nط·آ§ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ© أ¢â€ â€™ أ¢ع‘â„¢أ¯آ¸عˆ ط·آ§ط¸â€‍ط·آ¥ط·آ¹ط·آ¯ط·آ§ط·آ¯ط·آ§ط·ع¾ أ¢â€ â€™ أ¢إ“عˆأ¯آ¸عˆ ط·ع¾ط·آ¹ط·آ¯ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط·آ±ط·آ¨ط·آ­ ط·آ§ط¸â€‍ط·آ¹ط·آ§ط¸â€¦";
+  return "ظ‹ع؛â€œâ€چ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·آ§ط·آ¹ط·آ¯ط·آ© ط·ع¾ط¸ث†ط·آ§ط·آµط¸â€‍ ط¸â€¦ط·آ¹ ط·آ§ط¸â€‍ط·آ¯ط·آ¹ط¸â€¦ ط·آ¹ط·آ¨ط·آ± ط·آ²ط·آ± *ط·آ§ط¸â€‍ط·آ¯ط·آ¹ط¸â€¦* ط¸ظ¾ط¸ظ¹ ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ©.";
 }
 
 // ============================================================
 //  PRODUCT CACHE
 // ============================================================
-const PRODUCTS_TTL  = 2 * 60_000;    // ط§ظ„ظƒط§ط´ ط³ط±ظٹط¹ ظ…ط¹ ط¨ظ‚ط§ط، ط§ظ„ط§ط³طھط¬ط§ط¨ط© ظپظˆط±ظٹط©
+const PRODUCTS_TTL  = 2 * 60_000;    // ط·آ§ط¸â€‍ط¸ئ’ط·آ§ط·آ´ ط·آ³ط·آ±ط¸ظ¹ط·آ¹ ط¸â€¦ط·آ¹ ط·آ¨ط¸â€ڑط·آ§ط·طŒ ط·آ§ط¸â€‍ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© ط¸ظ¾ط¸ث†ط·آ±ط¸ظ¹ط·آ©
 const CONTENT_TTL   = 2 * 60_000;
-const OVERRIDES_TTL = 10 * 60_000;   // ظƒط§ط´ 10 ط¯ظ‚ط§ط¦ظ‚
+const OVERRIDES_TTL = 10 * 60_000;   // ط¸ئ’ط·آ§ط·آ´ 10 ط·آ¯ط¸â€ڑط·آ§ط·آ¦ط¸â€ڑ
 const PAGE_SIZE = 8;
 
 let productsCache = null;
 const contentCache = new Map();
 let allOverridesCache = null;
 
-// in-flight deduplication: ظ„ط§ طھظڈط±ط³ظ„ ط·ظ„ط¨ط§طھ ظ…طھط¹ط¯ط¯ط© ظ„ظ†ظپط³ ط§ظ„ط¨ظٹط§ظ†ط§طھ ظپظٹ ظ†ظپط³ ط§ظ„ظˆظ‚طھ
+// in-flight deduplication: ط¸â€‍ط·آ§ ط·ع¾ط¸عˆط·آ±ط·آ³ط¸â€‍ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ ط¸â€¦ط·ع¾ط·آ¹ط·آ¯ط·آ¯ط·آ© ط¸â€‍ط¸â€ ط¸ظ¾ط·آ³ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط¸ظ¾ط¸ظ¹ ط¸â€ ط¸ظ¾ط·آ³ ط·آ§ط¸â€‍ط¸ث†ط¸â€ڑط·ع¾
 let _productsInFlight    = null;
 const _contentInFlight   = new Map();
 let _overridesInFlight   = null;
@@ -1034,7 +1081,11 @@ async function getCachedProducts() {
   if (productsCache && productsCache.expiry > Date.now()) return productsCache.products;
   if (_productsInFlight) return _productsInFlight;
   _productsInFlight = getCachedCatalogProducts()
-    .then(async products => products.length ? products : fetchAllProducts())
+    .then(async products => {
+      if (products.length) return products;
+      const cachedCount = await q("SELECT COUNT(*)::int AS c FROM cached_products");
+      return cachedCount.rows[0]?.c ? products : fetchAllProducts();
+    })
     .then(products => {
       productsCache = { products, expiry: Date.now() + PRODUCTS_TTL };
       _productsInFlight = null;
@@ -1058,7 +1109,7 @@ async function getCachedContent(parentId) {
         categories: [],
       };
     }
-    // ط¹ظ†ط¯ طھط¹ط·ظ„ API ظ†ط³طھط®ط¯ظ… ط¢ط®ط± ط¨ظٹط§ظ†ط§طھ ظ…ط­ظ„ظٹط© ط¨ط¯ظ„ط§ظ‹ ظ…ظ† طھط¹ظ„ظٹظ‚ ظ„ظˆط­ط© ط§ظ„ظ…ط³طھط®ط¯ظ….
+    // ط·آ¹ط¸â€ ط·آ¯ ط·ع¾ط·آ¹ط·آ·ط¸â€‍ API ط¸â€ ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ط·آ¢ط·آ®ط·آ± ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط¸â€¦ط·آ­ط¸â€‍ط¸ظ¹ط·آ© ط·آ¨ط·آ¯ط¸â€‍ط·آ§ط¸â€¹ ط¸â€¦ط¸â€  ط·ع¾ط·آ¹ط¸â€‍ط¸ظ¹ط¸â€ڑ ط¸â€‍ط¸ث†ط·آ­ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦.
     const content = await fetchContent(parentId).catch(() => cached?.content ?? buildFallbackContent(parentId));
     const sources = await listApiSources(false);
     const extraSources = sources.filter(s => !s.is_primary && parentId === 0);
@@ -1066,7 +1117,7 @@ async function getCachedContent(parentId) {
       const extraRootIds = new Set(extraSources.map(s => sourceRootCategoryId(s.id)));
       content.categories = [
         ...(content.categories || []).filter(c => !extraRootIds.has(Number(c.id))),
-        // ظƒظ„ API ط¥ط¶ط§ظپظٹ ظٹط¸ظ‡ط± ط¨ط§ط³ظ…ظ‡ ط§ظ„ط°ظٹ ط­ط¯ط¯ظ‡ ط§ظ„ظ…ط¯ظٹط±طŒ ظˆظ„ظٹط³ ط¨ط§ط³ظ… طھظ‚ظ†ظٹ ظ…ط«ظ„ "ظ…ظ†طھط¬ط§طھ API".
+        // ط¸ئ’ط¸â€‍ API ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط¸ظ¹ ط¸ظ¹ط·آ¸ط¸â€،ط·آ± ط·آ¨ط·آ§ط·آ³ط¸â€¦ط¸â€، ط·آ§ط¸â€‍ط·آ°ط¸ظ¹ ط·آ­ط·آ¯ط·آ¯ط¸â€، ط·آ§ط¸â€‍ط¸â€¦ط·آ¯ط¸ظ¹ط·آ±ط·إ’ ط¸ث†ط¸â€‍ط¸ظ¹ط·آ³ ط·آ¨ط·آ§ط·آ³ط¸â€¦ ط·ع¾ط¸â€ڑط¸â€ ط¸ظ¹ ط¸â€¦ط·آ«ط¸â€‍ "ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ API".
         ...extraSources.map(s => ({ id: sourceRootCategoryId(s.id), name: s.name, parent_id: 0 })),
       ];
     }
@@ -1106,7 +1157,7 @@ function startBackgroundRefresher() {
   if (refresherStarted) return;
   refresherStarted = true;
   setInterval(() => {
-    // ظ…ط²ط§ظ…ظ†ط© ظ‚ط§ط¹ط¯ط© ط§ظ„ظ…ظ†طھط¬ط§طھ ط¨ط§ظ„ط®ظ„ظپظٹط©طŒ ظˆطھط¨ظ‚ظ‰ ط§ظ„ط§ط³طھط¬ط§ط¨ط© ظ…ظ† ط§ظ„ظƒط§ط´/ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ ظپظˆط±ظٹط©
+    // ط¸â€¦ط·آ²ط·آ§ط¸â€¦ط¸â€ ط·آ© ط¸â€ڑط·آ§ط·آ¹ط·آ¯ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ¨ط·آ§ط¸â€‍ط·آ®ط¸â€‍ط¸ظ¾ط¸ظ¹ط·آ©ط·إ’ ط¸ث†ط·ع¾ط·آ¨ط¸â€ڑط¸â€° ط·آ§ط¸â€‍ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© ط¸â€¦ط¸â€  ط·آ§ط¸â€‍ط¸ئ’ط·آ§ط·آ´/ط¸â€ڑط·آ§ط·آ¹ط·آ¯ط·آ© ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط¸ظ¾ط¸ث†ط·آ±ط¸ظ¹ط·آ©
     Promise.all([
       syncAllApiSources(),
       loadAllOverrides().then(m => { allOverridesCache = { map: m, expiry: Date.now() + OVERRIDES_TTL }; }),
@@ -1137,7 +1188,7 @@ async function loadCategoryOverrides(ids) {
   return m;
 }
 
-// â”€â”€ ط¨ظ†ط§ط، ظ…ط¬ظ…ظˆط¹ط© IDs ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„طھظٹ طھط­طھظˆظٹ ظ…ظ†طھط¬ط§طھ ط¸ط§ظ‡ط±ط© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·آ¨ط¸â€ ط·آ§ط·طŒ ط¸â€¦ط·آ¬ط¸â€¦ط¸ث†ط·آ¹ط·آ© IDs ط·آ§ط¸â€‍ط·آ£ط¸â€ڑط·آ³ط·آ§ط¸â€¦ ط·آ§ط¸â€‍ط·ع¾ط¸ظ¹ ط·ع¾ط·آ­ط·ع¾ط¸ث†ط¸ظ¹ ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ¸ط·آ§ط¸â€،ط·آ±ط·آ© أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
 async function buildVisibleCategoryIds(excludedCats, kws) {
   const all = await getCachedProducts();
   const direct = new Set();
@@ -1177,7 +1228,7 @@ async function effectivePriceUsd(p, override, defaultMarkup, socialMarkup, socia
   return Number((rawPrice * (1 + m / 100)).toFixed(6));
 }
 
-const BOT_MAINTENANCE_MSG = "ًں”§ ط§ظ„ط¨ظˆطھ ظ‚ظٹط¯ ط§ظ„طµظٹط§ظ†ط© ط­ط§ظ„ظٹط§ظ‹.\nط³ظٹط¹ظˆط¯ ظ„ظ„ط¹ظ…ظ„ ط¨ط£ظ‚ط±ط¨ ظˆظ‚طھ ظ…ظ…ظƒظ†. ظ†ط´ظƒط± طµط¨ط±ظƒظ…! ًں™ڈ";
+const BOT_MAINTENANCE_MSG = "ظ‹ع؛â€‌آ§ ط·آ§ط¸â€‍ط·آ¨ط¸ث†ط·ع¾ ط¸â€ڑط¸ظ¹ط·آ¯ ط·آ§ط¸â€‍ط·آµط¸ظ¹ط·آ§ط¸â€ ط·آ© ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ§ط¸â€¹.\nط·آ³ط¸ظ¹ط·آ¹ط¸ث†ط·آ¯ ط¸â€‍ط¸â€‍ط·آ¹ط¸â€¦ط¸â€‍ ط·آ¨ط·آ£ط¸â€ڑط·آ±ط·آ¨ ط¸ث†ط¸â€ڑط·ع¾ ط¸â€¦ط¸â€¦ط¸ئ’ط¸â€ . ط¸â€ ط·آ´ط¸ئ’ط·آ± ط·آµط·آ¨ط·آ±ط¸ئ’ط¸â€¦! ظ‹ع؛â„¢عˆ";
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME ?? "admin").split(",")[0].trim();
 
 // ============================================================
@@ -1190,7 +1241,7 @@ function setStep(uid, s) { stepMap.set(uid, s); }
 let _botRef = null;
 const authedAdminIds = new Set();
 
-// â”€â”€ ط­ط§ظ„ط© ط§ظ„طھظ†ظ‚ظ„: userId â†’ Map<catId, page> â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·آ­ط·آ§ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·ع¾ط¸â€ ط¸â€ڑط¸â€‍: userId أ¢â€ â€™ Map<catId, page> أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
 const navState = new Map();
 function saveNavPage(uid, catId, page) {
   if (!navState.has(uid)) navState.set(uid, new Map());
@@ -1198,7 +1249,7 @@ function saveNavPage(uid, catId, page) {
 }
 function getNavPage(uid, catId) { return navState.get(uid)?.get(catId) ?? 1; }
 
-// â”€â”€ ط¥ط´ط¹ط§ط±ط§طھ ط§ظ„ط¥ظٹط¯ط§ط¹ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·آ¥ط·آ´ط·آ¹ط·آ§ط·آ±ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
 const depositNotifications = new Map();
 async function clearDepositForOtherAdmins(processorId, depId, statusText) {
   const list = depositNotifications.get(depId) ?? [];
@@ -1207,7 +1258,7 @@ async function clearDepositForOtherAdmins(processorId, depId, statusText) {
     if (n.adminId === processorId) continue;
     try {
       await _botRef?.telegram.editMessageCaption(n.adminId, n.messageId, undefined,
-        `${statusText}\n(طھظ…طھ ط§ظ„ظ…ط¹ط§ظ„ط¬ط© ط¨ظˆط§ط³ط·ط© ظ…ط¯ظٹط± ط¢ط®ط±)`);
+        `${statusText}\n(ط·ع¾ط¸â€¦ط·ع¾ ط·آ§ط¸â€‍ط¸â€¦ط·آ¹ط·آ§ط¸â€‍ط·آ¬ط·آ© ط·آ¨ط¸ث†ط·آ§ط·آ³ط·آ·ط·آ© ط¸â€¦ط·آ¯ط¸ظ¹ط·آ± ط·آ¢ط·آ®ط·آ±)`);
     } catch { /* ignore */ }
   }
 }
@@ -1239,21 +1290,21 @@ async function ensureUser(ctx) {
   return upsertUser({ id: f.id, username: f.username, first_name: f.first_name, last_name: f.last_name });
 }
 
-// â”€â”€ ظ„ظˆط­ط© ط§ظ„ط¥ط¯ط§ط±ط© ظ…ط®ظپظٹط© - ظ„ط§ طھط¸ظ‡ط± ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط© â”€â”€â”€â”€â”€
+// أ¢â€‌â‚¬أ¢â€‌â‚¬ ط¸â€‍ط¸ث†ط·آ­ط·آ© ط·آ§ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ© ط¸â€¦ط·آ®ط¸ظ¾ط¸ظ¹ط·آ© - ط¸â€‍ط·آ§ ط·ع¾ط·آ¸ط¸â€،ط·آ± ط¸ظ¾ط¸ظ¹ ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ© أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
 function mainMenu() {
   return Markup.inlineKeyboard([
-    [Markup.button.callback("ًں›’ ط§ظ„ظ…ظ†طھط¬ط§طھ", "cat:0:1:0"), Markup.button.callback("ًں’° ط±طµظٹط¯ظٹ", "balance")],
-    [Markup.button.callback("ًں’³ ط¥ظٹط¯ط§ط¹", "deposit"), Markup.button.callback("ًں“¦ ط·ظ„ط¨ط§طھظٹ", "myorders:1")],
-    [Markup.button.callback("ًں“‍ ط§ظ„ط¯ط¹ظ…", "support"), Markup.button.callback("ًں”„ طھط­ط¯ظٹط«", "home")],
+    [Markup.button.callback("ظ‹ع؛â€؛â€™ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾", "cat:0:1:0"), Markup.button.callback("ظ‹ع؛â€™آ° ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ظ¹", "balance")],
+    [Markup.button.callback("ظ‹ع؛â€™آ³ ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹", "deposit"), Markup.button.callback("ظ‹ع؛â€œآ¦ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ط¸ظ¹", "myorders:1")],
+    [Markup.button.callback("ظ‹ع؛â€œâ€چ ط·آ§ط¸â€‍ط·آ¯ط·آ¹ط¸â€¦", "support"), Markup.button.callback("ظ‹ع؛â€‌â€‍ ط·ع¾ط·آ­ط·آ¯ط¸ظ¹ط·آ«", "home")],
   ]);
 }
 
 function mainMenuAdmin() {
   return Markup.inlineKeyboard([
-    [Markup.button.callback("ًں›’ ط§ظ„ظ…ظ†طھط¬ط§طھ", "cat:0:1:0"), Markup.button.callback("ًں’° ط±طµظٹط¯ظٹ", "balance")],
-    [Markup.button.callback("ًں’³ ط¥ظٹط¯ط§ط¹", "deposit"), Markup.button.callback("ًں“¦ ط·ظ„ط¨ط§طھظٹ", "myorders:1")],
-    [Markup.button.callback("ًں“‍ ط§ظ„ط¯ط¹ظ…", "support"), Markup.button.callback("ًں”„ طھط­ط¯ظٹط«", "home")],
-    [Markup.button.callback("ًں‘‘ ط§ظ„ط¯ط®ظˆظ„ ظ„ظ„ظˆط­ط© ط§ظ„ط¥ط¯ط§ط±ط©", "admin:menu")],
+    [Markup.button.callback("ظ‹ع؛â€؛â€™ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾", "cat:0:1:0"), Markup.button.callback("ظ‹ع؛â€™آ° ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ظ¹", "balance")],
+    [Markup.button.callback("ظ‹ع؛â€™آ³ ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹", "deposit"), Markup.button.callback("ظ‹ع؛â€œآ¦ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ط¸ظ¹", "myorders:1")],
+    [Markup.button.callback("ظ‹ع؛â€œâ€چ ط·آ§ط¸â€‍ط·آ¯ط·آ¹ط¸â€¦", "support"), Markup.button.callback("ظ‹ع؛â€‌â€‍ ط·ع¾ط·آ­ط·آ¯ط¸ظ¹ط·آ«", "home")],
+    [Markup.button.callback("ظ‹ع؛â€کâ€ک ط·آ§ط¸â€‍ط·آ¯ط·آ®ط¸ث†ط¸â€‍ ط¸â€‍ط¸â€‍ط¸ث†ط·آ­ط·آ© ط·آ§ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ©", "admin:menu")],
   ]);
 }
 
@@ -1261,17 +1312,17 @@ async function showMainMenu(ctx) {
   const user = await ensureUser(ctx);
   if (!user) return;
   setStep(user.id, { kind: "idle" });
-  if (user.status === "banned") { await sendOrEdit(ctx, "ًںڑ« طھظ… ط­ط¸ط±ظƒ ظ…ظ† ط§ط³طھط®ط¯ط§ظ… ط§ظ„ط¨ظˆطھ."); return; }
+  if (user.status === "banned") { await sendOrEdit(ctx, "ظ‹ع؛ع‘آ« ط·ع¾ط¸â€¦ ط·آ­ط·آ¸ط·آ±ط¸ئ’ ط¸â€¦ط¸â€  ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ¯ط·آ§ط¸â€¦ ط·آ§ط¸â€‍ط·آ¨ط¸ث†ط·ع¾."); return; }
   const [status, rate, adminSessionActive] = await Promise.all([
     getBotStatus(),
     getExchangeRate(),
     isAdminSessionActive(user.id),
   ]);
   if (status === "off" && !authedAdminIds.has(user.id) && !adminSessionActive) {
-    await sendOrEdit(ctx, "ًں”§ ط§ظ„ط¨ظˆطھ ظ‚ظٹط¯ ط§ظ„طµظٹط§ظ†ط©. ط³ظٹط¹ظˆط¯ ظ„ظ„ط¹ظ…ظ„ ط¨ط£ظ‚ط±ط¨ ظˆظ‚طھ ظ…ظ…ظƒظ†. ظ†ط´ظƒط± طµط¨ط±ظƒظ…! ًں™ڈ");
+    await sendOrEdit(ctx, "ظ‹ع؛â€‌آ§ ط·آ§ط¸â€‍ط·آ¨ط¸ث†ط·ع¾ ط¸â€ڑط¸ظ¹ط·آ¯ ط·آ§ط¸â€‍ط·آµط¸ظ¹ط·آ§ط¸â€ ط·آ©. ط·آ³ط¸ظ¹ط·آ¹ط¸ث†ط·آ¯ ط¸â€‍ط¸â€‍ط·آ¹ط¸â€¦ط¸â€‍ ط·آ¨ط·آ£ط¸â€ڑط·آ±ط·آ¨ ط¸ث†ط¸â€ڑط·ع¾ ط¸â€¦ط¸â€¦ط¸ئ’ط¸â€ . ط¸â€ ط·آ´ط¸ئ’ط·آ± ط·آµط·آ¨ط·آ±ط¸ئ’ط¸â€¦! ظ‹ع؛â„¢عˆ");
     return;
   }
-  const greeting = `ط£ظ‡ظ„ط§ظ‹ ظپظٹظƒ ظپظٹ ظ…طھط¬ط± ط§ظ„ظ…ط±ظˆط§ظ† ًںŒں\nط§ظ„ط§ط³ظ…: ${user.first_name ?? "â€”"}${user.username ? ` (@${user.username})` : ""}\nط§ظ„ط±ظ‚ظ…: ${user.id}\nط§ظ„ط±طµظٹط¯: ${formatBalance(Number(user.balance), rate)}\n\nط§ط®طھط± ظ…ظ† ط§ظ„ظ‚ط§ط¦ظ…ط© ًں‘‡`;
+  const greeting = `ط·آ£ط¸â€،ط¸â€‍ط·آ§ط¸â€¹ ط¸ظ¾ط¸ظ¹ط¸ئ’ ط¸ظ¾ط¸ظ¹ ط¸â€¦ط·ع¾ط·آ¬ط·آ± ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ§ط¸â€  ظ‹ع؛إ’ع؛\nط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦: ${user.first_name ?? "أ¢â‚¬â€‌"}${user.username ? ` (@${user.username})` : ""}\nط·آ§ط¸â€‍ط·آ±ط¸â€ڑط¸â€¦: ${user.id}\nط·آ§ط¸â€‍ط·آ±ط·آµط¸ظ¹ط·آ¯: ${formatBalance(Number(user.balance), rate)}\n\nط·آ§ط·آ®ط·ع¾ط·آ± ط¸â€¦ط¸â€  ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ظ‹ع؛â€کâ€،`;
   if (authedAdminIds.has(user.id) && !adminSessionActive && !user.is_admin) {
     authedAdminIds.delete(user.id);
   }
@@ -1283,12 +1334,12 @@ async function showContactLinks(ctx) {
   const res = await q("SELECT * FROM contact_links WHERE active=true ORDER BY id");
   const links = res.rows;
   if (!links.length) {
-    await ctx.reply(`ًں“‍ ظ„ظ„ط¯ط¹ظ…: @${ADMIN_USERNAME}`, Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
+    await ctx.reply(`ظ‹ع؛â€œâ€چ ط¸â€‍ط¸â€‍ط·آ¯ط·آ¹ط¸â€¦: @${ADMIN_USERNAME}`, Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]]));
     return;
   }
   const rows = links.map(l => [Markup.button.url(l.name, l.link.startsWith("http") ? l.link : `https://t.me/${l.link.replace(/^@/, "")}`)]);
-  rows.push([Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]);
-  await ctx.reply("ًں“‍ ظˆط³ط§ط¦ظ„ ط§ظ„طھظˆط§طµظ„:", Markup.inlineKeyboard(rows));
+  rows.push([Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]);
+  await ctx.reply("ظ‹ع؛â€œâ€چ ط¸ث†ط·آ³ط·آ§ط·آ¦ط¸â€‍ ط·آ§ط¸â€‍ط·ع¾ط¸ث†ط·آ§ط·آµط¸â€‍:", Markup.inlineKeyboard(rows));
 }
 
 // ============================================================
@@ -1300,8 +1351,8 @@ async function ensureDefaultDepositMethods() {
   const res = await q("SELECT COUNT(*)::int AS c FROM deposit_methods");
   if (res.rows[0].c > 0) { _depositMethodsEnsured = true; return; }
   await q(`INSERT INTO deposit_methods(name,identifier,instructions) VALUES
-    ('ط´ط§ظ… ظƒط§ط´','02d7079d7229d8860c7d89467bfdc938','ط­ظˆظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط¥ظ„ظ‰ ط±ظ‚ظ… ط´ط§ظ… ظƒط§ط´ ط£ط¹ظ„ط§ظ‡ ط«ظ… ط£ط±ط³ظ„ طµظˆط±ط© ط§ظ„ط¥ط´ط¹ط§ط±'),
-    ('ط³ظٹط±ظٹطھظ„ ظƒط§ط´','32820534','ط­ظˆظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط¥ظ„ظ‰ ط±ظ‚ظ… ط³ظٹط±ظٹطھظ„ ظƒط§ط´ ط£ط¹ظ„ط§ظ‡ ط«ظ… ط£ط±ط³ظ„ طµظˆط±ط© ط§ظ„ط¥ط´ط¹ط§ط±')`);
+    ('ط·آ´ط·آ§ط¸â€¦ ط¸ئ’ط·آ§ط·آ´','02d7079d7229d8860c7d89467bfdc938','ط·آ­ط¸ث†ط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط·آ¥ط¸â€‍ط¸â€° ط·آ±ط¸â€ڑط¸â€¦ ط·آ´ط·آ§ط¸â€¦ ط¸ئ’ط·آ§ط·آ´ ط·آ£ط·آ¹ط¸â€‍ط·آ§ط¸â€، ط·آ«ط¸â€¦ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آµط¸ث†ط·آ±ط·آ© ط·آ§ط¸â€‍ط·آ¥ط·آ´ط·آ¹ط·آ§ط·آ±'),
+    ('ط·آ³ط¸ظ¹ط·آ±ط¸ظ¹ط·ع¾ط¸â€‍ ط¸ئ’ط·آ§ط·آ´','32820534','ط·آ­ط¸ث†ط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط·آ¥ط¸â€‍ط¸â€° ط·آ±ط¸â€ڑط¸â€¦ ط·آ³ط¸ظ¹ط·آ±ط¸ظ¹ط·ع¾ط¸â€‍ ط¸ئ’ط·آ§ط·آ´ ط·آ£ط·آ¹ط¸â€‍ط·آ§ط¸â€، ط·آ«ط¸â€¦ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آµط¸ث†ط·آ±ط·آ© ط·آ§ط¸â€‍ط·آ¥ط·آ´ط·آ¹ط·آ§ط·آ±')`);
   _depositMethodsEnsured = true;
 }
 
@@ -1310,22 +1361,22 @@ async function showDepositMenu(ctx) {
   const res = await q("SELECT * FROM deposit_methods WHERE active=true ORDER BY id");
   const methods = res.rows;
   if (!methods.length) {
-    await sendOrEdit(ctx, "â‌Œ ظ„ط§ طھظˆط¬ط¯ ط·ط±ظ‚ ط¥ظٹط¯ط§ط¹ ظ…طھط§ط­ط© ط­ط§ظ„ظٹط§ظ‹.", Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
+    await sendOrEdit(ctx, "أ¢â€Œإ’ ط¸â€‍ط·آ§ ط·ع¾ط¸ث†ط·آ¬ط·آ¯ ط·آ·ط·آ±ط¸â€ڑ ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ ط¸â€¦ط·ع¾ط·آ§ط·آ­ط·آ© ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ§ط¸â€¹.", Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]]));
     return;
   }
-  const rows = methods.map(m => [Markup.button.callback(`ًں’³ ${m.name}`, `dep:method:${m.id}`)]);
-  rows.push([Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]);
-  await sendOrEdit(ctx, "ًں’³ ط§ط®طھط± ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹:", Markup.inlineKeyboard(rows));
+  const rows = methods.map(m => [Markup.button.callback(`ظ‹ع؛â€™آ³ ${m.name}`, `dep:method:${m.id}`)]);
+  rows.push([Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]);
+  await sendOrEdit(ctx, "ظ‹ع؛â€™آ³ ط·آ§ط·آ®ط·ع¾ط·آ± ط·آ·ط·آ±ط¸ظ¹ط¸â€ڑط·آ© ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹:", Markup.inlineKeyboard(rows));
 }
 
 async function showDepositMethod(ctx, methodId) {
   const res = await q("SELECT * FROM deposit_methods WHERE id=$1 AND active=true", [methodId]);
   const m = res.rows[0];
-  if (!m) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ط·ط±ظٹظ‚ط© ط؛ظٹط± ظ…طھط§ط­ط©."); return; }
-  // â”€â”€ طھط¯ظپظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹: ظ†ط·ظ„ط¨ ط§ظ„ظ…ط¨ظ„ط؛ ط£ظˆظ„ط§ظ‹طŒ ط«ظ… ط§ظ„طµظˆط±ط© â”€â”€
+  if (!m) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط·آ·ط·آ±ط¸ظ¹ط¸â€ڑط·آ© ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·ع¾ط·آ§ط·آ­ط·آ©."); return; }
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·ع¾ط·آ¯ط¸ظ¾ط¸â€ڑ ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹: ط¸â€ ط·آ·ط¸â€‍ط·آ¨ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط·آ£ط¸ث†ط¸â€‍ط·آ§ط¸â€¹ط·إ’ ط·آ«ط¸â€¦ ط·آ§ط¸â€‍ط·آµط¸ث†ط·آ±ط·آ© أ¢â€‌â‚¬أ¢â€‌â‚¬
   setStep(ctx.from.id, { kind: "deposit:info", methodId: m.id, methodName: m.name, amount: null, photoFileId: null });
-  const kb = Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "deposit"), Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "dep:cancel")]]);
-  const infoText = `ًں’³ ${m.name}\nًں”‘ ط§ظ„ط±ظ‚ظ…: \`${m.identifier}\`\n\nًں“‹ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ:\n${m.instructions}\n\nًں“¤ ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ظˆطµظˆط±ط© ط¥ط´ط¹ط§ط± ط§ظ„طھط­ظˆظٹظ„ (ظٹظ…ظƒظ†ظƒ ط¥ط±ط³ط§ظ„ظ‡ظ…ط§ ط¨ط£ظٹ طھط±طھظٹط¨).`;
+  const kb = Markup.inlineKeyboard([[Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "deposit"), Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "dep:cancel")]]);
+  const infoText = `ظ‹ع؛â€™آ³ ${m.name}\nظ‹ع؛â€‌â€ک ط·آ§ط¸â€‍ط·آ±ط¸â€ڑط¸â€¦: \`${m.identifier}\`\n\nظ‹ع؛â€œâ€¹ ط·آ§ط¸â€‍ط·ع¾ط·آ¹ط¸â€‍ط¸ظ¹ط¸â€¦ط·آ§ط·ع¾:\n${m.instructions}\n\nظ‹ع؛â€œآ¤ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط¸ث†ط·آµط¸ث†ط·آ±ط·آ© ط·آ¥ط·آ´ط·آ¹ط·آ§ط·آ± ط·آ§ط¸â€‍ط·ع¾ط·آ­ط¸ث†ط¸ظ¹ط¸â€‍ (ط¸ظ¹ط¸â€¦ط¸ئ’ط¸â€ ط¸ئ’ ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ط¸â€،ط¸â€¦ط·آ§ ط·آ¨ط·آ£ط¸ظ¹ ط·ع¾ط·آ±ط·ع¾ط¸ظ¹ط·آ¨).`;
   if (m.image_file_id) {
     await ctx.replyWithPhoto(m.image_file_id, { caption: infoText, parse_mode: "Markdown", ...kb });
   } else {
@@ -1333,7 +1384,7 @@ async function showDepositMethod(ctx, methodId) {
   }
 }
 
-// â”€â”€ ط¥ظƒظ…ط§ظ„ ط·ظ„ط¨ ط§ظ„ط¥ظٹط¯ط§ط¹ ط¨ط¹ط¯ ط§ط³طھظ„ط§ظ… ط§ظ„ظ…ط¨ظ„ط؛ ظˆط§ظ„طµظˆط±ط© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·آ¥ط¸ئ’ط¸â€¦ط·آ§ط¸â€‍ ط·آ·ط¸â€‍ط·آ¨ ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ ط·آ¨ط·آ¹ط·آ¯ ط·آ§ط·آ³ط·ع¾ط¸â€‍ط·آ§ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط¸ث†ط·آ§ط¸â€‍ط·آµط¸ث†ط·آ±ط·آ© أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
 async function completeDepositRequest(ctx, step) {
   const res = await q(
     "INSERT INTO deposit_requests(user_id,method_id,method_name,amount,screenshot_file_id) VALUES($1,$2,$3,$4,$5) RETURNING *",
@@ -1341,16 +1392,16 @@ async function completeDepositRequest(ctx, step) {
   );
   const dep = res.rows[0];
   setStep(ctx.from.id, { kind: "idle" });
-  await ctx.reply("ط³ظٹطھظ… ظ…ط±ط§ط¬ط¹ط© ط·ظ„ط¨ظƒ ظپظٹ ط£ظ‚ط±ط¨ ظˆظ‚طھ ظ…ظ…ظƒظ†.", Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
-  // ظ„ط§ ظ†ط¤ط®ط± ط±ط¯ ط§ظ„ظ…ط³طھط®ط¯ظ… ط¨ط³ط¨ط¨ ط¥ط±ط³ط§ظ„ ط§ظ„ط¥ط´ط¹ط§ط±ط§طھ ظ„ط¹ط¯ط© ظ…ط¯ط±ط§ط،.
+  await ctx.reply("ط·آ³ط¸ظ¹ط·ع¾ط¸â€¦ ط¸â€¦ط·آ±ط·آ§ط·آ¬ط·آ¹ط·آ© ط·آ·ط¸â€‍ط·آ¨ط¸ئ’ ط¸ظ¾ط¸ظ¹ ط·آ£ط¸â€ڑط·آ±ط·آ¨ ط¸ث†ط¸â€ڑط·ع¾ ط¸â€¦ط¸â€¦ط¸ئ’ط¸â€ .", Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]]));
+  // ط¸â€‍ط·آ§ ط¸â€ ط·آ¤ط·آ®ط·آ± ط·آ±ط·آ¯ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ط·آ¨ط·آ³ط·آ¨ط·آ¨ ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ ط·آ§ط¸â€‍ط·آ¥ط·آ´ط·آ¹ط·آ§ط·آ±ط·آ§ط·ع¾ ط¸â€‍ط·آ¹ط·آ¯ط·آ© ط¸â€¦ط·آ¯ط·آ±ط·آ§ط·طŒ.
   void notifyAdminsDeposit(ctx, dep).catch(err => console.error("deposit notification failed:", err?.message ?? err));
 }
 
 async function notifyAdminsDeposit(ctx, depositRow) {
   const user = await getUser(ctx.from.id);
-  const amountStr = depositRow.amount ? `${Number(depositRow.amount).toFixed(2)}$` : "â€”";
-  const text = `ًں“¥ ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹ ط¬ط¯ظٹط¯\nًں‘¤ ${user?.first_name ?? "â€”"}${user?.username ? " @" + user.username : ""} (${ctx.from.id})\nًں’³ ${depositRow.method_name}\nًں’µ ط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„ظ…ظڈط­ظˆظژظ‘ظ„: ${amountStr}`;
-  const kb = Markup.inlineKeyboard([[Markup.button.callback("âœ… ظ…ظˆط§ظپظ‚ط©", `adm:dep:approve:${depositRow.id}`), Markup.button.callback("â‌Œ ط±ظپط¶", `adm:dep:reject:${depositRow.id}`)]]);
+  const amountStr = depositRow.amount ? `${Number(depositRow.amount).toFixed(2)}$` : "أ¢â‚¬â€‌";
+  const text = `ظ‹ع؛â€œآ¥ ط·آ·ط¸â€‍ط·آ¨ ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯\nظ‹ع؛â€کآ¤ ${user?.first_name ?? "أ¢â‚¬â€‌"}${user?.username ? " @" + user.username : ""} (${ctx.from.id})\nظ‹ع؛â€™آ³ ${depositRow.method_name}\nظ‹ع؛â€™آµ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط·آ§ط¸â€‍ط¸â€¦ط¸عˆط·آ­ط¸ث†ط¸عکط¸â€کط¸â€‍: ${amountStr}`;
+  const kb = Markup.inlineKeyboard([[Markup.button.callback("أ¢إ“â€¦ ط¸â€¦ط¸ث†ط·آ§ط¸ظ¾ط¸â€ڑط·آ©", `adm:dep:approve:${depositRow.id}`), Markup.button.callback("أ¢â€Œإ’ ط·آ±ط¸ظ¾ط·آ¶", `adm:dep:reject:${depositRow.id}`)]]);
   const admins = await listAdmins();
   const notifications = [];
   for (const a of admins) {
@@ -1370,7 +1421,7 @@ async function showCategory(ctx, parentId, page, backTo) {
   const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || _catSessActive);
   const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
-  // â”€â”€ طھط´ط؛ظٹظ„ ط¬ظ…ظٹط¹ ط§ظ„ط§ط³طھط¹ظ„ط§ظ…ط§طھ ط§ظ„ظ…ط³طھظ‚ظ„ط© ط¨ط§ظ„طھظˆط§ط²ظٹ â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·ع¾ط·آ´ط·ط›ط¸ظ¹ط¸â€‍ ط·آ¬ط¸â€¦ط¸ظ¹ط·آ¹ ط·آ§ط¸â€‍ط·آ§ط·آ³ط·ع¾ط·آ¹ط¸â€‍ط·آ§ط¸â€¦ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط¸â€ڑط¸â€‍ط·آ© ط·آ¨ط·آ§ط¸â€‍ط·ع¾ط¸ث†ط·آ§ط·آ²ط¸ظ¹ أ¢â€‌â‚¬أ¢â€‌â‚¬
   const [kws, excludedStr, content, socialKws, socialMarkup, markup, ovMap] = await Promise.all([
     getExcludedKeywords(),
     getSetting("excluded_category_ids"),
@@ -1383,7 +1434,7 @@ async function showCategory(ctx, parentId, page, backTo) {
   const excludedCats = new Set(excludedStr.split(",").map(s => Number(s.trim())).filter(Number.isFinite));
   const catOv = await loadCategoryOverrides([...content.categories.map(c => c.id), parentId]);
 
-  // â”€â”€ ط¥طµظ„ط§ط­ ط§ظ„ط£ط¯ط§ط،: ط§ط³طھط®ط±ط¬ ظ…ط¬ظ…ظˆط¹ط© ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ط¸ط§ظ‡ط±ط© ظ…ط±ط© ظˆط§ط­ط¯ط© ط®ط§ط±ط¬ ط§ظ„ط­ظ„ظ‚ط© â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·آ¥ط·آµط¸â€‍ط·آ§ط·آ­ ط·آ§ط¸â€‍ط·آ£ط·آ¯ط·آ§ط·طŒ: ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ±ط·آ¬ ط¸â€¦ط·آ¬ط¸â€¦ط¸ث†ط·آ¹ط·آ© ط·آ§ط¸â€‍ط·آ£ط¸â€ڑط·آ³ط·آ§ط¸â€¦ ط·آ§ط¸â€‍ط·آ¸ط·آ§ط¸â€،ط·آ±ط·آ© ط¸â€¦ط·آ±ط·آ© ط¸ث†ط·آ§ط·آ­ط·آ¯ط·آ© ط·آ®ط·آ§ط·آ±ط·آ¬ ط·آ§ط¸â€‍ط·آ­ط¸â€‍ط¸â€ڑط·آ© أ¢â€‌â‚¬أ¢â€‌â‚¬
   const visibleDirectSet = await buildVisibleCategoryIds(excludedCats, kws);
 
   const visibility = await Promise.all(
@@ -1401,6 +1452,7 @@ async function showCategory(ctx, parentId, page, backTo) {
     if (!p.available && !isAdmin) return false;
     if (isExcludedProduct(p, kws)) return false;
     const ov = ovMap.get(p.id);
+    if (ov?.deleted) return false;
     if (ov?.hidden && !isAdmin) return false;
     if (ov?.customCategoryId != null && ov.customCategoryId !== parentId) return false;
     return true;
@@ -1417,11 +1469,11 @@ async function showCategory(ctx, parentId, page, backTo) {
   ]);
 
   const vcRows = isAdmin ? vcRes.rows : vcRes.rows.filter(v => v.active);
-  const vcBtns = vcRows.map(v => Markup.button.callback(`${v.active ? "ًں“‚ " : "ًں”’ "}${v.name}`.slice(0, 60), `vcat:${v.id}:1:${parentId}`));
+  const vcBtns = vcRows.map(v => Markup.button.callback(`${v.active ? "ظ‹ع؛â€œâ€ڑ " : "ظ‹ع؛â€‌â€™ "}${v.name}`.slice(0, 60), `vcat:${v.id}:1:${parentId}`));
 
   const manualBtns = mpRes.rows.map(m => {
     const usd = Number(m.price_usd); const syp = Math.round(usd * rate);
-    return Markup.button.callback(`ًں›’ ${m.name} â€¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³`.slice(0, 60), `mprod:${m.id}:${parentId}`);
+    return Markup.button.callback(`ظ‹ع؛â€؛â€™ ${m.name} أ¢â‚¬آ¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ط¸â€‍.ط·آ³`.slice(0, 60), `mprod:${m.id}:${parentId}`);
   });
 
   const manualCatalogExists = !!manualCatalogRes.rows[0]?.exists;
@@ -1429,8 +1481,8 @@ async function showCategory(ctx, parentId, page, backTo) {
       !(parentId === 0 && manualCatalogExists)) {
     const emptyRows = [];
     if (isAdmin) {
-      emptyRows.push([Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ط³ظ… ط§ظ„ظ‚ط³ظ…", `adm:catEdit:${parentId}`)]);
-      emptyRows.push([Markup.button.callback("ًں™ˆ ط¥ط®ظپط§ط، ط§ظ„ظ‚ط³ظ…", `adm:catToggle:${parentId}`)]);
+      emptyRows.push([Markup.button.callback("أ¢إ“عˆأ¯آ¸عˆ ط·ع¾ط·آ¹ط·آ¯ط¸ظ¹ط¸â€‍ ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦", `adm:catEdit:${parentId}`)]);
+      emptyRows.push([Markup.button.callback("ظ‹ع؛â„¢ث† ط·آ¥ط·آ®ط¸ظ¾ط·آ§ط·طŒ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦", `adm:catToggle:${parentId}`)]);
     }
     if (parentId === 0) {
       if (isAdmin) emptyRows.push([Markup.button.callback(backLabel, "admin:menu"), Markup.button.callback(homeLabel, "home")]);
@@ -1440,12 +1492,12 @@ async function showCategory(ctx, parentId, page, backTo) {
       const backAction = backTo === 0 ? "cat:0:1:0" : `cat:${backTo}:${bp}:0`;
       emptyRows.push([Markup.button.callback(backLabel, backAction), Markup.button.callback(homeLabel, "home")]);
     }
-    await sendOrEdit(ctx, "ًں“­ ظ‡ط°ط§ ط§ظ„ظ‚ط³ظ… ظپط§ط±ط؛ ط­ط§ظ„ظٹط§ظ‹.", Markup.inlineKeyboard(emptyRows)); return;
+    await sendOrEdit(ctx, "ظ‹ع؛â€œآ­ ط¸â€،ط·آ°ط·آ§ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط¸ظ¾ط·آ§ط·آ±ط·ط› ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ§ط¸â€¹.", Markup.inlineKeyboard(emptyRows)); return;
   }
 
   visibleCats.sort((a, b) => (catOv.get(a.id)?.sortOrder ?? 9999) - (catOv.get(b.id)?.sortOrder ?? 9999));
   const manualCatalogBtns = parentId === 0 && manualCatalogExists
-    ? [Markup.button.callback("ًں§؛ ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ظٹط¯ظˆظٹط©", "mcat:0:1:0")]
+    ? [Markup.button.callback("ظ‹ع؛آ§ط› ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹ط·آ©", "mcat:0:1:0")]
     : [];
 
   const catBtns = [
@@ -1454,17 +1506,17 @@ async function showCategory(ctx, parentId, page, backTo) {
     ...visibleCats.map(c => {
       const ov = catOv.get(c.id);
       const label = ov?.customName ?? c.name;
-      return Markup.button.callback(`${ov?.hidden ? "ًں”’ " : "ًں“‚ "}${label}`.slice(0, 60), `cat:${c.id}:1:${parentId}`);
+      return Markup.button.callback(`${ov?.hidden ? "ظ‹ع؛â€‌â€™ " : "ظ‹ع؛â€œâ€ڑ "}${label}`.slice(0, 60), `cat:${c.id}:1:${parentId}`);
     }),
   ];
 
-  // â”€â”€ طھط·ط¨ظٹظ‚ markup ط§ظ„ظ…ط³طھط®ط¯ظ… ط§ظ„ط®ط§طµ ظپظٹ ط£ط³ط¹ط§ط± ظ‚ط§ط¦ظ…ط© ط§ظ„ظ…ظ†طھط¬ط§طھ â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·ع¾ط·آ·ط·آ¨ط¸ظ¹ط¸â€ڑ markup ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ط·آ§ط¸â€‍ط·آ®ط·آ§ط·آµ ط¸ظ¾ط¸ظ¹ ط·آ£ط·آ³ط·آ¹ط·آ§ط·آ± ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ أ¢â€‌â‚¬أ¢â€‌â‚¬
   const prodBtns = await Promise.all(visibleProds.map(async p => {
     const ov = ovMap.get(p.id);
     const usd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws, null, userMarkupPercent);
     const syp = Math.round(usd * rate);
     const name = ov?.customName ?? p.name;
-    return Markup.button.callback(`${ov?.hidden ? "ًں”’ " : "ًں›’ "}${name} â€¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³`.slice(0, 60), `prod:${p.id}:${parentId}`);
+    return Markup.button.callback(`${ov?.hidden ? "ظ‹ع؛â€‌â€™ " : "ظ‹ع؛â€؛â€™ "}${name} أ¢â‚¬آ¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ط¸â€‍.ط·آ³`.slice(0, 60), `prod:${p.id}:${parentId}`);
   }));
 
   const all = [...catBtns, ...prodBtns, ...manualBtns];
@@ -1476,9 +1528,9 @@ async function showCategory(ctx, parentId, page, backTo) {
   const rows = [];
   if (isAdmin && parentId !== 0) {
     const curOv = (await q("SELECT * FROM category_overrides WHERE category_id=$1", [parentId])).rows[0];
-    rows.push([Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ط³ظ… ط§ظ„ظ‚ط³ظ…", `adm:catEdit:${parentId}`), Markup.button.callback(curOv?.hidden ? "ًں‘پ ط¥ط¸ظ‡ط§ط±" : "ًں™ˆ ط¥ط®ظپط§ط،", `adm:catToggle:${parentId}`)]);
-    rows.push([Markup.button.callback("% ظ†ط³ط¨ط© ط±ط¨ط­ ط§ظ„ظ‚ط³ظ…", `adm:catMarkup:${parentId}`), Markup.button.callback("ًں”¢ طھط±طھظٹط¨ ط§ظ„ظ‚ط³ظ…", `adm:catSort:${parentId}`)]);
-    rows.push([Markup.button.callback("ًںڑڑ ظ†ظ‚ظ„ ظƒظ„ ظ…ظ†طھط¬ط§طھ ط§ظ„ظ‚ط³ظ…", `adm:moveCatAll:${parentId}`), Markup.button.callback("ًں“پ ظ†ظ‚ظ„ ط§ظ„ظ‚ط³ظ… ط¥ظ„ظ‰ ظ‚ط³ظ…", `adm:moveCatToParent:${parentId}`)]);
+    rows.push([Markup.button.callback("أ¢إ“عˆأ¯آ¸عˆ ط·ع¾ط·آ¹ط·آ¯ط¸ظ¹ط¸â€‍ ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦", `adm:catEdit:${parentId}`), Markup.button.callback(curOv?.hidden ? "ظ‹ع؛â€کظ¾ ط·آ¥ط·آ¸ط¸â€،ط·آ§ط·آ±" : "ظ‹ع؛â„¢ث† ط·آ¥ط·آ®ط¸ظ¾ط·آ§ط·طŒ", `adm:catToggle:${parentId}`)]);
+    rows.push([Markup.button.callback("% ط¸â€ ط·آ³ط·آ¨ط·آ© ط·آ±ط·آ¨ط·آ­ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦", `adm:catMarkup:${parentId}`), Markup.button.callback("ظ‹ع؛â€‌آ¢ ط·ع¾ط·آ±ط·ع¾ط¸ظ¹ط·آ¨ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦", `adm:catSort:${parentId}`)]);
+    rows.push([Markup.button.callback("ظ‹ع؛ع‘ع‘ ط¸â€ ط¸â€ڑط¸â€‍ ط¸ئ’ط¸â€‍ ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦", `adm:moveCatAll:${parentId}`), Markup.button.callback("ظ‹ع؛â€œظ¾ ط¸â€ ط¸â€ڑط¸â€‍ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ¥ط¸â€‍ط¸â€° ط¸â€ڑط·آ³ط¸â€¦", `adm:moveCatToParent:${parentId}`)]);
   }
   for (const b of slice) rows.push([b]);
 
@@ -1500,7 +1552,7 @@ async function showCategory(ctx, parentId, page, backTo) {
     rows.push([Markup.button.callback(backLabel, backAction), Markup.button.callback(homeLabel, "home")]);
   }
 
-  const title = parentId === 0 ? "ًں›’ ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ط±ط¦ظٹط³ظٹط©" : `ًں“‚ ${catOv.get(parentId)?.customName ?? "ظ…ط­طھظˆظٹط§طھ ط§ظ„ظ‚ط³ظ…"}`;
+  const title = parentId === 0 ? "ظ‹ع؛â€؛â€™ ط·آ§ط¸â€‍ط·آ£ط¸â€ڑط·آ³ط·آ§ط¸â€¦ ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©" : `ظ‹ع؛â€œâ€ڑ ${catOv.get(parentId)?.customName ?? "ط¸â€¦ط·آ­ط·ع¾ط¸ث†ط¸ظ¹ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦"}`;
   await sendOrEdit(ctx, title, Markup.inlineKeyboard(rows));
 }
 
@@ -1517,7 +1569,7 @@ async function showProduct(ctx, productId, backTo) {
     return Markup.button.callback(backLabel, `cat:${to}:${page}:0`);
   }
 
-  if (!p) { await sendOrEdit(ctx, "âڑ ï¸ڈ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…ظˆط¬ظˆط¯.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
+  if (!p) { await sendOrEdit(ctx, "أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
 
   const [kws, u, ovMap, markup, rate, socialKws, socialMarkup, sessionActive] = await Promise.all([
     getExcludedKeywords(),
@@ -1532,7 +1584,7 @@ async function showProduct(ctx, productId, backTo) {
   const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || sessionActive);
   const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
-  if (isExcludedProduct(p, kws) && !isAdmin) { await sendOrEdit(ctx, "âڑ ï¸ڈ ظ‡ط°ط§ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…طھط§ط­.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
+  if (isExcludedProduct(p, kws) && !isAdmin) { await sendOrEdit(ctx, "أ¢ع‘ أ¯آ¸عˆ ط¸â€،ط·آ°ط·آ§ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·ع¾ط·آ§ط·آ­.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
   const ov = ovMap.get(p.id);
   const isSocial = isSocialProduct(p.name, p.category_name, socialKws);
   const usd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws, null, userMarkupPercent);
@@ -1542,25 +1594,26 @@ async function showProduct(ctx, productId, backTo) {
   if (isSocial) {
     const parsed = p.qty_values;
     if (parsed && !Array.isArray(parsed) && Number(parsed.min) > 0 && Number(parsed.max) > 0)
-      qtyInfo = `ط§ظ„ظƒظ…ظٹط© ط¨ظٹظ† ${Number(parsed.min).toLocaleString("en-US")} ظˆ ${Number(parsed.max).toLocaleString("en-US")}`;
+      qtyInfo = `ط·آ§ط¸â€‍ط¸ئ’ط¸â€¦ط¸ظ¹ط·آ© ط·آ¨ط¸ظ¹ط¸â€  ${Number(parsed.min).toLocaleString("en-US")} ط¸ث† ${Number(parsed.max).toLocaleString("en-US")}`;
     else if (parsed && Array.isArray(parsed) && parsed.length > 0)
-      qtyInfo = `ط§ظ„ظƒظ…ظٹط§طھ ط§ظ„ظ…طھط§ط­ط©: ${parsed.join(", ")}`;
-    else { const [min, max] = await Promise.all([getSocialMinQty(), getSocialMaxQty()]); qtyInfo = `ط§ظ„ظƒظ…ظٹط© ط¨ظٹظ† ${min.toLocaleString("en-US")} ظˆ ${max.toLocaleString("en-US")}`; }
-  } else if (!p.qty_values) { qtyInfo = "ط§ظ„ظƒظ…ظٹط©: 1 (ط«ط§ط¨طھط©)"; }
-  else if (Array.isArray(p.qty_values)) { qtyInfo = `ط§ظ„ظƒظ…ظٹط§طھ ط§ظ„ظ…طھط§ط­ط©: ${p.qty_values.join(", ")}`; }
-  else { qtyInfo = `ط§ظ„ظƒظ…ظٹط© ط¨ظٹظ† ${p.qty_values.min} ظˆ ${p.qty_values.max}`; }
+      qtyInfo = `ط·آ§ط¸â€‍ط¸ئ’ط¸â€¦ط¸ظ¹ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸â€¦ط·ع¾ط·آ§ط·آ­ط·آ©: ${parsed.join(", ")}`;
+    else { const [min, max] = await Promise.all([getSocialMinQty(), getSocialMaxQty()]); qtyInfo = `ط·آ§ط¸â€‍ط¸ئ’ط¸â€¦ط¸ظ¹ط·آ© ط·آ¨ط¸ظ¹ط¸â€  ${min.toLocaleString("en-US")} ط¸ث† ${max.toLocaleString("en-US")}`; }
+  } else if (!p.qty_values) { qtyInfo = "ط·آ§ط¸â€‍ط¸ئ’ط¸â€¦ط¸ظ¹ط·آ©: 1 (ط·آ«ط·آ§ط·آ¨ط·ع¾ط·آ©)"; }
+  else if (Array.isArray(p.qty_values)) { qtyInfo = `ط·آ§ط¸â€‍ط¸ئ’ط¸â€¦ط¸ظ¹ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸â€¦ط·ع¾ط·آ§ط·آ­ط·آ©: ${p.qty_values.join(", ")}`; }
+  else { qtyInfo = `ط·آ§ط¸â€‍ط¸ئ’ط¸â€¦ط¸ظ¹ط·آ© ط·آ¨ط¸ظ¹ط¸â€  ${p.qty_values.min} ط¸ث† ${p.qty_values.max}`; }
 
   const displayName = ov?.customName ?? p.name;
   const instructions = ov?.instructions?.trim() || getProductApiNotes(p);
-  const text = `ًں›’ ${displayName}\n${p.category_name ? `ط§ظ„ظ‚ط³ظ…: ${p.category_name}\n` : ""}ط§ظ„ط³ط¹ط±: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³\n${qtyInfo}${instructions ? `\n\nًں“‹ طھط¹ظ„ظٹظ…ط§طھ:\n${instructions}` : ""}`;
+  const text = `ظ‹ع؛â€؛â€™ ${displayName}\n${p.category_name ? `ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦: ${p.category_name}\n` : ""}ط·آ§ط¸â€‍ط·آ³ط·آ¹ط·آ±: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ط¸â€‍.ط·آ³\n${qtyInfo}${instructions ? `\n\nظ‹ع؛â€œâ€¹ ط·ع¾ط·آ¹ط¸â€‍ط¸ظ¹ط¸â€¦ط·آ§ط·ع¾:\n${instructions}` : ""}`;
 
   const backBtnResolved = await resolveBackBtn(backTo);
   const btns = [];
-  if (p.available || isAdmin) btns.push([Markup.button.callback("ًں›’ ط·ظ„ط¨ ط§ظ„ط¢ظ†", `buy:${p.id}:${backTo}`)]);
+  if (p.available || isAdmin) btns.push([Markup.button.callback("ظ‹ع؛â€؛â€™ ط·آ·ط¸â€‍ط·آ¨ ط·آ§ط¸â€‍ط·آ¢ط¸â€ ", `buy:${p.id}:${backTo}`)]);
   if (isAdmin) {
-    btns.push([Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ظ„ط³ط¹ط±", `adm:editPrice:${p.id}`), Markup.button.callback("ًں“‹ طھط¹ظ„ظٹظ…ط§طھ", `adm:editInstr:${p.id}`)]);
-    btns.push([Markup.button.callback("ًں“‌ طھط¹ط¯ظٹظ„ ط§ظ„ط§ط³ظ…", `adm:renameProd:${p.id}`), Markup.button.callback("ًںڑڑ ظ†ظ‚ظ„ ظ„ظ‚ط³ظ… ط¢ط®ط±", `adm:moveProd:${p.id}`)]);
-    btns.push([Markup.button.callback(ov?.hidden ? "ًں‘پ ط¥ط¸ظ‡ط§ط±" : "ًں™ˆ ط¥ط®ظپط§ط،", `adm:hideProd:${p.id}`)]);
+    btns.push([Markup.button.callback("أ¢إ“عˆأ¯آ¸عˆ ط·ع¾ط·آ¹ط·آ¯ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط·آ³ط·آ¹ط·آ±", `adm:editPrice:${p.id}`), Markup.button.callback("ظ‹ع؛â€œâ€¹ ط·ع¾ط·آ¹ط¸â€‍ط¸ظ¹ط¸â€¦ط·آ§ط·ع¾", `adm:editInstr:${p.id}`)]);
+    btns.push([Markup.button.callback("ظ‹ع؛â€œâ€Œ ط·ع¾ط·آ¹ط·آ¯ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦", `adm:renameProd:${p.id}`), Markup.button.callback("ظ‹ع؛ع‘ع‘ ط¸â€ ط¸â€ڑط¸â€‍ ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ¢ط·آ®ط·آ±", `adm:moveProd:${p.id}`)]);
+    btns.push([Markup.button.callback(ov?.hidden ? "ظ‹ع؛â€کظ¾ ط·آ¥ط·آ¸ط¸â€،ط·آ§ط·آ±" : "ظ‹ع؛â„¢ث† ط·آ¥ط·آ®ط¸ظ¾ط·آ§ط·طŒ", `adm:hideProd:${p.id}`)]);
+    btns.push([Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬ ظ†ظ‡ط§ط¦ظٹط§ظ‹", `adm:deleteProdAsk:${p.id}`)]);
   }
   btns.push([backBtnResolved, Markup.button.callback(homeLabel, "home")]);
   await sendOrEdit(ctx, text, Markup.inlineKeyboard(btns));
@@ -1589,12 +1642,12 @@ async function showManualCategory(ctx, categoryId, page, backTo) {
   const products = productRes.rows;
   const currentCategory = isRoot ? null : (await q("SELECT * FROM manual_categories WHERE id=$1", [categoryId])).rows[0];
   const categoryBtns = categories.map(c =>
-    Markup.button.callback(`${c.active ? "ًں“‚" : "ًں”’"} ${c.name}`.slice(0, 60), `mcat:${c.id}:1:${categoryId}`)
+    Markup.button.callback(`${c.active ? "ظ‹ع؛â€œâ€ڑ" : "ظ‹ع؛â€‌â€™"} ${c.name}`.slice(0, 60), `mcat:${c.id}:1:${categoryId}`)
   );
   const productBtns = products.map(m => {
     const usd = Number(m.price_usd);
     const syp = Math.round(usd * rate);
-    return Markup.button.callback(`ًں›’ ${m.name} â€¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³`.slice(0, 60), `mprod:${m.id}:${categoryId}`);
+    return Markup.button.callback(`ظ‹ع؛â€؛â€™ ${m.name} أ¢â‚¬آ¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ط¸â€‍.ط·آ³`.slice(0, 60), `mprod:${m.id}:${categoryId}`);
   });
   const all = [...categoryBtns, ...productBtns];
   const totalPages = Math.max(1, Math.ceil(all.length / PAGE_SIZE));
@@ -1605,20 +1658,20 @@ async function showManualCategory(ctx, categoryId, page, backTo) {
   const rows = [];
   if (isAdmin) {
     if (isRoot) {
-      rows.push([Markup.button.callback("âڑ™ï¸ڈ ط¥ط¯ط§ط±ط© ط£ظ‚ط³ط§ظ… ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ظٹط¯ظˆظٹط©", "adm:manualCats")]);
-      rows.push([Markup.button.callback("â‍• ط¥ط¶ط§ظپط© ظ…ظ†طھط¬ ط¹ط§ظ…", "adm:addManual")]);
+      rows.push([Markup.button.callback("أ¢ع‘â„¢أ¯آ¸عˆ ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ© ط·آ£ط¸â€ڑط·آ³ط·آ§ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹ط·آ©", "adm:manualCats")]);
+      rows.push([Markup.button.callback("أ¢â€چâ€¢ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·آ¹ط·آ§ط¸â€¦", "adm:addManual")]);
     } else {
       rows.push([
-        Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ظ„ط§ط³ظ…", `adm:mcatEdit:${categoryId}`),
-        Markup.button.callback(categories.length ? "ًں“‚ ط¥ط¯ط§ط±ط© ط§ظ„ظپط±ط¹ظٹط©" : "â‍• ظ‚ط³ظ… ظپط±ط¹ظٹ", `adm:manualCats:${categoryId}`),
+        Markup.button.callback("أ¢إ“عˆأ¯آ¸عˆ ط·ع¾ط·آ¹ط·آ¯ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦", `adm:mcatEdit:${categoryId}`),
+        Markup.button.callback(categories.length ? "ظ‹ع؛â€œâ€ڑ ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ© ط·آ§ط¸â€‍ط¸ظ¾ط·آ±ط·آ¹ط¸ظ¹ط·آ©" : "أ¢â€چâ€¢ ط¸â€ڑط·آ³ط¸â€¦ ط¸ظ¾ط·آ±ط·آ¹ط¸ظ¹", `adm:manualCats:${categoryId}`),
       ]);
       rows.push([
-        Markup.button.callback("â‍• ط¥ط¶ط§ظپط© ظ…ظ†طھط¬ ظ‡ظ†ط§", `adm:addManualInCat:${categoryId}`),
-        Markup.button.callback(currentCategory?.active ? "ًں”´ طھط¹ط·ظٹظ„ ط§ظ„ظ‚ط³ظ…" : "ًںں¢ طھظپط¹ظٹظ„ ط§ظ„ظ‚ط³ظ…", `adm:mcatToggle:${categoryId}`),
+        Markup.button.callback("أ¢â€چâ€¢ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط¸â€،ط¸â€ ط·آ§", `adm:addManualInCat:${categoryId}`),
+        Markup.button.callback(currentCategory?.active ? "ظ‹ع؛â€‌آ´ ط·ع¾ط·آ¹ط·آ·ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦" : "ظ‹ع؛ع؛آ¢ ط·ع¾ط¸ظ¾ط·آ¹ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦", `adm:mcatToggle:${categoryId}`),
       ]);
       rows.push([
-        Markup.button.callback("ًںڑڑ ط¥ط®ط±ط§ط¬ ظƒظ„ ط§ظ„ظ…ظ†طھط¬ط§طھ", `adm:mcatMoveAll:${categoryId}`),
-        Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ ط§ظ„ظ‚ط³ظ…", `adm:mcatDel:${categoryId}`),
+        Markup.button.callback("ظ‹ع؛ع‘ع‘ ط·آ¥ط·آ®ط·آ±ط·آ§ط·آ¬ ط¸ئ’ط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾", `adm:mcatMoveAll:${categoryId}`),
+        Markup.button.callback("ظ‹ع؛â€”â€کأ¯آ¸عˆ ط·آ­ط·آ°ط¸ظ¾ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦", `adm:mcatDel:${categoryId}`),
       ]);
     }
   }
@@ -1636,7 +1689,7 @@ async function showManualCategory(ctx, categoryId, page, backTo) {
     Markup.button.callback(backLabel, backAction),
     Markup.button.callback(homeLabel, "home"),
   ]);
-  const title = isRoot ? "ًں§؛ ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ظٹط¯ظˆظٹط©" : `ًں“‚ ${currentCategory?.name ?? "ظ‚ط³ظ… ظٹط¯ظˆظٹ"}`;
+  const title = isRoot ? "ظ‹ع؛آ§ط› ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹ط·آ©" : `ظ‹ع؛â€œâ€ڑ ${currentCategory?.name ?? "ط¸â€ڑط·آ³ط¸â€¦ ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹"}`;
   await sendOrEdit(ctx, title, Markup.inlineKeyboard(rows));
 }
 
@@ -1657,7 +1710,7 @@ async function showVirtualCategory(ctx, vcId, page, backTo) {
     getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel(),
   ]);
   const vc = vcRes.rows[0];
-  if (!vc || (!vc.active && !isAdmin)) { await sendOrEdit(ctx, "âڑ ï¸ڈ ظ‡ط°ط§ ط§ظ„ظ‚ط³ظ… ط؛ظٹط± ظ…طھط§ط­.", Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])); return; }
+  if (!vc || (!vc.active && !isAdmin)) { await sendOrEdit(ctx, "أ¢ع‘ أ¯آ¸عˆ ط¸â€،ط·آ°ط·آ§ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·ع¾ط·آ§ط·آ­.", Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]])); return; }
   let backBtn;
   if (backTo === 0) {
     backBtn = Markup.button.callback(backLabel, "cat:0:1:0");
@@ -1668,7 +1721,7 @@ async function showVirtualCategory(ctx, vcId, page, backTo) {
 
   const subVcRes = await q("SELECT * FROM virtual_categories WHERE parent_id=$1 ORDER BY position", [vcId]);
   const subVcs = isAdmin ? subVcRes.rows : subVcRes.rows.filter(v => v.active);
-  const subVcBtns = subVcs.map(v => Markup.button.callback(`${v.active ? "ًں“‚ " : "ًں”’ "}${v.name}`.slice(0, 60), `vcat:${v.id}:1:${vcId}`));
+  const subVcBtns = subVcs.map(v => Markup.button.callback(`${v.active ? "ظ‹ع؛â€œâ€ڑ " : "ظ‹ع؛â€‌â€™ "}${v.name}`.slice(0, 60), `vcat:${v.id}:1:${vcId}`));
 
   const movedPids = [];
   for (const [pid, ov] of allOv) { if (ov.customCategoryId === vcId) movedPids.push(pid); }
@@ -1676,6 +1729,7 @@ async function showVirtualCategory(ctx, vcId, page, backTo) {
   const visible = products.filter(p => {
     if (isExcludedProduct(p, kws)) return false;
     const ov = allOv.get(p.id);
+    if (ov?.deleted) return false;
     if (ov?.hidden && !isAdmin) return false;
     if (!p.available && !isAdmin) return false;
     return true;
@@ -1686,18 +1740,18 @@ async function showVirtualCategory(ctx, vcId, page, backTo) {
     : await q("SELECT * FROM manual_products WHERE category_id=$1 AND category_is_virtual=true AND active=true ORDER BY id", [vcId]);
   const manualBtnsVc = mpRes.rows.map(m => {
     const usd = Number(m.price_usd); const syp = Math.round(usd * rate);
-    return Markup.button.callback(`ًں›’ ${m.name} â€¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³`.slice(0, 60), `mprod:${m.id}:${vcId}`);
+    return Markup.button.callback(`ظ‹ع؛â€؛â€™ ${m.name} أ¢â‚¬آ¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ط¸â€‍.ط·آ³`.slice(0, 60), `mprod:${m.id}:${vcId}`);
   });
 
-  if (!visible.length && !subVcBtns.length && !manualBtnsVc.length && !isAdmin) { await sendOrEdit(ctx, "ًں“­ ظ‡ط°ط§ ط§ظ„ظ‚ط³ظ… ظپط§ط±ط؛ ط­ط§ظ„ظٹط§ظ‹.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
+  if (!visible.length && !subVcBtns.length && !manualBtnsVc.length && !isAdmin) { await sendOrEdit(ctx, "ظ‹ع؛â€œآ­ ط¸â€،ط·آ°ط·آ§ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط¸ظ¾ط·آ§ط·آ±ط·ط› ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ§ط¸â€¹.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
 
   const ovMap = await loadOverrideMap(visible.map(p => p.id));
-  // â”€â”€ طھط·ط¨ظٹظ‚ markup ط§ظ„ظ…ط³طھط®ط¯ظ… ط§ظ„ط®ط§طµ â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·ع¾ط·آ·ط·آ¨ط¸ظ¹ط¸â€ڑ markup ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ط·آ§ط¸â€‍ط·آ®ط·آ§ط·آµ أ¢â€‌â‚¬أ¢â€‌â‚¬
   const prodBtns = await Promise.all(visible.map(async p => {
     const ov = ovMap.get(p.id);
     const usd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws, null, userMarkupPercent);
     const syp = Math.round(usd * rate);
-    return Markup.button.callback(`${ov?.hidden ? "ًں”’ " : "ًں›’ "}${ov?.customName ?? p.name} â€¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³`.slice(0, 60), `prod:${p.id}:${vcId}`);
+    return Markup.button.callback(`${ov?.hidden ? "ظ‹ع؛â€‌â€™ " : "ظ‹ع؛â€؛â€™ "}${ov?.customName ?? p.name} أ¢â‚¬آ¢ ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ط¸â€‍.ط·آ³`.slice(0, 60), `prod:${p.id}:${vcId}`);
   }));
 
   const allBtns = [...subVcBtns, ...prodBtns, ...manualBtnsVc];
@@ -1708,9 +1762,9 @@ async function showVirtualCategory(ctx, vcId, page, backTo) {
 
   const rows = [];
   if (isAdmin) {
-    rows.push([Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ظ„ط§ط³ظ…", `adm:vcEdit:${vcId}`), Markup.button.callback(vc.active ? "ًں™ˆ ط¥ط®ظپط§ط،" : "ًں‘پ ط¥ط¸ظ‡ط§ط±", `adm:vcToggle:${vcId}`)]);
-    rows.push([Markup.button.callback("â‍• ظ‚ط³ظ… ظپط±ط¹ظٹ", `adm:addVCatSub:${vcId}`), Markup.button.callback("ًںڑڑ ط¥ط®ط±ط§ط¬ ط§ظ„ظ…ظ†طھط¬ط§طھ", `adm:vcMoveAll:${vcId}`)]);
-    rows.push([Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ ط§ظ„ظ‚ط³ظ…", `adm:vcDel:${vcId}`)]);
+    rows.push([Markup.button.callback("أ¢إ“عˆأ¯آ¸عˆ ط·ع¾ط·آ¹ط·آ¯ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦", `adm:vcEdit:${vcId}`), Markup.button.callback(vc.active ? "ظ‹ع؛â„¢ث† ط·آ¥ط·آ®ط¸ظ¾ط·آ§ط·طŒ" : "ظ‹ع؛â€کظ¾ ط·آ¥ط·آ¸ط¸â€،ط·آ§ط·آ±", `adm:vcToggle:${vcId}`)]);
+    rows.push([Markup.button.callback("أ¢â€چâ€¢ ط¸â€ڑط·آ³ط¸â€¦ ط¸ظ¾ط·آ±ط·آ¹ط¸ظ¹", `adm:addVCatSub:${vcId}`), Markup.button.callback("ظ‹ع؛ع‘ع‘ ط·آ¥ط·آ®ط·آ±ط·آ§ط·آ¬ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾", `adm:vcMoveAll:${vcId}`)]);
+    rows.push([Markup.button.callback("ظ‹ع؛â€”â€کأ¯آ¸عˆ ط·آ­ط·آ°ط¸ظ¾ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦", `adm:vcDel:${vcId}`)]);
   }
   for (const b of slice) rows.push([b]);
   const nav = [];
@@ -1719,7 +1773,7 @@ async function showVirtualCategory(ctx, vcId, page, backTo) {
   if (safe < totalPages) nav.push(Markup.button.callback(nextLabel, `vcat:${vcId}:${safe + 1}:${backTo}`));
   if (nav.length > 1) rows.push(nav);
   rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
-  await sendOrEdit(ctx, `ًں“‚ ${vc.name}`, Markup.inlineKeyboard(rows));
+  await sendOrEdit(ctx, `ظ‹ع؛â€œâ€ڑ ${vc.name}`, Markup.inlineKeyboard(rows));
 }
 
 async function showManualProduct(ctx, mId, backTo) {
@@ -1737,15 +1791,16 @@ async function showManualProduct(ctx, mId, backTo) {
   const m = mRes.rows[0];
   const [u, sessionActive] = await Promise.all([getUser(ctx.from.id), isAdminSessionActive(ctx.from.id)]);
   const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || sessionActive);
-  if (!m || (!m.active && !isAdmin)) { await sendOrEdit(ctx, "âڑ ï¸ڈ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…طھط§ط­.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
+  if (!m || (!m.active && !isAdmin)) { await sendOrEdit(ctx, "أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·ع¾ط·آ§ط·آ­.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
   const rate = await getExchangeRate();
   const usd = Number(m.price_usd); const syp = Math.round(usd * rate);
   const balance = u ? Number(u.balance) : 0;
   const canAfford = balance >= usd;
-  const text = `ًں›’ ${m.name}\nط§ظ„ط³ط¹ط±: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³\nط§ظ„ط±طµظٹط¯: ${formatBalance(balance, rate)}${m.instructions ? `\n\nًں“‹ ${m.instructions}` : ""}`;
+  const text = `ظ‹ع؛â€؛â€™ ${m.name}\nط·آ§ط¸â€‍ط·آ³ط·آ¹ط·آ±: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ط¸â€‍.ط·آ³\nط·آ§ط¸â€‍ط·آ±ط·آµط¸ظ¹ط·آ¯: ${formatBalance(balance, rate)}${m.instructions ? `\n\nظ‹ع؛â€œâ€¹ ${m.instructions}` : ""}`;
   const rows = [];
-  if (m.active && canAfford) rows.push([Markup.button.callback("ًں›’ ط·ظ„ط¨ ط§ظ„ط¢ظ†", `mbuy:${m.id}`)]);
-  else if (m.active && !canAfford) rows.push([Markup.button.callback("ًں’³ ط´ط­ظ† ط±طµظٹط¯", "deposit")]);
+  if (m.active && canAfford) rows.push([Markup.button.callback("ظ‹ع؛â€؛â€™ ط·آ·ط¸â€‍ط·آ¨ ط·آ§ط¸â€‍ط·آ¢ط¸â€ ", `mbuy:${m.id}`)]);
+  else if (m.active && !canAfford) rows.push([Markup.button.callback("ظ‹ع؛â€™آ³ ط·آ´ط·آ­ط¸â€  ط·آ±ط·آµط¸ظ¹ط·آ¯", "deposit")]);
+  if (isAdmin) rows.push([Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬ ظ†ظ‡ط§ط¦ظٹط§ظ‹", `adm:deleteManualProdAsk:${m.id}`)]);
   rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
   await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
 }
@@ -1775,7 +1830,7 @@ function formatApiResponseClean(resp) {
     const raw = orderData.status;
     const label = statusLabel(raw);
     if (!parts.some(p => p.includes(raw) || p.includes(label))) {
-      if (!ACCEPT_STATUSES.has(raw.toLowerCase())) parts.push(`ًں“ٹ ط§ظ„ط­ط§ظ„ط©: ${label}`);
+      if (!ACCEPT_STATUSES.has(raw.toLowerCase())) parts.push(`ظ‹ع؛â€œظ¹ ط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط·آ©: ${label}`);
     }
   }
   return repairArabicEncoding([...new Set(parts)].filter(Boolean).join("\n\n").trim());
@@ -1793,9 +1848,9 @@ function parseQtyValues(qv) {
 
 function statusLabel(s) {
   const n = (s ?? "").toString().toLowerCase().trim();
-  if (ACCEPT_STATUSES.has(n) || n === "1" || n === "true") return "âœ… ظ…ظ‚ط¨ظˆظ„";
-  if (REJECT_STATUSES.has(n) || n === "0" || n === "false") return "â‌Œ ظ…ط±ظپظˆط¶";
-  return "âڈ³ ط§ظ†طھط¸ط§ط±";
+  if (ACCEPT_STATUSES.has(n) || n === "1" || n === "true") return "أ¢إ“â€¦ ط¸â€¦ط¸â€ڑط·آ¨ط¸ث†ط¸â€‍";
+  if (REJECT_STATUSES.has(n) || n === "0" || n === "false") return "أ¢â€Œإ’ ط¸â€¦ط·آ±ط¸ظ¾ط¸ث†ط·آ¶";
+  return "أ¢عˆآ³ ط·آ§ط¸â€ ط·ع¾ط·آ¸ط·آ§ط·آ±";
 }
 
 function formatPriceLabel(qty, unitPriceUsd) {
@@ -1808,17 +1863,17 @@ function formatPriceLabel(qty, unitPriceUsd) {
   else if (total >= 0.001) totalStr = total.toFixed(4);
   else totalStr = total.toFixed(6);
   if (parseFloat(totalStr) === 0) totalStr = total.toFixed(8);
-  return `${Number(qty).toLocaleString("en-US")} â€” ${totalStr}$`;
+  return `${Number(qty).toLocaleString("en-US")} أ¢â‚¬â€‌ ${totalStr}$`;
 }
 
 async function startOrderFlow(ctx, productId, backTo) {
   let all = await getCachedProducts();
   let p = all.find(x => x.id === productId);
   if (!p) { all = await fetchAllProducts(); p = all.find(x => x.id === productId); }
-  if (!p) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
-  if (!p.available) { await ctx.reply("âڑ ï¸ڈ ظ‡ط°ط§ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…طھط§ط­ ط­ط§ظ„ظٹط§ظ‹."); return; }
+  if (!p) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯."); return; }
+  if (!p.available) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط¸â€،ط·آ°ط·آ§ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·ع¾ط·آ§ط·آ­ ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ§ط¸â€¹."); return; }
 
-  // â”€â”€ طھظ†ظپظٹط° ظ…ظˆط§ط²ظچ ظ„طھط³ط±ظٹط¹ ط§ظ„ط§ط³طھط¬ط§ط¨ط© â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·ع¾ط¸â€ ط¸ظ¾ط¸ظ¹ط·آ° ط¸â€¦ط¸ث†ط·آ§ط·آ²ط¸ع† ط¸â€‍ط·ع¾ط·آ³ط·آ±ط¸ظ¹ط·آ¹ ط·آ§ط¸â€‍ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© أ¢â€‌â‚¬أ¢â€‌â‚¬
   const [ovMap, markup, socialKws, socialMarkup, user] = await Promise.all([
     loadOverrideMap([p.id]),
     getMarkupPercent(),
@@ -1840,15 +1895,15 @@ async function startOrderFlow(ctx, productId, backTo) {
         const label = formatPriceLabel(v, unitPriceUsd);
         return [Markup.button.callback(label, `ord:qty:${v}`)];
       });
-      rows.push([Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]);
-      await sendOrEdit(ctx, `ًں›’ ${p.name}\n\nط§ط®طھط± ط§ظ„ظƒظ…ظٹط©:`, Markup.inlineKeyboard(rows)); return;
+      rows.push([Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "ord:cancel")]);
+      await sendOrEdit(ctx, `ظ‹ع؛â€؛â€™ ${p.name}\n\nط·آ§ط·آ®ط·ع¾ط·آ± ط·آ§ط¸â€‍ط¸ئ’ط¸â€¦ط¸ظ¹ط·آ©:`, Markup.inlineKeyboard(rows)); return;
     }
     let min, max;
     if (parsedSocial.kind === "range" && Number.isFinite(parsedSocial.min) && parsedSocial.min > 0)
       { min = parsedSocial.min; max = parsedSocial.max; }
     else { min = await getSocialMinQty(); max = await getSocialMaxQty(); }
     setStep(ctx.from.id, { kind: "order:qty", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: { min, max }, backTo });
-    await sendOrEdit(ctx, `ًں›’ ${p.name}\n\nط£ط±ط³ظ„ ط§ظ„ظƒظ…ظٹط© (ط¨ظٹظ† ${min.toLocaleString("en-US")} ظˆ ${max.toLocaleString("en-US")}):`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]])); return;
+    await sendOrEdit(ctx, `ظ‹ع؛â€؛â€™ ${p.name}\n\nط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط¸ئ’ط¸â€¦ط¸ظ¹ط·آ© (ط·آ¨ط¸ظ¹ط¸â€  ${min.toLocaleString("en-US")} ط¸ث† ${max.toLocaleString("en-US")}):`, Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "ord:cancel")]])); return;
   }
 
   const parsed = parseQtyValues(p.qty_values);
@@ -1859,18 +1914,18 @@ async function startOrderFlow(ctx, productId, backTo) {
       const label = formatPriceLabel(v, unitPriceUsd);
       return [Markup.button.callback(label, `ord:qty:${v}`)];
     });
-    rows.push([Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]);
-    await sendOrEdit(ctx, `ًں›’ ${p.name}\nط§ط®طھط± ط§ظ„ظƒظ…ظٹط©:`, Markup.inlineKeyboard(rows)); return;
+    rows.push([Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "ord:cancel")]);
+    await sendOrEdit(ctx, `ظ‹ع؛â€؛â€™ ${p.name}\nط·آ§ط·آ®ط·ع¾ط·آ± ط·آ§ط¸â€‍ط¸ئ’ط¸â€¦ط¸ظ¹ط·آ©:`, Markup.inlineKeyboard(rows)); return;
   }
   setStep(ctx.from.id, { kind: "order:qty", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: { min: parsed.min, max: parsed.max }, backTo });
-  await sendOrEdit(ctx, `ًں›’ ${p.name}\nط£ط±ط³ظ„ ط§ظ„ظƒظ…ظٹط© (ط¨ظٹظ† ${parsed.min} ظˆ ${parsed.max}):`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]]));
+  await sendOrEdit(ctx, `ظ‹ع؛â€؛â€™ ${p.name}\nط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط¸ئ’ط¸â€¦ط¸ظ¹ط·آ© (ط·آ¨ط¸ظ¹ط¸â€  ${parsed.min} ط¸ث† ${parsed.max}):`, Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "ord:cancel")]]));
 }
 
 async function askNextParam(ctx, p, unitPriceUsd, qty, paramKeys, collected, idx, backTo) {
   if (idx >= paramKeys.length) { await showOrderConfirmation(ctx, p, unitPriceUsd, qty, collected, backTo); return; }
   setStep(ctx.from.id, { kind: "order:params", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, qty, paramKeys, collected, idx, backTo });
   const key = paramKeys[idx];
-  await ctx.reply(`ًں“‌ ط£ط¯ط®ظ„ ظ‚ظٹظ…ط© ط§ظ„ط­ظ‚ظ„: *${key}*`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]]) });
+  await ctx.reply(`ظ‹ع؛â€œâ€Œ ط·آ£ط·آ¯ط·آ®ط¸â€‍ ط¸â€ڑط¸ظ¹ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط·آ­ط¸â€ڑط¸â€‍: *${key}*`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "ord:cancel")]]) });
 }
 
 async function showOrderConfirmation(ctx, p, unitPriceUsd, qty, collected, backTo) {
@@ -1879,14 +1934,14 @@ async function showOrderConfirmation(ctx, p, unitPriceUsd, qty, collected, backT
   const totalSyp = Math.round(totalUsd * rate);
   const u = await getUser(ctx.from.id);
   const balance = u ? Number(u.balance) : 0;
-  const paramsLines = Object.entries(collected).map(([k, v]) => `â€¢ ${k}: ${v}`).join("\n");
+  const paramsLines = Object.entries(collected).map(([k, v]) => `أ¢â‚¬آ¢ ${k}: ${v}`).join("\n");
   setStep(ctx.from.id, { kind: "order:params", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, qty, paramKeys: Object.keys(collected), collected, idx: Object.keys(collected).length, backTo });
   const lowBalance = balance < totalUsd;
   const totalUsdStr = totalUsd < 0.005 ? totalUsd.toFixed(4) : totalUsd.toFixed(2);
-  const text = `ًں§¾ طھط£ظƒظٹط¯ ط§ظ„ط·ظ„ط¨\n\nًں›’ ط§ظ„ظ…ظ†طھط¬: ${p.name}\nًں”¢ ط§ظ„ظƒظ…ظٹط©: ${qty.toLocaleString("en-US")}\n${paramsLines ? paramsLines + "\n" : ""}ًں’° ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ: ${totalUsdStr}$ | ${totalSyp.toLocaleString("en-US")} ظ„.ط³\nًں’³ ط±طµظٹط¯ظƒ: ${formatBalance(balance, rate)}\n\n${lowBalance ? "â‌Œ ظ„ظٹط³ ظ„ط¯ظٹظƒ ط±طµظٹط¯ ظƒط§ظپظٹ. ظٹط±ط¬ظ‰ ط´ط­ظ† ط±طµظٹط¯ظƒ ط«ظ… ط§ظ„ظ…ط­ط§ظˆظ„ط© ظ…ط¬ط¯ط¯ط§ظ‹." : "ظ‡ظ„ طھط±ظٹط¯ طھط£ظƒظٹط¯ ط§ظ„ط·ظ„ط¨طں"}`;
+  const text = `ظ‹ع؛آ§آ¾ ط·ع¾ط·آ£ط¸ئ’ط¸ظ¹ط·آ¯ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨\n\nظ‹ع؛â€؛â€™ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬: ${p.name}\nظ‹ع؛â€‌آ¢ ط·آ§ط¸â€‍ط¸ئ’ط¸â€¦ط¸ظ¹ط·آ©: ${qty.toLocaleString("en-US")}\n${paramsLines ? paramsLines + "\n" : ""}ظ‹ع؛â€™آ° ط·آ§ط¸â€‍ط·آ¥ط·آ¬ط¸â€¦ط·آ§ط¸â€‍ط¸ظ¹: ${totalUsdStr}$ | ${totalSyp.toLocaleString("en-US")} ط¸â€‍.ط·آ³\nظ‹ع؛â€™آ³ ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ئ’: ${formatBalance(balance, rate)}\n\n${lowBalance ? "أ¢â€Œإ’ ط¸â€‍ط¸ظ¹ط·آ³ ط¸â€‍ط·آ¯ط¸ظ¹ط¸ئ’ ط·آ±ط·آµط¸ظ¹ط·آ¯ ط¸ئ’ط·آ§ط¸ظ¾ط¸ظ¹. ط¸ظ¹ط·آ±ط·آ¬ط¸â€° ط·آ´ط·آ­ط¸â€  ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ئ’ ط·آ«ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط·آ­ط·آ§ط¸ث†ط¸â€‍ط·آ© ط¸â€¦ط·آ¬ط·آ¯ط·آ¯ط·آ§ط¸â€¹." : "ط¸â€،ط¸â€‍ ط·ع¾ط·آ±ط¸ظ¹ط·آ¯ ط·ع¾ط·آ£ط¸ئ’ط¸ظ¹ط·آ¯ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ط·ع؛"}`;
   const rows = lowBalance
-    ? [[Markup.button.callback("ًں’³ ط´ط­ظ† ط±طµظٹط¯", "deposit")], [Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]]
-    : [[Markup.button.callback("âœ… طھط£ظƒظٹط¯ ظˆطھظ†ظپظٹط°", "ord:confirm"), Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]];
+    ? [[Markup.button.callback("ظ‹ع؛â€™آ³ ط·آ´ط·آ­ط¸â€  ط·آ±ط·آµط¸ظ¹ط·آ¯", "deposit")], [Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "ord:cancel")]]
+    : [[Markup.button.callback("أ¢إ“â€¦ ط·ع¾ط·آ£ط¸ئ’ط¸ظ¹ط·آ¯ ط¸ث†ط·ع¾ط¸â€ ط¸ظ¾ط¸ظ¹ط·آ°", "ord:confirm"), Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "ord:cancel")]];
   await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
 }
 
@@ -1908,7 +1963,7 @@ const orderExecutionLocks = new Set();
 async function executeOrder(ctx) {
   const uid = ctx.from.id;
   if (orderExecutionLocks.has(uid)) {
-    await ctx.answerCbQuery("âڈ³ ط·ظ„ط¨ظƒ ظ‚ظٹط¯ ط§ظ„طھظ†ظپظٹط°...").catch(() => {});
+    await ctx.answerCbQuery("أ¢عˆآ³ ط·آ·ط¸â€‍ط·آ¨ط¸ئ’ ط¸â€ڑط¸ظ¹ط·آ¯ ط·آ§ط¸â€‍ط·ع¾ط¸â€ ط¸ظ¾ط¸ظ¹ط·آ°...").catch(() => {});
     return;
   }
   orderExecutionLocks.add(uid);
@@ -1924,18 +1979,18 @@ async function executeOrderInternal(ctx) {
   if (step.kind !== "order:params") return;
   let all = await getCachedProducts(); let p = all.find(x => x.id === step.productId);
   if (!p) { all = await fetchAllProducts(); p = all.find(x => x.id === step.productId); }
-  if (!p) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
+  if (!p) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯."); return; }
 
   const totalUsd = Number((step.priceUsd * step.qty).toFixed(4));
   const u = await getUser(ctx.from.id);
   const balance = u ? Number(u.balance) : 0;
-  if (balance < totalUsd) { await ctx.reply("â‌Œ ظ„ظٹط³ ظ„ط¯ظٹظƒ ط±طµظٹط¯ ظƒط§ظپظچ.", Markup.inlineKeyboard([[Markup.button.callback("ًں’³ ط´ط­ظ† ط±طµظٹط¯", "deposit")], [Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])); setStep(ctx.from.id, { kind: "idle" }); return; }
+  if (balance < totalUsd) { await ctx.reply("أ¢â€Œإ’ ط¸â€‍ط¸ظ¹ط·آ³ ط¸â€‍ط·آ¯ط¸ظ¹ط¸ئ’ ط·آ±ط·آµط¸ظ¹ط·آ¯ ط¸ئ’ط·آ§ط¸ظ¾ط¸ع†.", Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛â€™آ³ ط·آ´ط·آ­ط¸â€  ط·آ±ط·آµط¸ظ¹ط·آ¯", "deposit")], [Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]])); setStep(ctx.from.id, { kind: "idle" }); return; }
   await clearInlineKeyboard(ctx).catch(() => {});
   const orderUuid = crypto.randomUUID();
   const debited = await debitBalance(ctx.from.id, totalUsd);
   if (!debited) {
     setStep(ctx.from.id, { kind: "idle" });
-    await ctx.reply("â‌Œ طھط؛ظٹظ‘ط± ط§ظ„ط±طµظٹط¯ ظ‚ط¨ظ„ طھظ†ظپظٹط° ط§ظ„ط·ظ„ط¨. ط­ط¯ظ‘ط« ط§ظ„ط±طµظٹط¯ ظˆط­ط§ظˆظ„ ظ…ط¬ط¯ط¯ط§ظ‹.", Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
+    await ctx.reply("أ¢â€Œإ’ ط·ع¾ط·ط›ط¸ظ¹ط¸â€کط·آ± ط·آ§ط¸â€‍ط·آ±ط·آµط¸ظ¹ط·آ¯ ط¸â€ڑط·آ¨ط¸â€‍ ط·ع¾ط¸â€ ط¸ظ¾ط¸ظ¹ط·آ° ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨. ط·آ­ط·آ¯ط¸â€کط·آ« ط·آ§ط¸â€‍ط·آ±ط·آµط¸ظ¹ط·آ¯ ط¸ث†ط·آ­ط·آ§ط¸ث†ط¸â€‍ ط¸â€¦ط·آ¬ط·آ¯ط·آ¯ط·آ§ط¸â€¹.", Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]]));
     return;
   }
   const execRate = await getExchangeRate();
@@ -1949,7 +2004,7 @@ async function executeOrderInternal(ctx) {
       Number(p.source_id || 1), String(p.source_product_id ?? p.id)]
   );
   const order = insRes.rows[0];
-  await ctx.reply("âڈ³ ط¬ط§ط±ظٹ طھظ†ظپظٹط° ط·ظ„ط¨ظƒ...");
+  await ctx.reply("أ¢عˆآ³ ط·آ¬ط·آ§ط·آ±ط¸ظ¹ ط·ع¾ط¸â€ ط¸ظ¾ط¸ظ¹ط·آ° ط·آ·ط¸â€‍ط·آ¨ط¸ئ’...");
   let resp;
   let finalApiStatus;
 
@@ -1960,12 +2015,12 @@ async function executeOrderInternal(ctx) {
     if (ACCEPT_STATUSES.has(initialStatus) || REJECT_STATUSES.has(initialStatus)) {
       finalApiStatus = initialStatus;
     } else {
-      // ظ„ط§ ظ†ظ†طھط¸ط± ظ†طھظٹط¬ط© API ط¯ط§ط®ظ„ ظ…ط¹ط§ظ„ط¬ ط¶ط؛ط·ط© ط§ظ„ظ…ط³طھط®ط¯ظ…ط› ط³ظٹظƒظ…ظ„ظ‡ط§ ط§ظ„ظ€poller ط¨ط§ظ„ط®ظ„ظپظٹط©.
-      // ط§ظ„ط§ظ†طھط¸ط§ط± ط§ظ„ط³ط§ط¨ظ‚ ظƒط§ظ† ظٹط¨ظ‚ظٹ ظ…ط¹ط§ظ„ط¬ ط§ظ„ط·ظ„ط¨ ظ…ظپطھظˆط­ط§ظ‹ ط­طھظ‰ 150 ط«ط§ظ†ظٹط©.
+      // ط¸â€‍ط·آ§ ط¸â€ ط¸â€ ط·ع¾ط·آ¸ط·آ± ط¸â€ ط·ع¾ط¸ظ¹ط·آ¬ط·آ© API ط·آ¯ط·آ§ط·آ®ط¸â€‍ ط¸â€¦ط·آ¹ط·آ§ط¸â€‍ط·آ¬ ط·آ¶ط·ط›ط·آ·ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ط·â€؛ ط·آ³ط¸ظ¹ط¸ئ’ط¸â€¦ط¸â€‍ط¸â€،ط·آ§ ط·آ§ط¸â€‍ط¸â‚¬poller ط·آ¨ط·آ§ط¸â€‍ط·آ®ط¸â€‍ط¸ظ¾ط¸ظ¹ط·آ©.
+      // ط·آ§ط¸â€‍ط·آ§ط¸â€ ط·ع¾ط·آ¸ط·آ§ط·آ± ط·آ§ط¸â€‍ط·آ³ط·آ§ط·آ¨ط¸â€ڑ ط¸ئ’ط·آ§ط¸â€  ط¸ظ¹ط·آ¨ط¸â€ڑط¸ظ¹ ط¸â€¦ط·آ¹ط·آ§ط¸â€‍ط·آ¬ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸â€¦ط¸ظ¾ط·ع¾ط¸ث†ط·آ­ط·آ§ط¸â€¹ ط·آ­ط·ع¾ط¸â€° 150 ط·آ«ط·آ§ط¸â€ ط¸ظ¹ط·آ©.
       finalApiStatus = "pending";
     }
   } catch {
-    resp = { status: "ERR", message: "ط®ط·ط£ ط´ط¨ظƒط©" };
+    resp = { status: "ERR", message: "ط·آ®ط·آ·ط·آ£ ط·آ´ط·آ¨ط¸ئ’ط·آ©" };
     finalApiStatus = "err";
   }
 
@@ -1981,12 +2036,12 @@ async function executeOrderInternal(ctx) {
     setStep(ctx.from.id, { kind: "idle" });
     const rejectReason = extractDeliveredCode(detailedResp) ||
       (detailedResp?.message && detailedResp.message !== "Network error" ? detailedResp.message : null);
-    // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
+    // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط¸â€‍ط·آ§ ط¸â€ ط·آ¹ط·آ±ط·آ¶ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ أ¢â€‌â‚¬أ¢â€‌â‚¬
     await ctx.reply(
-      `â‌Œ طھظ… ط±ظپط¶ ط§ظ„ط·ظ„ط¨.\n` +
-      (rejectReason ? `ًں“‹ ط§ظ„ط³ط¨ط¨: ${rejectReason}\n` : "") +
-      `âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ظ„.ط³ ط¥ظ„ظ‰ ط±طµظٹط¯ظƒ.`,
-      Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])
+      `أ¢â€Œإ’ ط·ع¾ط¸â€¦ ط·آ±ط¸ظ¾ط·آ¶ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨.\n` +
+      (rejectReason ? `ظ‹ع؛â€œâ€¹ ط·آ§ط¸â€‍ط·آ³ط·آ¨ط·آ¨: ${rejectReason}\n` : "") +
+      `أ¢إ“â€¦ ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ط¸â€‍.ط·آ³ ط·آ¥ط¸â€‍ط¸â€° ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ئ’.`,
+      Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]])
     );
     return;
   }
@@ -1994,12 +2049,12 @@ async function executeOrderInternal(ctx) {
   if (isPending) {
     await q("UPDATE orders SET status='pending', api_response=$1 WHERE id=$2", [JSON.stringify(resp), order.id]);
     setStep(ctx.from.id, { kind: "idle" });
-    // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
+    // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط¸â€‍ط·آ§ ط¸â€ ط·آ¹ط·آ±ط·آ¶ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ أ¢â€‌â‚¬أ¢â€‌â‚¬
     await ctx.reply(
-      `âڈ³ ط·ظ„ط¨ظƒ ظ‚ظٹط¯ ط§ظ„ظ…ط¹ط§ظ„ط¬ط©.\nًں›’ ${p.name} أ— ${step.qty}\nًں’° ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ظ„.ط³\n\nط³ط£ظڈط¹ظ„ظ…ظƒ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ط¹ظ†ط¯ ط§ظƒطھظ…ط§ظ„ظ‡.`,
+      `أ¢عˆآ³ ط·آ·ط¸â€‍ط·آ¨ط¸ئ’ ط¸â€ڑط¸ظ¹ط·آ¯ ط·آ§ط¸â€‍ط¸â€¦ط·آ¹ط·آ§ط¸â€‍ط·آ¬ط·آ©.\nظ‹ع؛â€؛â€™ ${p.name} ط£â€” ${step.qty}\nظ‹ع؛â€™آ° ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ط¸â€‍.ط·آ³\n\nط·آ³ط·آ£ط¸عˆط·آ¹ط¸â€‍ط¸â€¦ط¸ئ’ ط·ع¾ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸ظ¹ط·آ§ط¸â€¹ ط·آ¹ط¸â€ ط·آ¯ ط·آ§ط¸ئ’ط·ع¾ط¸â€¦ط·آ§ط¸â€‍ط¸â€،.`,
       Markup.inlineKeyboard([
-        [Markup.button.callback("ًں”„ طھط­ط¯ظٹط« ط§ظ„ط­ط§ظ„ط©", `ord:check:${order.id}`)],
-        [Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]
+        [Markup.button.callback("ظ‹ع؛â€‌â€‍ ط·ع¾ط·آ­ط·آ¯ط¸ظ¹ط·آ« ط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط·آ©", `ord:check:${order.id}`)],
+        [Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]
       ])
     );
     return;
@@ -2011,13 +2066,13 @@ async function executeOrderInternal(ctx) {
   await q("UPDATE orders SET status='accept', oranos_order_id=$1, external_order_id=$2, api_response=$3, delivered_code=$4 WHERE id=$5",
     [externalOrderId, externalOrderId, JSON.stringify(resp), deliveredCode ?? null, order.id]);
   setStep(ctx.from.id, { kind: "idle" });
-  // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
-  await ctx.reply(`âœ… طھظ… طھظ†ظپظٹط° ط·ظ„ط¨ظƒ ط¨ظ†ط¬ط§ط­!\nًں›’ ${p.name} أ— ${step.qty}\nًں’° ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ظ„.ط³`);
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط¸â€‍ط·آ§ ط¸â€ ط·آ¹ط·آ±ط·آ¶ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ أ¢â€‌â‚¬أ¢â€‌â‚¬
+  await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط¸â€ ط¸ظ¾ط¸ظ¹ط·آ° ط·آ·ط¸â€‍ط·آ¨ط¸ئ’ ط·آ¨ط¸â€ ط·آ¬ط·آ§ط·آ­!\nظ‹ع؛â€؛â€™ ${p.name} ط£â€” ${step.qty}\nظ‹ع؛â€™آ° ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ط¸â€‍.ط·آ³`);
   if (deliveredCode) {
-    await ctx.reply(`ًں”‘ طھظپط§طµظٹظ„ ط§ظ„ط·ظ„ط¨:\n\`\`\`\n${deliveredCode}\n\`\`\``,
-      { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]) });
+    await ctx.reply(`ظ‹ع؛â€‌â€ک ط·ع¾ط¸ظ¾ط·آ§ط·آµط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨:\n\`\`\`\n${deliveredCode}\n\`\`\``,
+      { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]]) });
   } else {
-    await ctx.reply("ط´ظƒط±ط§ظ‹ ظ„ط§ط³طھط®ط¯ط§ظ…ظƒ ظ…طھط¬ط±ظ†ط§! ًںŒں", Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
+    await ctx.reply("ط·آ´ط¸ئ’ط·آ±ط·آ§ط¸â€¹ ط¸â€‍ط·آ§ط·آ³ط·ع¾ط·آ®ط·آ¯ط·آ§ط¸â€¦ط¸ئ’ ط¸â€¦ط·ع¾ط·آ¬ط·آ±ط¸â€ ط·آ§! ظ‹ع؛إ’ع؛", Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]]));
   }
 }
 
@@ -2025,22 +2080,22 @@ async function showMyOrders(ctx, page) {
   const limit = 8; const offset = (page - 1) * limit;
   const res = await q("SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3", [ctx.from.id, limit + 1, offset]);
   const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
-  if (!slice.length) { await sendOrEdit(ctx, "ًں“­ ظ„ط§ ظٹظˆط¬ط¯ ظ„ط¯ظٹظƒ ط£ظٹ ط·ظ„ط¨ط§طھ ط¨ط¹ط¯.", Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])); return; }
-  // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظپظٹ ظ‚ط§ط¦ظ…ط© ط§ظ„ط·ظ„ط¨ط§طھ â”€â”€
-  const lines = slice.map(r => `ًں›’ ${r.product_name} أ—${r.qty} â€¢ ${Number(r.price_usd).toFixed(2)}$ â€¢ ${statusLabel(r.status)}`);
+  if (!slice.length) { await sendOrEdit(ctx, "ظ‹ع؛â€œآ­ ط¸â€‍ط·آ§ ط¸ظ¹ط¸ث†ط·آ¬ط·آ¯ ط¸â€‍ط·آ¯ط¸ظ¹ط¸ئ’ ط·آ£ط¸ظ¹ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ ط·آ¨ط·آ¹ط·آ¯.", Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]])); return; }
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط¸â€‍ط·آ§ ط¸â€ ط·آ¹ط·آ±ط·آ¶ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸ظ¾ط¸ظ¹ ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ أ¢â€‌â‚¬أ¢â€‌â‚¬
+  const lines = slice.map(r => `ظ‹ع؛â€؛â€™ ${r.product_name} ط£â€”${r.qty} أ¢â‚¬آ¢ ${Number(r.price_usd).toFixed(2)}$ أ¢â‚¬آ¢ ${statusLabel(r.status)}`);
   const navRow = [];
-  if (page > 1) navRow.push(Markup.button.callback("â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚", `myorders:${page - 1}`));
-  if (hasNext) navRow.push(Markup.button.callback("ط§ظ„طھط§ظ„ظٹ â‍،ï¸ڈ", `myorders:${page + 1}`));
+  if (page > 1) navRow.push(Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ§ط¸â€‍ط·آ³ط·آ§ط·آ¨ط¸â€ڑ", `myorders:${page - 1}`));
+  if (hasNext) navRow.push(Markup.button.callback("ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹ أ¢â€چطŒأ¯آ¸عˆ", `myorders:${page + 1}`));
   const kb = []; if (navRow.length) kb.push(navRow);
-  kb.push([Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]);
-  await sendOrEdit(ctx, `ًں“¦ ط·ظ„ط¨ط§طھظٹ\n\n${lines.join("\n")}`, Markup.inlineKeyboard(kb));
+  kb.push([Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]);
+  await sendOrEdit(ctx, `ظ‹ع؛â€œآ¦ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ط¸ظ¹\n\n${lines.join("\n")}`, Markup.inlineKeyboard(kb));
 }
 
 async function checkOrderStatus(ctx, orderId) {
   const res = await q("SELECT * FROM orders WHERE id=$1", [orderId]);
   const row = res.rows[0];
-  if (!row || Number(row.user_id) !== ctx.from.id) { await ctx.reply("âڑ ï¸ڈ ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
-  if (!row.oranos_order_id) { await ctx.reply(`ط§ظ„ط­ط§ظ„ط© ط§ظ„ط­ط§ظ„ظٹط©: ${statusLabel(row.status)}`); return; }
+  if (!row || Number(row.user_id) !== ctx.from.id) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯."); return; }
+  if (!row.oranos_order_id) { await ctx.reply(`ط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ©: ${statusLabel(row.status)}`); return; }
   try {
     const resp = await checkOrderForSource(row.oranos_order_id, row.api_source_id);
     const orderData = extractOrderData(resp);
@@ -2053,12 +2108,12 @@ async function checkOrderStatus(ctx, orderId) {
         code ? [finalStatus, JSON.stringify(resp), code, row.id] : [finalStatus, JSON.stringify(resp), row.id]);
       if (isRejected && !REJECT_STATUSES.has(row.status)) await adjustBalance(ctx.from.id, Number(row.price_usd));
       const cleanText = formatApiResponseClean(resp);
-      // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
-      if (code && !row.delivered_code) await ctx.reply(`ًں”‘ طھظپط§طµظٹظ„ ط§ظ„ط·ظ„ط¨:\n\n${code}`);
-      else if (cleanText) await ctx.reply(`ًں“‹ طھط­ط¯ظٹط« ط·ظ„ط¨ظƒ:\n\n${cleanText}`);
+      // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط¸â€‍ط·آ§ ط¸â€ ط·آ¹ط·آ±ط·آ¶ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ أ¢â€‌â‚¬أ¢â€‌â‚¬
+      if (code && !row.delivered_code) await ctx.reply(`ظ‹ع؛â€‌â€ک ط·ع¾ط¸ظ¾ط·آ§ط·آµط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨:\n\n${code}`);
+      else if (cleanText) await ctx.reply(`ظ‹ع؛â€œâ€¹ ط·ع¾ط·آ­ط·آ¯ط¸ظ¹ط·آ« ط·آ·ط¸â€‍ط·آ¨ط¸ئ’:\n\n${cleanText}`);
     }
-    await ctx.reply(`ط§ظ„ط­ط§ظ„ط© ط§ظ„ط­ط§ظ„ظٹط© ظ„ط·ظ„ط¨ظƒ: ${statusLabel(finalStatus)}`);
-  } catch { await ctx.reply("âڑ ï¸ڈ طھط¹ط°ظ‘ط± ظپط­طµ ط§ظ„ط­ط§ظ„ط© ط§ظ„ط¢ظ†."); }
+    await ctx.reply(`ط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ© ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ط¸ئ’: ${statusLabel(finalStatus)}`);
+  } catch { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·ع¾ط·آ¹ط·آ°ط¸â€کط·آ± ط¸ظ¾ط·آ­ط·آµ ط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·آ¢ط¸â€ ."); }
 }
 
 async function pollOneOrder(bot, order) {
@@ -2093,34 +2148,34 @@ async function pollOneOrder(bot, order) {
     if (!prevRejected) await adjustBalance(order.user_id, priceUsd);
     const refundSyp = Math.round(priceUsd * rate);
     const rejectReply = code || cleanText || null;
-    // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
+    // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط¸â€‍ط·آ§ ط¸â€ ط·آ¹ط·آ±ط·آ¶ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ أ¢â€‌â‚¬أ¢â€‌â‚¬
     const msgLines = [
-      `â‌Œ طھظ… ط±ظپط¶ ط£ط­ط¯ ط·ظ„ط¨ط§طھظƒ`,
-      `ًں›’ ط§ظ„ظ…ظ†طھط¬: ${order.product_name}`,
-      ...(rejectReply ? [`ًں“‹ ط§ظ„ط±ط¯: ${rejectReply}`] : []),
-      `ًں’° طھظ…طھ ط¥ط¹ط§ط¯ط© ${priceUsd.toFixed(2)}$ | ${refundSyp.toLocaleString("en-US")} ظ„.ط³ ط¥ظ„ظ‰ ط±طµظٹط¯ظƒ.`
+      `أ¢â€Œإ’ ط·ع¾ط¸â€¦ ط·آ±ط¸ظ¾ط·آ¶ ط·آ£ط·آ­ط·آ¯ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ط¸ئ’`,
+      `ظ‹ع؛â€؛â€™ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬: ${order.product_name}`,
+      ...(rejectReply ? [`ظ‹ع؛â€œâ€¹ ط·آ§ط¸â€‍ط·آ±ط·آ¯: ${rejectReply}`] : []),
+      `ظ‹ع؛â€™آ° ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ${priceUsd.toFixed(2)}$ | ${refundSyp.toLocaleString("en-US")} ط¸â€‍.ط·آ³ ط·آ¥ط¸â€‍ط¸â€° ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ئ’.`
     ];
     await bot.telegram.sendMessage(order.user_id, msgLines.join("\n"),
-      Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])).catch(() => {});
+      Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]])).catch(() => {});
   } else if (isAccepted) {
     const priceSyp = Math.round(priceUsd * rate);
-    // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
+    // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط¸â€‍ط·آ§ ط¸â€ ط·آ¹ط·آ±ط·آ¶ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ أ¢â€‌â‚¬أ¢â€‌â‚¬
     const msgLines = [
-      `âœ… طھظ… طھظ†ظپظٹط° ط£ط­ط¯ ط·ظ„ط¨ط§طھظƒ ط¨ظ†ط¬ط§ط­!`,
-      `ًں›’ ط§ظ„ظ…ظ†طھط¬: ${order.product_name}`,
-      `ًں’° ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ظ„.ط³`
+      `أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط¸â€ ط¸ظ¾ط¸ظ¹ط·آ° ط·آ£ط·آ­ط·آ¯ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ط¸ئ’ ط·آ¨ط¸â€ ط·آ¬ط·آ§ط·آ­!`,
+      `ظ‹ع؛â€؛â€™ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬: ${order.product_name}`,
+      `ظ‹ع؛â€™آ° ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ط¸â€‍.ط·آ³`
     ];
     if (code) {
-      msgLines.push(`\nًں”‘ طھظپط§طµظٹظ„ ط§ظ„ط·ظ„ط¨:\n\`\`\`\n${code}\n\`\`\``);
+      msgLines.push(`\nظ‹ع؛â€‌â€ک ط·ع¾ط¸ظ¾ط·آ§ط·آµط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨:\n\`\`\`\n${code}\n\`\`\``);
       await bot.telegram.sendMessage(order.user_id, msgLines.join("\n"),
-        { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]) }).catch(() => {});
+        { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]]) }).catch(() => {});
     } else if (cleanText) {
-      msgLines.push(`\nًں“‹ طھظپط§طµظٹظ„ ط§ظ„ط·ظ„ط¨:\n\`\`\`\n${cleanText}\n\`\`\``);
+      msgLines.push(`\nظ‹ع؛â€œâ€¹ ط·ع¾ط¸ظ¾ط·آ§ط·آµط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨:\n\`\`\`\n${cleanText}\n\`\`\``);
       await bot.telegram.sendMessage(order.user_id, msgLines.join("\n"),
-        { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]) }).catch(() => {});
+        { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]]) }).catch(() => {});
     } else {
       await bot.telegram.sendMessage(order.user_id, msgLines.join("\n"),
-        Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])).catch(() => {});
+        Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]])).catch(() => {});
     }
   }
 }
@@ -2156,18 +2211,18 @@ async function requireAdmin(ctx) {
   if (!u?.is_admin) {
     authedAdminIds.delete(ctx.from.id);
     await setAdminSession(ctx.from.id, false).catch(() => {});
-    await ctx.reply("â›” ظ‡ط°ط§ ط§ظ„ظ‚ط³ظ… ظ„ظ„ط¥ط¯ط§ط±ط© ظپظ‚ط·.");
+    await ctx.reply("أ¢â€؛â€‌ ط¸â€،ط·آ°ط·آ§ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط¸â€‍ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ© ط¸ظ¾ط¸â€ڑط·آ·.");
     return false;
   }
   if (!sessionActive && !authedAdminIds.has(ctx.from.id)) {
     setStep(ctx.from.id, { kind: "admin:login" });
-    await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ظ„ظ„ط¯ط®ظˆظ„ ط¥ظ„ظ‰ ظ„ظˆط­ط© ط§ظ„ط¥ط¯ط§ط±ط©:");
+    await ctx.reply("ظ‹ع؛â€‌â€ک ط·آ£ط·آ±ط·آ³ط¸â€‍ ط¸ئ’ط¸â€‍ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ± ط¸â€‍ط¸â€‍ط·آ¯ط·آ®ط¸ث†ط¸â€‍ ط·آ¥ط¸â€‍ط¸â€° ط¸â€‍ط¸ث†ط·آ­ط·آ© ط·آ§ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ©:");
     return false;
   }
   if (!sessionActive && authedAdminIds.has(ctx.from.id)) {
     authedAdminIds.delete(ctx.from.id);
     setStep(ctx.from.id, { kind: "admin:login" });
-    await ctx.reply("ًں”‘ ط§ظ†طھظ‡طھ ط¬ظ„ط³ط© ط§ظ„ط¥ط¯ط§ط±ط©. ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ظ„ظ„ط¯ط®ظˆظ„ ظ…ط¬ط¯ط¯ط§ظ‹:");
+    await ctx.reply("ظ‹ع؛â€‌â€ک ط·آ§ط¸â€ ط·ع¾ط¸â€،ط·ع¾ ط·آ¬ط¸â€‍ط·آ³ط·آ© ط·آ§ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ©. ط·آ£ط·آ±ط·آ³ط¸â€‍ ط¸ئ’ط¸â€‍ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ± ط¸â€‍ط¸â€‍ط·آ¯ط·آ®ط¸ث†ط¸â€‍ ط¸â€¦ط·آ¬ط·آ¯ط·آ¯ط·آ§ط¸â€¹:");
     return false;
   }
   return true;
@@ -2176,7 +2231,7 @@ async function requireAdmin(ctx) {
 async function requireSuperAdmin(ctx) {
   const [u, sessionActive] = await Promise.all([getUser(ctx.from.id), isAdminSessionActive(ctx.from.id)]);
   if (!u?.is_super_admin || (!sessionActive && !authedAdminIds.has(ctx.from.id))) {
-    await ctx.reply("â›” ظ‡ط°ط§ ط§ظ„ط¥ط¬ط±ط§ط، ظ„ظ„ظ…ط¯ظٹط± ط§ظ„ط£ط¹ظ„ظ‰ ظپظ‚ط·.");
+    await ctx.reply("أ¢â€؛â€‌ ط¸â€،ط·آ°ط·آ§ ط·آ§ط¸â€‍ط·آ¥ط·آ¬ط·آ±ط·آ§ط·طŒ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ¯ط¸ظ¹ط·آ± ط·آ§ط¸â€‍ط·آ£ط·آ¹ط¸â€‍ط¸â€° ط¸ظ¾ط¸â€ڑط·آ·.");
     return false;
   }
   return true;
@@ -2188,17 +2243,17 @@ async function showAdminMenu(ctx) {
   const u = await getUser(ctx.from.id);
   const isSA = !!u?.is_super_admin;
   const rows = [
-    [Markup.button.callback("ًں“¥ ط·ظ„ط¨ط§طھ ط§ظ„ط¥ظٹط¯ط§ط¹", "adm:depList:1"), Markup.button.callback("ًں‘¥ ط§ظ„ظ…ط³طھط®ط¯ظ…ظˆظ†", "adm:users:1")],
-    [Markup.button.callback("ًں”چ ط¨ط­ط« ظ…ط³طھط®ط¯ظ…", "adm:findUser"), Markup.button.callback("ًں“¦ ظƒظ„ ط§ظ„ط·ظ„ط¨ط§طھ", "adm:allOrders:1")],
-    [Markup.button.callback("ًں“£ ط±ط³ط§ظ„ط© ط¬ظ…ط§ط¹ظٹط©", "adm:broadcast"), Markup.button.callback("ًں’³ ط·ط±ظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹", "adm:methods")],
-    [Markup.button.callback("ًں›’ ط¥ط¯ط§ط±ط© ط§ظ„ظ…ظ†طھط¬ط§طھ", "cat:0:1:0"), Markup.button.callback("âڑ™ï¸ڈ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ", "adm:settings")],
-    [Markup.button.callback("ًں“‍ ظˆط³ط§ط¦ظ„ ط§ظ„طھظˆط§طµظ„", "adm:contacts"), Markup.button.callback("ًں“پ ط£ظ‚ط³ط§ظ… ظ…ط®طµطµط©", "adm:vcList")],
-    [Markup.button.callback("â‍• ظ…ظ†طھط¬ ظٹط¯ظˆظٹ", "adm:manualProds"), Markup.button.callback("ًں› ï¸ڈ ظ…ط³ط§ط¹ط¯ ط§ظ„ط¥ط¯ط§ط±ط©", "adm:aiSupport")],
-    [Markup.button.callback("ًں”Œ APIs ط§ظ„ظ…ظ†طھط¬ط§طھ", "adm:apis"), Markup.button.callback("ًں”„ ط¨ظٹظ†ط¬ طھظ„ظ‚ط§ط¦ظٹ", "adm:ping")],
-    [Markup.button.callback(status === "on" ? "ًںں¢ ط§ظ„ط¨ظˆطھ: ط´ط؛ط§ظ„" : "ًں”´ ط§ظ„ط¨ظˆطھ: ظ…طھظˆظ‚ظپ", "adm:toggleStatus")],
-    [Markup.button.callback("ًںڑھ طھط³ط¬ظٹظ„ ط®ط±ظˆط¬", "adm:logout"), Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")],
+    [Markup.button.callback("ظ‹ع؛â€œآ¥ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹", "adm:depList:1"), Markup.button.callback("ظ‹ع؛â€کآ¥ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ط¸ث†ط¸â€ ", "adm:users:1")],
+    [Markup.button.callback("ظ‹ع؛â€‌ع† ط·آ¨ط·آ­ط·آ« ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦", "adm:findUser"), Markup.button.callback("ظ‹ع؛â€œآ¦ ط¸ئ’ط¸â€‍ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾", "adm:allOrders:1")],
+    [Markup.button.callback("ظ‹ع؛â€œآ£ ط·آ±ط·آ³ط·آ§ط¸â€‍ط·آ© ط·آ¬ط¸â€¦ط·آ§ط·آ¹ط¸ظ¹ط·آ©", "adm:broadcast"), Markup.button.callback("ظ‹ع؛â€™آ³ ط·آ·ط·آ±ط¸â€ڑ ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹", "adm:methods")],
+    [Markup.button.callback("ظ‹ع؛â€؛â€™ ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾", "cat:0:1:0"), Markup.button.callback("أ¢ع‘â„¢أ¯آ¸عˆ ط·آ§ط¸â€‍ط·آ¥ط·آ¹ط·آ¯ط·آ§ط·آ¯ط·آ§ط·ع¾", "adm:settings")],
+    [Markup.button.callback("ظ‹ع؛â€œâ€چ ط¸ث†ط·آ³ط·آ§ط·آ¦ط¸â€‍ ط·آ§ط¸â€‍ط·ع¾ط¸ث†ط·آ§ط·آµط¸â€‍", "adm:contacts"), Markup.button.callback("ظ‹ع؛â€œظ¾ ط·آ£ط¸â€ڑط·آ³ط·آ§ط¸â€¦ ط¸â€¦ط·آ®ط·آµط·آµط·آ©", "adm:vcList")],
+    [Markup.button.callback("أ¢â€چâ€¢ ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹", "adm:manualProds"), Markup.button.callback("ظ‹ع؛â€؛ أ¯آ¸عˆ ط¸â€¦ط·آ³ط·آ§ط·آ¹ط·آ¯ ط·آ§ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ©", "adm:aiSupport")],
+    [Markup.button.callback("ظ‹ع؛â€‌إ’ APIs ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾", "adm:apis"), Markup.button.callback("ظ‹ع؛â€‌â€‍ ط·آ¨ط¸ظ¹ط¸â€ ط·آ¬ ط·ع¾ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸ظ¹", "adm:ping")],
+    [Markup.button.callback(status === "on" ? "ظ‹ع؛ع؛آ¢ ط·آ§ط¸â€‍ط·آ¨ط¸ث†ط·ع¾: ط·آ´ط·ط›ط·آ§ط¸â€‍" : "ظ‹ع؛â€‌آ´ ط·آ§ط¸â€‍ط·آ¨ط¸ث†ط·ع¾: ط¸â€¦ط·ع¾ط¸ث†ط¸â€ڑط¸ظ¾", "adm:toggleStatus")],
+    [Markup.button.callback("ظ‹ع؛ع‘ع¾ ط·ع¾ط·آ³ط·آ¬ط¸ظ¹ط¸â€‍ ط·آ®ط·آ±ط¸ث†ط·آ¬", "adm:logout"), Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")],
   ];
-  await sendOrEdit(ctx, `ًں‘‘ ظ„ظˆط­ط© ط§ظ„ط¥ط¯ط§ط±ط©${isSA ? " (ظ…ط¯ظٹط± ط£ط¹ظ„ظ‰)" : ""}`, Markup.inlineKeyboard(rows));
+  await sendOrEdit(ctx, `ظ‹ع؛â€کâ€ک ط¸â€‍ط¸ث†ط·آ­ط·آ© ط·آ§ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ©${isSA ? " (ط¸â€¦ط·آ¯ط¸ظ¹ط·آ± ط·آ£ط·آ¹ط¸â€‍ط¸â€°)" : ""}`, Markup.inlineKeyboard(rows));
 }
 
 async function showSettingsMenu(ctx) {
@@ -2208,17 +2263,17 @@ async function showSettingsMenu(ctx) {
   const u = await getUser(ctx.from.id);
   const isSA = !!u?.is_super_admin;
   const rows = [
-    [Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ…", "adm:setMarkup")],
-    [Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط±ط¨ط­ ط§ظ„ط³ظˆط´ظ„", "adm:setSocialMarkup")],
-    [Markup.button.callback("ًں’± طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طµط±ظپ", "adm:setRate")],
-    [Markup.button.callback("ًں”‘ طھط؛ظٹظٹط± ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±", "adm:newPass")],
-    [Markup.button.callback("ًں”ک طھط¹ط¯ظٹظ„ ط£ط²ط±ط§ط± ط§ظ„طھظ†ظ‚ظ„", "adm:btnLabels")],
+    [Markup.button.callback("أ¢إ“عˆأ¯آ¸عˆ ط·ع¾ط·آ¹ط·آ¯ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط·آ±ط·آ¨ط·آ­ ط·آ§ط¸â€‍ط·آ¹ط·آ§ط¸â€¦", "adm:setMarkup")],
+    [Markup.button.callback("أ¢إ“عˆأ¯آ¸عˆ ط·ع¾ط·آ¹ط·آ¯ط¸ظ¹ط¸â€‍ ط·آ±ط·آ¨ط·آ­ ط·آ§ط¸â€‍ط·آ³ط¸ث†ط·آ´ط¸â€‍", "adm:setSocialMarkup")],
+    [Markup.button.callback("ظ‹ع؛â€™آ± ط·ع¾ط·آ¹ط·آ¯ط¸ظ¹ط¸â€‍ ط·آ³ط·آ¹ط·آ± ط·آ§ط¸â€‍ط·آµط·آ±ط¸ظ¾", "adm:setRate")],
+    [Markup.button.callback("ظ‹ع؛â€‌â€ک ط·ع¾ط·ط›ط¸ظ¹ط¸ظ¹ط·آ± ط¸ئ’ط¸â€‍ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ±", "adm:newPass")],
+    [Markup.button.callback("ظ‹ع؛â€‌ع© ط·ع¾ط·آ¹ط·آ¯ط¸ظ¹ط¸â€‍ ط·آ£ط·آ²ط·آ±ط·آ§ط·آ± ط·آ§ط¸â€‍ط·ع¾ط¸â€ ط¸â€ڑط¸â€‍", "adm:btnLabels")],
   ];
   if (isSA) {
-    rows.push([Markup.button.callback("ًں”گ طھط؛ظٹظٹط± ط£ظ…ط± ط§ظ„ط¯ط®ظˆظ„ ط§ظ„ط³ط±ظٹ", "adm:changeLoginCmd")]);
+    rows.push([Markup.button.callback("ظ‹ع؛â€‌ع¯ ط·ع¾ط·ط›ط¸ظ¹ط¸ظ¹ط·آ± ط·آ£ط¸â€¦ط·آ± ط·آ§ط¸â€‍ط·آ¯ط·آ®ط¸ث†ط¸â€‍ ط·آ§ط¸â€‍ط·آ³ط·آ±ط¸ظ¹", "adm:changeLoginCmd")]);
   }
-  rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
-  await sendOrEdit(ctx, `âڑ™ï¸ڈ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ\n\nط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ…: ${m}%\nط±ط¨ط­ ط§ظ„ط³ظˆط´ظ„: ${sm}%\nط³ط¹ط± ط§ظ„طµط±ظپ: ${r} ظ„.ط³/$\nط£ظ…ط± ط§ظ„ط¯ط®ظˆظ„: \`${loginCmd}\``,
+  rows.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "admin:menu")]);
+  await sendOrEdit(ctx, `أ¢ع‘â„¢أ¯آ¸عˆ ط·آ§ط¸â€‍ط·آ¥ط·آ¹ط·آ¯ط·آ§ط·آ¯ط·آ§ط·ع¾\n\nط·آ§ط¸â€‍ط·آ±ط·آ¨ط·آ­ ط·آ§ط¸â€‍ط·آ¹ط·آ§ط¸â€¦: ${m}%\nط·آ±ط·آ¨ط·آ­ ط·آ§ط¸â€‍ط·آ³ط¸ث†ط·آ´ط¸â€‍: ${sm}%\nط·آ³ط·آ¹ط·آ± ط·آ§ط¸â€‍ط·آµط·آ±ط¸ظ¾: ${r} ط¸â€‍.ط·آ³/$\nط·آ£ط¸â€¦ط·آ± ط·آ§ط¸â€‍ط·آ¯ط·آ®ط¸ث†ط¸â€‍: \`${loginCmd}\``,
     Markup.inlineKeyboard(rows));
 }
 
@@ -2226,12 +2281,12 @@ async function showApiSources(ctx) {
   if (!(await requireAdmin(ctx))) return;
   const sources = await listApiSources();
   const rows = sources.map(s => [
-    Markup.button.callback(`${s.active ? "ًںں¢" : "ًں”´"} ${s.name}${s.is_primary ? " â­گ" : ""}`.slice(0, 60), `adm:api:${s.id}`)
+    Markup.button.callback(`${s.active ? "ظ‹ع؛ع؛آ¢" : "ظ‹ع؛â€‌آ´"} ${s.name}${s.is_primary ? " أ¢آ­ع¯" : ""}`.slice(0, 60), `adm:api:${s.id}`)
   ]);
-  rows.push([Markup.button.callback("â‍• ط¥ط¶ط§ظپط© API ظ…ظ†طھط¬ط§طھ", "adm:apiAdd")]);
-  rows.push([Markup.button.callback("ًں”„ ظ…ط²ط§ظ…ظ†ط© ظƒظ„ ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ط¢ظ†", "adm:apiSyncAll")]);
-  rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
-  await sendOrEdit(ctx, "ًں”Œ APIs ط§ظ„ظ…ظ†طھط¬ط§طھ\n\nظٹطھظ… ط­ظپط¸ ط§ظ„ظ…ظ†طھط¬ط§طھ ظپظٹ ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ ظˆظ…ط²ط§ظ…ظ†طھظ‡ط§ طھظ„ظ‚ط§ط¦ظٹط§ظ‹.", Markup.inlineKeyboard(rows));
+  rows.push([Markup.button.callback("أ¢â€چâ€¢ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© API ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾", "adm:apiAdd")]);
+  rows.push([Markup.button.callback("ظ‹ع؛â€‌â€‍ ط¸â€¦ط·آ²ط·آ§ط¸â€¦ط¸â€ ط·آ© ط¸ئ’ط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط·آ¢ط¸â€ ", "adm:apiSyncAll")]);
+  rows.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "admin:menu")]);
+  await sendOrEdit(ctx, "ظ‹ع؛â€‌إ’ APIs ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾\n\nط¸ظ¹ط·ع¾ط¸â€¦ ط·آ­ط¸ظ¾ط·آ¸ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط¸ظ¾ط¸ظ¹ ط¸â€ڑط·آ§ط·آ¹ط·آ¯ط·آ© ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط¸ث†ط¸â€¦ط·آ²ط·آ§ط¸â€¦ط¸â€ ط·ع¾ط¸â€،ط·آ§ ط·ع¾ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸ظ¹ط·آ§ط¸â€¹.", Markup.inlineKeyboard(rows));
 }
 
 async function showDepList(ctx, page) {
@@ -2239,65 +2294,65 @@ async function showDepList(ctx, page) {
   const limit = 8; const offset = (page - 1) * limit;
   const res = await q("SELECT * FROM deposit_requests WHERE status='pending' ORDER BY created_at DESC LIMIT $1 OFFSET $2", [limit + 1, offset]);
   const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
-  if (!slice.length) { await sendOrEdit(ctx, "ًں“­ ظ„ط§ طھظˆط¬ط¯ ط·ظ„ط¨ط§طھ ط¥ظٹط¯ط§ط¹ ظ…ط¹ظ„ظ‚ط©.", Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]])); return; }
-  const kb = slice.map(d => [Markup.button.callback(`${d.method_name} â€¢ ${d.amount ? Number(d.amount).toFixed(2) + "$" : "â€”"} â€¢ UID:${d.user_id}`, `adm:depShow:${d.id}`)]);
+  if (!slice.length) { await sendOrEdit(ctx, "ظ‹ع؛â€œآ­ ط¸â€‍ط·آ§ ط·ع¾ط¸ث†ط·آ¬ط·آ¯ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ ط¸â€¦ط·آ¹ط¸â€‍ط¸â€ڑط·آ©.", Markup.inlineKeyboard([[Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "admin:menu")]])); return; }
+  const kb = slice.map(d => [Markup.button.callback(`${d.method_name} أ¢â‚¬آ¢ ${d.amount ? Number(d.amount).toFixed(2) + "$" : "أ¢â‚¬â€‌"} أ¢â‚¬آ¢ UID:${d.user_id}`, `adm:depShow:${d.id}`)]);
   const nav = [];
-  if (page > 1) nav.push(Markup.button.callback("â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚", `adm:depList:${page - 1}`));
-  if (hasNext) nav.push(Markup.button.callback("ط§ظ„طھط§ظ„ظٹ â‍،ï¸ڈ", `adm:depList:${page + 1}`));
+  if (page > 1) nav.push(Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ§ط¸â€‍ط·آ³ط·آ§ط·آ¨ط¸â€ڑ", `adm:depList:${page - 1}`));
+  if (hasNext) nav.push(Markup.button.callback("ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹ أ¢â€چطŒأ¯آ¸عˆ", `adm:depList:${page + 1}`));
   if (nav.length) kb.push(nav);
-  kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
-  await sendOrEdit(ctx, "ًں“¥ ط·ظ„ط¨ط§طھ ط§ظ„ط¥ظٹط¯ط§ط¹ ط§ظ„ظ…ط¹ظ„ظ‚ط©:", Markup.inlineKeyboard(kb));
+  kb.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "admin:menu")]);
+  await sendOrEdit(ctx, "ظ‹ع؛â€œآ¥ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ ط·آ§ط¸â€‍ط¸â€¦ط·آ¹ط¸â€‍ط¸â€ڑط·آ©:", Markup.inlineKeyboard(kb));
 }
 
 async function showDepDetails(ctx, depId) {
   if (!(await requireAdmin(ctx))) return;
   const res = await q("SELECT * FROM deposit_requests WHERE id=$1", [depId]);
-  const d = res.rows[0]; if (!d) { await ctx.reply("âڑ ï¸ڈ ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
+  const d = res.rows[0]; if (!d) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯."); return; }
   const u = await getUser(d.user_id);
-  const text = `ًں“¥ ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹\nط§ظ„ط­ط§ظ„ط©: ${d.status}\nط§ظ„ط·ط±ظٹظ‚ط©: ${d.method_name}\nط§ظ„ظ…ط³طھط®ط¯ظ…: ${u?.first_name ?? ""} ${u?.username ? "@" + u.username : ""} (${d.user_id})\nط±طµظٹط¯ ط§ظ„ظ…ط³طھط®ط¯ظ…: ${u ? Number(u.balance).toFixed(2) : "0.00"}$\nط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„ظ…ظڈط­ظˆظژظ‘ظ„: ${d.amount ? Number(d.amount).toFixed(2) + "$" : "â€”"}`;
-  const balanceRow = [Markup.button.callback("â‍• ط´ط­ظ† ط±طµظٹط¯", `adm:userAdd:${d.user_id}`), Markup.button.callback("â‍– ط®طµظ… ط±طµظٹط¯", `adm:userSub:${d.user_id}`)];
+  const text = `ظ‹ع؛â€œآ¥ ط·آ·ط¸â€‍ط·آ¨ ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹\nط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط·آ©: ${d.status}\nط·آ§ط¸â€‍ط·آ·ط·آ±ط¸ظ¹ط¸â€ڑط·آ©: ${d.method_name}\nط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦: ${u?.first_name ?? ""} ${u?.username ? "@" + u.username : ""} (${d.user_id})\nط·آ±ط·آµط¸ظ¹ط·آ¯ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦: ${u ? Number(u.balance).toFixed(2) : "0.00"}$\nط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط·آ§ط¸â€‍ط¸â€¦ط¸عˆط·آ­ط¸ث†ط¸عکط¸â€کط¸â€‍: ${d.amount ? Number(d.amount).toFixed(2) + "$" : "أ¢â‚¬â€‌"}`;
+  const balanceRow = [Markup.button.callback("أ¢â€چâ€¢ ط·آ´ط·آ­ط¸â€  ط·آ±ط·آµط¸ظ¹ط·آ¯", `adm:userAdd:${d.user_id}`), Markup.button.callback("أ¢â€چâ€“ ط·آ®ط·آµط¸â€¦ ط·آ±ط·آµط¸ظ¹ط·آ¯", `adm:userSub:${d.user_id}`)];
   const kb = d.status === "pending"
-    ? Markup.inlineKeyboard([[Markup.button.callback("âœ… ظ…ظˆط§ظپظ‚ط©", `adm:dep:approve:${d.id}`), Markup.button.callback("â‌Œ ط±ظپط¶", `adm:dep:reject:${d.id}`)], balanceRow, [Markup.button.callback("ًں‘¤ ظ…ظ„ظپ ط§ظ„ظ…ط³طھط®ط¯ظ…", `adm:user:${d.user_id}`)], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:depList:1")]])
-    : Markup.inlineKeyboard([balanceRow, [Markup.button.callback("ًں‘¤ ظ…ظ„ظپ ط§ظ„ظ…ط³طھط®ط¯ظ…", `adm:user:${d.user_id}`)], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:depList:1")]]);
+    ? Markup.inlineKeyboard([[Markup.button.callback("أ¢إ“â€¦ ط¸â€¦ط¸ث†ط·آ§ط¸ظ¾ط¸â€ڑط·آ©", `adm:dep:approve:${d.id}`), Markup.button.callback("أ¢â€Œإ’ ط·آ±ط¸ظ¾ط·آ¶", `adm:dep:reject:${d.id}`)], balanceRow, [Markup.button.callback("ظ‹ع؛â€کآ¤ ط¸â€¦ط¸â€‍ط¸ظ¾ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦", `adm:user:${d.user_id}`)], [Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "adm:depList:1")]])
+    : Markup.inlineKeyboard([balanceRow, [Markup.button.callback("ظ‹ع؛â€کآ¤ ط¸â€¦ط¸â€‍ط¸ظ¾ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦", `adm:user:${d.user_id}`)], [Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "adm:depList:1")]]);
   try { await ctx.replyWithPhoto(d.screenshot_file_id, { caption: text, ...kb }); }
-  catch { await ctx.reply(text + "\n\n(طھط¹ط°ظ‘ط± طھط­ظ…ظٹظ„ ط§ظ„طµظˆط±ط©)", kb); }
+  catch { await ctx.reply(text + "\n\n(ط·ع¾ط·آ¹ط·آ°ط¸â€کط·آ± ط·ع¾ط·آ­ط¸â€¦ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط·آµط¸ث†ط·آ±ط·آ©)", kb); }
 }
 
 async function approveDeposit(ctx, depId) {
   if (!(await requireAdmin(ctx))) return;
   setStep(ctx.from.id, { kind: "admin:depositApproveAmount", depositId: depId });
-  await ctx.reply(`ًں’µ ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط¨ط§ظ„ط¯ظˆظ„ط§ط± ظ„ط¥ط¶ط§ظپطھظ‡ ط¥ظ„ظ‰ ط±طµظٹط¯ ط§ظ„ظ…ط³طھط®ط¯ظ…:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "admin:menu")]]));
+  await ctx.reply(`ظ‹ع؛â€™آµ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط·آ¨ط·آ§ط¸â€‍ط·آ¯ط¸ث†ط¸â€‍ط·آ§ط·آ± ط¸â€‍ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·ع¾ط¸â€، ط·آ¥ط¸â€‍ط¸â€° ط·آ±ط·آµط¸ظ¹ط·آ¯ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦:`, Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "admin:menu")]]));
 }
 
 async function rejectDeposit(ctx, depId) {
   if (!(await requireAdmin(ctx))) return;
   const res = await q("UPDATE deposit_requests SET status='rejected', processed_by=$1, processed_at=NOW() WHERE id=$2 AND status='pending' RETURNING *", [ctx.from.id, depId]);
-  if (!res.rows.length) { await ctx.reply("âڑ ï¸ڈ طھظ…طھ ظ…ط¹ط§ظ„ط¬ط© ظ‡ط°ط§ ط§ظ„ط·ظ„ط¨ ظ…ط³ط¨ظ‚ط§ظ‹ ط¨ظˆط§ط³ط·ط© ظ…ط¯ظٹط± ط¢ط®ط±."); return; }
+  if (!res.rows.length) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·ع¾ط¸â€¦ط·ع¾ ط¸â€¦ط·آ¹ط·آ§ط¸â€‍ط·آ¬ط·آ© ط¸â€،ط·آ°ط·آ§ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸â€¦ط·آ³ط·آ¨ط¸â€ڑط·آ§ط¸â€¹ ط·آ¨ط¸ث†ط·آ§ط·آ³ط·آ·ط·آ© ط¸â€¦ط·آ¯ط¸ظ¹ط·آ± ط·آ¢ط·آ®ط·آ±."); return; }
   const d = res.rows[0];
-  await clearDepositForOtherAdmins(ctx.from.id, depId, `â‌Œ ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹ â€” طھظ… ط§ظ„ط±ظپط¶`);
-  await ctx.reply(`â‌Œ طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„ط¥ظٹط¯ط§ط¹.`);
-  // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
-  if (d) { try { await ctx.telegram.sendMessage(d.user_id, `â‌Œ طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„ط¥ظٹط¯ط§ط¹. ظ„ظ„ط§ط³طھظپط³ط§ط± ط±ط§ط³ظ„ @${ADMIN_USERNAME}.`); } catch { /* ignore */ } }
+  await clearDepositForOtherAdmins(ctx.from.id, depId, `أ¢â€Œإ’ ط·آ·ط¸â€‍ط·آ¨ ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ أ¢â‚¬â€‌ ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ±ط¸ظ¾ط·آ¶`);
+  await ctx.reply(`أ¢â€Œإ’ ط·ع¾ط¸â€¦ ط·آ±ط¸ظ¾ط·آ¶ ط·آ·ط¸â€‍ط·آ¨ ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹.`);
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط¸â€‍ط·آ§ ط¸â€ ط·آ¹ط·آ±ط·آ¶ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ أ¢â€‌â‚¬أ¢â€‌â‚¬
+  if (d) { try { await ctx.telegram.sendMessage(d.user_id, `أ¢â€Œإ’ ط·ع¾ط¸â€¦ ط·آ±ط¸ظ¾ط·آ¶ ط·آ·ط¸â€‍ط·آ¨ ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹. ط¸â€‍ط¸â€‍ط·آ§ط·آ³ط·ع¾ط¸ظ¾ط·آ³ط·آ§ط·آ± ط·آ±ط·آ§ط·آ³ط¸â€‍ @${ADMIN_USERNAME}.`); } catch { /* ignore */ } }
 }
 
 async function showUserCard(ctx, uid) {
   if (!(await requireAdmin(ctx))) return;
-  const u = await getUser(uid); if (!u) { await ctx.reply("âڑ ï¸ڈ ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
+  const u = await getUser(uid); if (!u) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯."); return; }
   const me = await getUser(ctx.from.id);
   const isMeSA = !!me?.is_super_admin;
   const statsRes = await q("SELECT COUNT(*)::int AS c, COALESCE(SUM(price_usd),0)::text AS s FROM orders WHERE user_id=$1", [uid]);
   const oc = statsRes.rows[0]?.c ?? 0; const sum = Number(statsRes.rows[0]?.s ?? 0);
-  const text = `ًں‘¤ ${u.first_name ?? "â€”"}${u.username ? " @" + u.username : ""}\nID: ${u.id}\nط§ظ„ط±طµظٹط¯: ${Number(u.balance).toFixed(2)}$\nط§ظ„ط­ط§ظ„ط©: ${u.status}\nط¥ط¯ط§ط±ظٹطں ${u.is_admin ? "ظ†ط¹ظ…" : "ظ„ط§"}${u.is_super_admin ? " (ط£ط¹ظ„ظ‰)" : ""}\nط¹ط¯ط¯ ط§ظ„ط·ظ„ط¨ط§طھ: ${oc} â€¢ ط¥ط¬ظ…ط§ظ„ظٹ: ${sum.toFixed(2)}$`;
+  const text = `ظ‹ع؛â€کآ¤ ${u.first_name ?? "أ¢â‚¬â€‌"}${u.username ? " @" + u.username : ""}\nID: ${u.id}\nط·آ§ط¸â€‍ط·آ±ط·آµط¸ظ¹ط·آ¯: ${Number(u.balance).toFixed(2)}$\nط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط·آ©: ${u.status}\nط·آ¥ط·آ¯ط·آ§ط·آ±ط¸ظ¹ط·ع؛ ${u.is_admin ? "ط¸â€ ط·آ¹ط¸â€¦" : "ط¸â€‍ط·آ§"}${u.is_super_admin ? " (ط·آ£ط·آ¹ط¸â€‍ط¸â€°)" : ""}\nط·آ¹ط·آ¯ط·آ¯ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾: ${oc} أ¢â‚¬آ¢ ط·آ¥ط·آ¬ط¸â€¦ط·آ§ط¸â€‍ط¸ظ¹: ${sum.toFixed(2)}$`;
   const kb = [
-    [Markup.button.callback("â‍• ط´ط­ظ† ط±طµظٹط¯", `adm:userAdd:${uid}`), Markup.button.callback("â‍– ط®طµظ… ط±طµظٹط¯", `adm:userSub:${uid}`)],
-    [Markup.button.callback(u.status === "banned" ? "âœ… ط±ظپط¹ ط§ظ„ط­ط¸ط±" : "ًںڑ« ط­ط¸ط±", `adm:userBan:${uid}`), Markup.button.callback(u.is_admin ? "ًں‘¤ ط¥ظ„ط؛ط§ط، ط¥ط¯ط§ط±ظٹ" : "ًں‘‘ ط¬ط¹ظ„ظ‡ ط¥ط¯ط§ط±ظٹ", `adm:userAdmin:${uid}`)],
-    [Markup.button.callback("ًں“¦ ط·ظ„ط¨ط§طھظ‡", `adm:userOrders:${uid}:1`), Markup.button.callback("% ط±ط¨ط­ ط®ط§طµ", `adm:userMarkup:${uid}`)],
-    [Markup.button.callback("ًں’¬ ظ…ط±ط§ط³ظ„ط© ط§ظ„ظ…ط³طھط®ط¯ظ… ط®ط§طµ", `adm:userMsg:${uid}`)],
+    [Markup.button.callback("أ¢â€چâ€¢ ط·آ´ط·آ­ط¸â€  ط·آ±ط·آµط¸ظ¹ط·آ¯", `adm:userAdd:${uid}`), Markup.button.callback("أ¢â€چâ€“ ط·آ®ط·آµط¸â€¦ ط·آ±ط·آµط¸ظ¹ط·آ¯", `adm:userSub:${uid}`)],
+    [Markup.button.callback(u.status === "banned" ? "أ¢إ“â€¦ ط·آ±ط¸ظ¾ط·آ¹ ط·آ§ط¸â€‍ط·آ­ط·آ¸ط·آ±" : "ظ‹ع؛ع‘آ« ط·آ­ط·آ¸ط·آ±", `adm:userBan:${uid}`), Markup.button.callback(u.is_admin ? "ظ‹ع؛â€کآ¤ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ ط·آ¥ط·آ¯ط·آ§ط·آ±ط¸ظ¹" : "ظ‹ع؛â€کâ€ک ط·آ¬ط·آ¹ط¸â€‍ط¸â€، ط·آ¥ط·آ¯ط·آ§ط·آ±ط¸ظ¹", `adm:userAdmin:${uid}`)],
+    [Markup.button.callback("ظ‹ع؛â€œآ¦ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ط¸â€،", `adm:userOrders:${uid}:1`), Markup.button.callback("% ط·آ±ط·آ¨ط·آ­ ط·آ®ط·آ§ط·آµ", `adm:userMarkup:${uid}`)],
+    [Markup.button.callback("ظ‹ع؛â€™آ¬ ط¸â€¦ط·آ±ط·آ§ط·آ³ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ط·آ®ط·آ§ط·آµ", `adm:userMsg:${uid}`)],
   ];
   if (isMeSA && uid !== ctx.from.id) {
-    kb.push([Markup.button.callback(u.is_super_admin ? "â¬‡ï¸ڈ ط¥ظ„ط؛ط§ط، ط§ظ„ظ…ط¯ظٹط± ط§ظ„ط£ط¹ظ„ظ‰" : "ًںŒں ط¬ط¹ظ„ظ‡ ظ…ط¯ظٹط±ط§ظ‹ ط£ط¹ظ„ظ‰", `adm:userSA:${uid}`)]);
+    kb.push([Markup.button.callback(u.is_super_admin ? "أ¢آ¬â€،أ¯آ¸عˆ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ ط·آ§ط¸â€‍ط¸â€¦ط·آ¯ط¸ظ¹ط·آ± ط·آ§ط¸â€‍ط·آ£ط·آ¹ط¸â€‍ط¸â€°" : "ظ‹ع؛إ’ع؛ ط·آ¬ط·آ¹ط¸â€‍ط¸â€، ط¸â€¦ط·آ¯ط¸ظ¹ط·آ±ط·آ§ط¸â€¹ ط·آ£ط·آ¹ط¸â€‍ط¸â€°", `adm:userSA:${uid}`)]);
   }
-  kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:users:1")]);
+  kb.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "adm:users:1")]);
   await sendOrEdit(ctx, text, Markup.inlineKeyboard(kb));
 }
 
@@ -2333,20 +2388,20 @@ async function runPollingWithReconnect(bot, launchConfig, shouldStop) {
   while (!shouldStop()) {
     const startedAt = Date.now();
     try {
-      console.log("ًں”„ ط¨ط¯ط، ط§طھطµط§ظ„ Telegram polling...");
+      console.log("ظ‹ع؛â€‌â€‍ ط·آ¨ط·آ¯ط·طŒ ط·آ§ط·ع¾ط·آµط·آ§ط¸â€‍ Telegram polling...");
       await bot.launch(launchConfig);
       if (shouldStop()) break;
       const livedMs = Date.now() - startedAt;
       attempt = livedMs >= 60_000 ? 0 : attempt + 1;
-      console.error("âڑ ï¸ڈ ط§ظ†طھظ‡ظ‰ ط§طھطµط§ظ„ Telegram pollingطŒ ط³طھطھظ… ط¥ط¹ط§ط¯ط© ط§ظ„ظ…ط­ط§ظˆظ„ط©.");
+      console.error("أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€ ط·ع¾ط¸â€،ط¸â€° ط·آ§ط·ع¾ط·آµط·آ§ط¸â€‍ Telegram pollingط·إ’ ط·آ³ط·ع¾ط·ع¾ط¸â€¦ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ­ط·آ§ط¸ث†ط¸â€‍ط·آ©.");
     } catch (err) {
       if (shouldStop()) break;
       attempt += 1;
-      console.error(`âڑ ï¸ڈ طھط¹ط°ط± ط§طھطµط§ظ„ Telegram polling (ظ…ط­ط§ظˆظ„ط© ${attempt}):`, err?.message ?? err);
+      console.error(`أ¢ع‘ أ¯آ¸عˆ ط·ع¾ط·آ¹ط·آ°ط·آ± ط·آ§ط·ع¾ط·آµط·آ§ط¸â€‍ Telegram polling (ط¸â€¦ط·آ­ط·آ§ط¸ث†ط¸â€‍ط·آ© ${attempt}):`, err?.message ?? err);
     }
     if (shouldStop()) break;
     const delay = Math.min(POLLING_RETRY_MAX_MS, POLLING_RETRY_BASE_MS * (2 ** Math.min(attempt - 1, 4)));
-    console.log(`âڈ³ ط¥ط¹ط§ط¯ط© ط§طھطµط§ظ„ Telegram ط¨ط¹ط¯ ${Math.ceil(delay / 1000)} ط«ظˆط§ظ†ظچ...`);
+    console.log(`أ¢عˆآ³ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط·آ§ط·ع¾ط·آµط·آ§ط¸â€‍ Telegram ط·آ¨ط·آ¹ط·آ¯ ${Math.ceil(delay / 1000)} ط·آ«ط¸ث†ط·آ§ط¸â€ ط¸ع†...`);
     await waitMs(delay);
   }
 }
@@ -2356,22 +2411,22 @@ async function runPollingWithReconnect(bot, launchConfig, shouldStop) {
 // ============================================================
 async function startBot() {
   const token = process.env.BOT_TOKEN;
-  if (!token) { console.error("â‌Œ BOT_TOKEN is required"); process.exit(1); }
+  if (!token) { console.error("أ¢â€Œإ’ BOT_TOKEN is required"); process.exit(1); }
 
   await ensureTables();
   await ensureDefaults();
   await ensureDefaultDepositMethods();
   await ensurePrimaryApiSource();
-  // ظ„ط§ ظ†ظ†طھط¸ط± ظ…ط²ط§ظ…ظ†ط© API ط§ظ„ط·ظˆظٹظ„ط© ظ‚ط¨ظ„ طھط´ط؛ظٹظ„ ظ…ط¹ط§ظ„ط¬ط§طھ Telegram.
+  // ط¸â€‍ط·آ§ ط¸â€ ط¸â€ ط·ع¾ط·آ¸ط·آ± ط¸â€¦ط·آ²ط·آ§ط¸â€¦ط¸â€ ط·آ© API ط·آ§ط¸â€‍ط·آ·ط¸ث†ط¸ظ¹ط¸â€‍ط·آ© ط¸â€ڑط·آ¨ط¸â€‍ ط·ع¾ط·آ´ط·ط›ط¸ظ¹ط¸â€‍ ط¸â€¦ط·آ¹ط·آ§ط¸â€‍ط·آ¬ط·آ§ط·ع¾ Telegram.
 
   const bot = new Telegraf(token, { handlerTimeout: 90_000 });
   _botRef = bot;
-  // طھظˆط­ظٹط¯ ظƒظ„ ط§ظ„ظ†طµظˆطµ ط§ظ„ط®ط§ط±ط¬ط© ط¥ظ„ظ‰ Telegram ظ‚ط¨ظ„ ط§ظ„ط¥ط±ط³ط§ظ„طŒ ط¨ظ…ط§ ظپظٹظ‡ط§ ط§ظ„ط£ط²ط±ط§ط±
+  // ط·ع¾ط¸ث†ط·آ­ط¸ظ¹ط·آ¯ ط¸ئ’ط¸â€‍ ط·آ§ط¸â€‍ط¸â€ ط·آµط¸ث†ط·آµ ط·آ§ط¸â€‍ط·آ®ط·آ§ط·آ±ط·آ¬ط·آ© ط·آ¥ط¸â€‍ط¸â€° Telegram ط¸â€ڑط·آ¨ط¸â€‍ ط·آ§ط¸â€‍ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ط·إ’ ط·آ¨ط¸â€¦ط·آ§ ط¸ظ¾ط¸ظ¹ط¸â€،ط·آ§ ط·آ§ط¸â€‍ط·آ£ط·آ²ط·آ±ط·آ§ط·آ±
   const originalCallApi = bot.telegram.callApi.bind(bot.telegram);
   bot.telegram.callApi = (method, payload, ...rest) => {
-    // Telegraf ظٹط±ط³ظ„ getUpdates ظƒظ€ long polling ط¨ظ…ظ‡ظ„ط© 50 ط«ط§ظ†ظٹط©.
-    // ظ„ط§ ظ†ط¶ط¹ ط¹ظ„ظٹظ‡ Promise.race ط£ظˆ AbortController ط®ط§ط±ط¬ظٹط§ظ‹طŒ ظ„ط£ظ† ط£ظٹ ظ…ظ‡ظ„ط©
-    // ط¥ط¶ط§ظپظٹط© ظ‡ظ†ط§ ظ‚ط¯ طھظ‚ط·ط¹ ط§ظ„ط·ظ„ط¨ ظ‚ط¨ظ„ ط£ظ† طھظ†طھظ‡ظٹ ظ…ظ‡ظ„ط© Telegram ط§ظ„ط·ط¨ظٹط¹ظٹط©.
+    // Telegraf ط¸ظ¹ط·آ±ط·آ³ط¸â€‍ getUpdates ط¸ئ’ط¸â‚¬ long polling ط·آ¨ط¸â€¦ط¸â€،ط¸â€‍ط·آ© 50 ط·آ«ط·آ§ط¸â€ ط¸ظ¹ط·آ©.
+    // ط¸â€‍ط·آ§ ط¸â€ ط·آ¶ط·آ¹ ط·آ¹ط¸â€‍ط¸ظ¹ط¸â€، Promise.race ط·آ£ط¸ث† AbortController ط·آ®ط·آ§ط·آ±ط·آ¬ط¸ظ¹ط·آ§ط¸â€¹ط·إ’ ط¸â€‍ط·آ£ط¸â€  ط·آ£ط¸ظ¹ ط¸â€¦ط¸â€،ط¸â€‍ط·آ©
+    // ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط¸ظ¹ط·آ© ط¸â€،ط¸â€ ط·آ§ ط¸â€ڑط·آ¯ ط·ع¾ط¸â€ڑط·آ·ط·آ¹ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸â€ڑط·آ¨ط¸â€‍ ط·آ£ط¸â€  ط·ع¾ط¸â€ ط·ع¾ط¸â€،ط¸ظ¹ ط¸â€¦ط¸â€،ط¸â€‍ط·آ© Telegram ط·آ§ط¸â€‍ط·آ·ط·آ¨ط¸ظ¹ط·آ¹ط¸ظ¹ط·آ©.
     if (method === "getUpdates") {
       const normalizedPayload = normalizeTelegramPayload(payload);
       return originalCallApi(method, {
@@ -2400,7 +2455,7 @@ async function startBot() {
     ]).finally(() => clearTimeout(timer));
   };
 
-  // â”€â”€ Rate limiter + ط±ط¯ ظپظˆط±ظٹ ط¹ظ„ظ‰ callback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Rate limiter + ط·آ±ط·آ¯ ط¸ظ¾ط¸ث†ط·آ±ط¸ظ¹ ط·آ¹ط¸â€‍ط¸â€° callback أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   const _rateMap = new Map();
   setInterval(() => {
     const now = Date.now();
@@ -2411,14 +2466,14 @@ async function startBot() {
 
   bot.use((ctx, next) => {
     const uid = ctx.from?.id; if (!uid) return next();
-    // ط£ط²ط±ط§ط± Telegram ظ„ط§ طھظڈط­ط¬ط¨ ط¨ظ…ط­ط¯ط¯ ط§ظ„ط±ط³ط§ط¦ظ„ط› ط§ظ„ط¶ط؛ط· ط§ظ„ظ…طھطھط§ط¨ط¹ ظٹط¬ط¨ ط£ظ† ظٹطµظ„ ظ„ظ„ظ…ط¹ط§ظ„ط¬.
+    // ط·آ£ط·آ²ط·آ±ط·آ§ط·آ± Telegram ط¸â€‍ط·آ§ ط·ع¾ط¸عˆط·آ­ط·آ¬ط·آ¨ ط·آ¨ط¸â€¦ط·آ­ط·آ¯ط·آ¯ ط·آ§ط¸â€‍ط·آ±ط·آ³ط·آ§ط·آ¦ط¸â€‍ط·â€؛ ط·آ§ط¸â€‍ط·آ¶ط·ط›ط·آ· ط·آ§ط¸â€‍ط¸â€¦ط·ع¾ط·ع¾ط·آ§ط·آ¨ط·آ¹ ط¸ظ¹ط·آ¬ط·آ¨ ط·آ£ط¸â€  ط¸ظ¹ط·آµط¸â€‍ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ¹ط·آ§ط¸â€‍ط·آ¬.
     if (ctx.callbackQuery) {
       ctx.answerCbQuery().catch(() => {});
       return next();
     }
     const now = Date.now();
     const times = (_rateMap.get(uid) ?? []).filter(t => now - t < 3_000);
-    // ظ†ط­ط¯ ط§ظ„ط±ط³ط§ط¦ظ„ ط§ظ„ظ†طµظٹط© ط§ظ„ظ…ط²ط¹ط¬ط© ظپظ‚ط·طŒ ظˆظ„ط§ ظ†ط³ظ‚ط· ط¶ط؛ط·ط§طھ ط§ظ„ط£ط²ط±ط§ط± ط§ظ„ط·ط¨ظٹط¹ظٹط©.
+    // ط¸â€ ط·آ­ط·آ¯ ط·آ§ط¸â€‍ط·آ±ط·آ³ط·آ§ط·آ¦ط¸â€‍ ط·آ§ط¸â€‍ط¸â€ ط·آµط¸ظ¹ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ²ط·آ¹ط·آ¬ط·آ© ط¸ظ¾ط¸â€ڑط·آ·ط·إ’ ط¸ث†ط¸â€‍ط·آ§ ط¸â€ ط·آ³ط¸â€ڑط·آ· ط·آ¶ط·ط›ط·آ·ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط·آ£ط·آ²ط·آ±ط·آ§ط·آ± ط·آ§ط¸â€‍ط·آ·ط·آ¨ط¸ظ¹ط·آ¹ط¸ظ¹ط·آ©.
     if (times.length >= 30) {
       return;
     }
@@ -2426,7 +2481,7 @@ async function startBot() {
     return next();
   });
 
-  // â”€â”€ Commands â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Commands أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.start(async ctx => {
     const txt = ctx.message?.text ?? "";
     setStep(ctx.from.id, { kind: "idle" });
@@ -2435,14 +2490,14 @@ async function startBot() {
       const loginCmd = await getAdminLoginCommand();
       if (startParam === loginCmd) {
         setStep(ctx.from.id, { kind: "admin:login" });
-        await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±:");
+        await ctx.reply("ظ‹ع؛â€‌â€ک ط·آ£ط·آ±ط·آ³ط¸â€‍ ط¸ئ’ط¸â€‍ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ±:");
         return;
       }
     }
     await showMainMenu(ctx);
   });
   bot.command("menu", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
-  bot.command("balance", async ctx => { const u = await ensureUser(ctx); if (!u) return; await ctx.reply(`ًں’° ط±طµظٹط¯ظƒ: ${formatBalance(Number(u.balance), await getExchangeRate())}`); });
+  bot.command("balance", async ctx => { const u = await ensureUser(ctx); if (!u) return; await ctx.reply(`ظ‹ع؛â€™آ° ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ئ’: ${formatBalance(Number(u.balance), await getExchangeRate())}`); });
   bot.command("deposit", async ctx => { await ensureUser(ctx); setStep(ctx.from.id, { kind: "idle" }); await showDepositMenu(ctx); });
   bot.command("orders", async ctx => { await ensureUser(ctx); await showMyOrders(ctx, 1); });
   bot.command("support", async ctx => { await ensureUser(ctx); await showContactLinks(ctx); });
@@ -2450,35 +2505,35 @@ async function startBot() {
   bot.command("admin", async ctx => {
     const user = await ensureUser(ctx);
     if (!user?.is_admin) {
-      await ctx.reply("â›” ظ‡ط°ط§ ط§ظ„ط£ظ…ط± ظ„ظ„ط¥ط¯ط§ط±ط© ظپظ‚ط·.");
+      await ctx.reply("أ¢â€؛â€‌ ط¸â€،ط·آ°ط·آ§ ط·آ§ط¸â€‍ط·آ£ط¸â€¦ط·آ± ط¸â€‍ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ© ط¸ظ¾ط¸â€ڑط·آ·.");
       return;
     }
     const sessionActive = await isAdminSessionActive(ctx.from.id);
     if (!sessionActive && !authedAdminIds.has(ctx.from.id)) {
       setStep(ctx.from.id, { kind: "admin:login" });
-      await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±:");
+      await ctx.reply("ظ‹ع؛â€‌â€ک ط·آ£ط·آ±ط·آ³ط¸â€‍ ط¸ئ’ط¸â€‍ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ±:");
       return;
     }
     await showAdminMenu(ctx);
   });
 
-  // â”€â”€ Callback Queries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Callback Queries أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action("home", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
   bot.action("balance", async ctx => {
     const u = await ensureUser(ctx); if (!u) return;
     const rate = await getExchangeRate();
-    await sendOrEdit(ctx, `ًں’° ط±طµظٹط¯ظƒ: ${formatBalance(Number(u.balance), rate)}`, Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
+    await sendOrEdit(ctx, `ظ‹ع؛â€™آ° ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ئ’: ${formatBalance(Number(u.balance), rate)}`, Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]]));
   });
   bot.action("deposit", async ctx => { await ensureUser(ctx); await showDepositMenu(ctx); });
   bot.action("support", async ctx => { await ensureUser(ctx); await showContactLinks(ctx); });
   bot.action(/^myorders:(\d+)$/, async ctx => { await showMyOrders(ctx, Number(ctx.match[1])); });
-  bot.action("noop", async ctx => { /* ظ†ظ‚ط±ط© ط¹ظ„ظ‰ ط±ظ‚ظ… ط§ظ„طµظپط­ط© */ });
+  bot.action("noop", async ctx => { /* ط¸â€ ط¸â€ڑط·آ±ط·آ© ط·آ¹ط¸â€‍ط¸â€° ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط·آµط¸ظ¾ط·آ­ط·آ© */ });
 
-  // â”€â”€ Admin auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin auth أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action("admin:menu", async ctx => { await showAdminMenu(ctx); });
   bot.action("admin:loginPrompt", async ctx => {
     setStep(ctx.from.id, { kind: "admin:login" });
-    await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±:");
+    await ctx.reply("ظ‹ع؛â€‌â€ک ط·آ£ط·آ±ط·آ³ط¸â€‍ ط¸ئ’ط¸â€‍ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ±:");
   });
 
   bot.action("adm:logout", async ctx => {
@@ -2488,15 +2543,15 @@ async function startBot() {
     setStep(ctx.from.id, { kind: "idle" });
     const user = await getUser(ctx.from.id);
     const rate = await getExchangeRate();
-    const greeting = `ط£ظ‡ظ„ط§ظ‹ ظپظٹظƒ ظپظٹ ظ…طھط¬ط± ط§ظ„ظ…ط±ظˆط§ظ† ًںŒں\nط§ظ„ط§ط³ظ…: ${user?.first_name ?? "â€”"}${user?.username ? ` (@${user.username})` : ""}\nط§ظ„ط±ظ‚ظ…: ${ctx.from.id}\nط§ظ„ط±طµظٹط¯: ${formatBalance(Number(user?.balance ?? 0), rate)}\n\nطھظ… طھط³ط¬ظٹظ„ ط§ظ„ط®ط±ظˆط¬ ظ…ظ† ظ„ظˆط­ط© ط§ظ„ط¥ط¯ط§ط±ط© ًں‘‹\nط§ط®طھط± ظ…ظ† ط§ظ„ظ‚ط§ط¦ظ…ط© ًں‘‡`;
+    const greeting = `ط·آ£ط¸â€،ط¸â€‍ط·آ§ط¸â€¹ ط¸ظ¾ط¸ظ¹ط¸ئ’ ط¸ظ¾ط¸ظ¹ ط¸â€¦ط·ع¾ط·آ¬ط·آ± ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ§ط¸â€  ظ‹ع؛إ’ع؛\nط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦: ${user?.first_name ?? "أ¢â‚¬â€‌"}${user?.username ? ` (@${user.username})` : ""}\nط·آ§ط¸â€‍ط·آ±ط¸â€ڑط¸â€¦: ${ctx.from.id}\nط·آ§ط¸â€‍ط·آ±ط·آµط¸ظ¹ط·آ¯: ${formatBalance(Number(user?.balance ?? 0), rate)}\n\nط·ع¾ط¸â€¦ ط·ع¾ط·آ³ط·آ¬ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط·آ®ط·آ±ط¸ث†ط·آ¬ ط¸â€¦ط¸â€  ط¸â€‍ط¸ث†ط·آ­ط·آ© ط·آ§ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ© ظ‹ع؛â€کâ€¹\nط·آ§ط·آ®ط·ع¾ط·آ± ط¸â€¦ط¸â€  ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ظ‹ع؛â€کâ€،`;
     await sendOrEdit(ctx, greeting, mainMenu());
   });
 
-  // â”€â”€ Deposit flow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Deposit flow أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action(/^dep:method:(\d+)$/, async ctx => { await showDepositMethod(ctx, Number(ctx.match[1])); });
   bot.action("dep:cancel", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
 
-  // â”€â”€ Category / Product navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Category / Product navigation أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action(/^cat:(\d+):(\d+):(\d+)$/, async ctx => {
     await ensureUser(ctx);
     await showCategory(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3]));
@@ -2518,7 +2573,7 @@ async function startBot() {
     await showManualProduct(ctx, Number(ctx.match[1]), Number(ctx.match[2]));
   });
 
-  // â”€â”€ Buy flow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Buy flow أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action(/^buy:(\d+):(\d+)$/, async ctx => {
     await ensureUser(ctx);
     await startOrderFlow(ctx, Number(ctx.match[1]), Number(ctx.match[2]));
@@ -2536,38 +2591,38 @@ async function startBot() {
   bot.action("ord:cancel", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
   bot.action(/^ord:check:(\d+)$/, async ctx => { await checkOrderStatus(ctx, Number(ctx.match[1])); });
 
-  // â”€â”€ Manual product buy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Manual product buy أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action(/^mbuy:(\d+)$/, async ctx => {
     const mid = Number(ctx.match[1]);
     const m = (await q("SELECT * FROM manual_products WHERE id=$1 AND active=true", [mid])).rows[0];
-    if (!m) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…طھط§ط­."); return; }
+    if (!m) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·ع¾ط·آ§ط·آ­."); return; }
     const u = await getUser(ctx.from.id);
     const priceUsd = Number(m.price_usd);
-    if (!u || Number(u.balance) < priceUsd) { await ctx.reply("â‌Œ ط±طµظٹط¯ ط؛ظٹط± ظƒط§ظپظچ.", Markup.inlineKeyboard([[Markup.button.callback("ًں’³ ط´ط­ظ† ط±طµظٹط¯", "deposit")]])); return; }
+    if (!u || Number(u.balance) < priceUsd) { await ctx.reply("أ¢â€Œإ’ ط·آ±ط·آµط¸ظ¹ط·آ¯ ط·ط›ط¸ظ¹ط·آ± ط¸ئ’ط·آ§ط¸ظ¾ط¸ع†.", Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛â€™آ³ ط·آ´ط·آ­ط¸â€  ط·آ±ط·آµط¸ظ¹ط·آ¯", "deposit")]])); return; }
     setStep(ctx.from.id, { kind: "order:manualNote", productId: mid, priceUsd });
-    await ctx.reply(`ًں“‌ ط£ط±ط³ظ„ ظ…ظ„ط§ط­ط¸ط© ظ„ظ„ط·ظ„ط¨ ط£ظˆ ط§ظƒطھط¨ "skip":`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]]));
+    await ctx.reply(`ظ‹ع؛â€œâ€Œ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط¸â€¦ط¸â€‍ط·آ§ط·آ­ط·آ¸ط·آ© ط¸â€‍ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط·آ£ط¸ث† ط·آ§ط¸ئ’ط·ع¾ط·آ¨ "skip":`, Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "ord:cancel")]]));
   });
 
-  // â”€â”€ Admin: deposit management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: deposit management أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action(/^adm:depList:(\d+)$/, async ctx => { await showDepList(ctx, Number(ctx.match[1])); });
   bot.action(/^adm:depShow:(\d+)$/, async ctx => { await showDepDetails(ctx, Number(ctx.match[1])); });
   bot.action(/^adm:dep:approve:(\d+)$/, async ctx => { await approveDeposit(ctx, Number(ctx.match[1])); });
   bot.action(/^adm:dep:reject:(\d+)$/, async ctx => { await rejectDeposit(ctx, Number(ctx.match[1])); });
 
-  // â”€â”€ Admin: users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: users أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action(/^adm:users:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const page = Number(ctx.match[1]); const limit = 10; const offset = (page - 1) * limit;
     const users = await listUsers(offset, limit + 1);
     const hasNext = users.length > limit; const slice = users.slice(0, limit);
     const total = await countUsers();
-    const kb = slice.map(u => [Markup.button.callback(`${u.first_name ?? "â€”"}${u.username ? " @" + u.username : ""} â€¢ ${Number(u.balance).toFixed(2)}$${u.is_super_admin ? " ًںŒں" : u.is_admin ? " ًں‘‘" : ""}`, `adm:user:${u.id}`)]);
+    const kb = slice.map(u => [Markup.button.callback(`${u.first_name ?? "أ¢â‚¬â€‌"}${u.username ? " @" + u.username : ""} أ¢â‚¬آ¢ ${Number(u.balance).toFixed(2)}$${u.is_super_admin ? " ظ‹ع؛إ’ع؛" : u.is_admin ? " ظ‹ع؛â€کâ€ک" : ""}`, `adm:user:${u.id}`)]);
     const nav = [];
-    if (page > 1) nav.push(Markup.button.callback("â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚", `adm:users:${page - 1}`));
-    if (hasNext) nav.push(Markup.button.callback("ط§ظ„طھط§ظ„ظٹ â‍،ï¸ڈ", `adm:users:${page + 1}`));
+    if (page > 1) nav.push(Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ§ط¸â€‍ط·آ³ط·آ§ط·آ¨ط¸â€ڑ", `adm:users:${page - 1}`));
+    if (hasNext) nav.push(Markup.button.callback("ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹ أ¢â€چطŒأ¯آ¸عˆ", `adm:users:${page + 1}`));
     if (nav.length) kb.push(nav);
-    kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
-    await sendOrEdit(ctx, `ًں‘¥ ط§ظ„ظ…ط³طھط®ط¯ظ…ظˆظ† (${total}):`, Markup.inlineKeyboard(kb));
+    kb.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "admin:menu")]);
+    await sendOrEdit(ctx, `ظ‹ع؛â€کآ¥ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ط¸ث†ط¸â€  (${total}):`, Markup.inlineKeyboard(kb));
   });
   bot.action(/^adm:user:(\d+)$/, async ctx => { await showUserCard(ctx, Number(ctx.match[1])); });
   bot.action(/^adm:userBan:(\d+)$/, async ctx => {
@@ -2579,13 +2634,13 @@ async function startBot() {
       authedAdminIds.delete(uid);
       await setAdminSession(uid, false).catch(() => {});
     }
-    await ctx.reply(newStatus === "banned" ? "ًںڑ« طھظ… ط§ظ„ط­ط¸ط±." : "âœ… طھظ… ط±ظپط¹ ط§ظ„ط­ط¸ط±.");
+    await ctx.reply(newStatus === "banned" ? "ظ‹ع؛ع‘آ« ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ­ط·آ¸ط·آ±." : "أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ±ط¸ظ¾ط·آ¹ ط·آ§ط¸â€‍ط·آ­ط·آ¸ط·آ±.");
     await showUserCard(ctx, uid);
   });
   bot.action(/^adm:userAdmin:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const me = await getUser(ctx.from.id);
-    if (!me?.is_super_admin) { await ctx.reply("â›” ط§ظ„ظ…ط¯ظٹط± ط§ظ„ط£ط¹ظ„ظ‰ ظپظ‚ط· ظٹط³طھط·ظٹط¹ طھط¹ظٹظٹظ† ط§ظ„ظ…ط¯ظٹط±ظٹظ†."); return; }
+    if (!me?.is_super_admin) { await ctx.reply("أ¢â€؛â€‌ ط·آ§ط¸â€‍ط¸â€¦ط·آ¯ط¸ظ¹ط·آ± ط·آ§ط¸â€‍ط·آ£ط·آ¹ط¸â€‍ط¸â€° ط¸ظ¾ط¸â€ڑط·آ· ط¸ظ¹ط·آ³ط·ع¾ط·آ·ط¸ظ¹ط·آ¹ ط·ع¾ط·آ¹ط¸ظ¹ط¸ظ¹ط¸â€  ط·آ§ط¸â€‍ط¸â€¦ط·آ¯ط¸ظ¹ط·آ±ط¸ظ¹ط¸â€ ."); return; }
     const uid = Number(ctx.match[1]); const u = await getUser(uid);
     const newAdmin = !u?.is_admin;
     await setAdmin(uid, newAdmin, newAdmin ? false : undefined);
@@ -2593,7 +2648,7 @@ async function startBot() {
       authedAdminIds.delete(uid);
       await setAdminSession(uid, false).catch(() => {});
     }
-    await ctx.reply(newAdmin ? "ًں‘‘ طھظ… ط§ظ„طھط¹ظٹظٹظ† ط¥ط¯ط§ط±ظٹظ‹ط§." : "ًں‘¤ طھظ… ط¥ظ„ط؛ط§ط، ط§ظ„ط¥ط¯ط§ط±ظٹ.");
+    await ctx.reply(newAdmin ? "ظ‹ع؛â€کâ€ک ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·ع¾ط·آ¹ط¸ظ¹ط¸ظ¹ط¸â€  ط·آ¥ط·آ¯ط·آ§ط·آ±ط¸ظ¹ط¸â€¹ط·آ§." : "ظ‹ع؛â€کآ¤ ط·ع¾ط¸â€¦ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ ط·آ§ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط¸ظ¹.");
     await showUserCard(ctx, uid);
   });
   bot.action(/^adm:userSA:(\d+)$/, async ctx => {
@@ -2605,273 +2660,320 @@ async function startBot() {
       authedAdminIds.delete(uid);
       await setAdminSession(uid, false).catch(() => {});
     }
-    await ctx.reply(newSA ? "ًںŒں طھظ… طھط¹ظٹظٹظ†ظ‡ ظ…ط¯ظٹط±ط§ظ‹ ط£ط¹ظ„ظ‰." : "â¬‡ï¸ڈ طھظ… ط¥ظ„ط؛ط§ط، طµظ„ط§ط­ظٹط© ط§ظ„ظ…ط¯ظٹط± ط§ظ„ط£ط¹ظ„ظ‰.");
+    await ctx.reply(newSA ? "ظ‹ع؛إ’ع؛ ط·ع¾ط¸â€¦ ط·ع¾ط·آ¹ط¸ظ¹ط¸ظ¹ط¸â€ ط¸â€، ط¸â€¦ط·آ¯ط¸ظ¹ط·آ±ط·آ§ط¸â€¹ ط·آ£ط·آ¹ط¸â€‍ط¸â€°." : "أ¢آ¬â€،أ¯آ¸عˆ ط·ع¾ط¸â€¦ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ ط·آµط¸â€‍ط·آ§ط·آ­ط¸ظ¹ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ¯ط¸ظ¹ط·آ± ط·آ§ط¸â€‍ط·آ£ط·آ¹ط¸â€‍ط¸â€°.");
     await showUserCard(ctx, uid);
   });
-  bot.action(/^adm:userAdd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "add" }); await ctx.reply("ًں’µ ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط¨ط§ظ„ط¯ظˆظ„ط§ط± ظ„ظ„ط¥ط¶ط§ظپط©:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "admin:menu")]])); });
-  bot.action(/^adm:userSub:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "sub" }); await ctx.reply("ًں’µ ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط¨ط§ظ„ط¯ظˆظ„ط§ط± ظ„ظ„ط®طµظ…:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "admin:menu")]])); });
-  bot.action("adm:findUser", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:findUser" }); await ctx.reply("ًں”چ ط£ط±ط³ظ„ ط§ط³ظ… ط§ظ„ظ…ط³طھط®ط¯ظ… ط£ظˆ ID:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "admin:menu")]])); });
+  bot.action(/^adm:userAdd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "add" }); await ctx.reply("ظ‹ع؛â€™آµ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط·آ¨ط·آ§ط¸â€‍ط·آ¯ط¸ث†ط¸â€‍ط·آ§ط·آ± ط¸â€‍ط¸â€‍ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ©:", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "admin:menu")]])); });
+  bot.action(/^adm:userSub:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "sub" }); await ctx.reply("ظ‹ع؛â€™آµ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط·آ¨ط·آ§ط¸â€‍ط·آ¯ط¸ث†ط¸â€‍ط·آ§ط·آ± ط¸â€‍ط¸â€‍ط·آ®ط·آµط¸â€¦:", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "admin:menu")]])); });
+  bot.action("adm:findUser", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:findUser" }); await ctx.reply("ظ‹ع؛â€‌ع† ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ط·آ£ط¸ث† ID:", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "admin:menu")]])); });
   bot.action(/^adm:userOrders:(\d+):(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const uid = Number(ctx.match[1]); const page = Number(ctx.match[2]); const limit = 8; const offset = (page - 1) * limit;
     const res = await q("SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3", [uid, limit + 1, offset]);
     const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
-    if (!slice.length) { await sendOrEdit(ctx, "ًں“­ ظ„ط§ طھظˆط¬ط¯ ط·ظ„ط¨ط§طھ.", Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", `adm:user:${uid}`)]])); return; }
-    const lines = slice.map(r => `ًں›’ ${r.product_name} أ—${r.qty} â€¢ ${Number(r.price_usd).toFixed(2)}$ â€¢ ${statusLabel(r.status)}`);
-    const nav = []; if (page > 1) nav.push(Markup.button.callback("â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚", `adm:userOrders:${uid}:${page - 1}`)); if (hasNext) nav.push(Markup.button.callback("ط§ظ„طھط§ظ„ظٹ â‍،ï¸ڈ", `adm:userOrders:${uid}:${page + 1}`));
-    const kb = []; if (nav.length) kb.push(nav); kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", `adm:user:${uid}`)]);
-    await sendOrEdit(ctx, `ًں“¦ ط·ظ„ط¨ط§طھ ط§ظ„ظ…ط³طھط®ط¯ظ… ${uid}\n\n${lines.join("\n")}`, Markup.inlineKeyboard(kb));
+    if (!slice.length) { await sendOrEdit(ctx, "ظ‹ع؛â€œآ­ ط¸â€‍ط·آ§ ط·ع¾ط¸ث†ط·آ¬ط·آ¯ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾.", Markup.inlineKeyboard([[Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", `adm:user:${uid}`)]])); return; }
+    const lines = slice.map(r => `ظ‹ع؛â€؛â€™ ${r.product_name} ط£â€”${r.qty} أ¢â‚¬آ¢ ${Number(r.price_usd).toFixed(2)}$ أ¢â‚¬آ¢ ${statusLabel(r.status)}`);
+    const nav = []; if (page > 1) nav.push(Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ§ط¸â€‍ط·آ³ط·آ§ط·آ¨ط¸â€ڑ", `adm:userOrders:${uid}:${page - 1}`)); if (hasNext) nav.push(Markup.button.callback("ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹ أ¢â€چطŒأ¯آ¸عˆ", `adm:userOrders:${uid}:${page + 1}`));
+    const kb = []; if (nav.length) kb.push(nav); kb.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", `adm:user:${uid}`)]);
+    await sendOrEdit(ctx, `ظ‹ع؛â€œآ¦ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ${uid}\n\n${lines.join("\n")}`, Markup.inlineKeyboard(kb));
   });
-  bot.action(/^adm:userMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const uid = Number(ctx.match[1]); const u = await getUser(uid); setStep(ctx.from.id, { kind: "admin:setUserMarkup", userId: uid }); await ctx.reply(`% ظ†ط³ط¨ط© ط±ط¨ط­ ${u?.first_name ?? uid}\nط§ظ„ط­ط§ظ„ظٹط©: ${u?.custom_markup_percent ?? "ط؛ظٹط± ظ…ط­ط¯ط¯ط©"}\nط£ط±ط³ظ„ ط§ظ„ظ†ط³ط¨ط© ط£ظˆ reset:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `adm:user:${uid}`)]])); });
+  bot.action(/^adm:userMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const uid = Number(ctx.match[1]); const u = await getUser(uid); setStep(ctx.from.id, { kind: "admin:setUserMarkup", userId: uid }); await ctx.reply(`% ط¸â€ ط·آ³ط·آ¨ط·آ© ط·آ±ط·آ¨ط·آ­ ${u?.first_name ?? uid}\nط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ©: ${u?.custom_markup_percent ?? "ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ­ط·آ¯ط·آ¯ط·آ©"}\nط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط¸â€ ط·آ³ط·آ¨ط·آ© ط·آ£ط¸ث† reset:`, Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", `adm:user:${uid}`)]])); });
   bot.action(/^adm:userMsg:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const uid = Number(ctx.match[1]); const u = await getUser(uid);
-    if (!u) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ…ط³طھط®ط¯ظ… ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
+    if (!u) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯."); return; }
     setStep(ctx.from.id, { kind: "admin:userMessage", userId: uid });
-    await ctx.reply(`ًں’¬ ط£ط±ط³ظ„ ط§ظ„ط±ط³ط§ظ„ط© ط§ظ„ط®ط§طµط© ط¥ظ„ظ‰ ${u.first_name ?? uid}:\nط³طھطµظ„ ط¥ظ„ظٹظ‡ ظ…ظ† ط§ظ„ط¨ظˆطھ ظ…ط¨ط§ط´ط±ط©.`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `adm:user:${uid}`)]]));
+    await ctx.reply(`ظ‹ع؛â€™آ¬ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط·آ±ط·آ³ط·آ§ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·آ®ط·آ§ط·آµط·آ© ط·آ¥ط¸â€‍ط¸â€° ${u.first_name ?? uid}:\nط·آ³ط·ع¾ط·آµط¸â€‍ ط·آ¥ط¸â€‍ط¸ظ¹ط¸â€، ط¸â€¦ط¸â€  ط·آ§ط¸â€‍ط·آ¨ط¸ث†ط·ع¾ ط¸â€¦ط·آ¨ط·آ§ط·آ´ط·آ±ط·آ©.`, Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", `adm:user:${uid}`)]]));
   });
 
-  // â”€â”€ Admin: orders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: orders أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action(/^adm:allOrders:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const page = Number(ctx.match[1]); const limit = 8; const offset = (page - 1) * limit;
     const res = await q(`SELECT o.*, u.username AS uname, u.first_name AS ufirst FROM orders o LEFT JOIN users u ON u.id=o.user_id ORDER BY o.created_at DESC LIMIT $1 OFFSET $2`, [limit + 1, offset]);
     const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
-    if (!slice.length) { await sendOrEdit(ctx, "ًں“­ ظ„ط§ طھظˆط¬ط¯ ط·ظ„ط¨ط§طھ.", Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]])); return; }
-    const lines = slice.map(r => `${r.ufirst ?? "â€”"}${r.uname ? " @" + r.uname : ""}\n   ${r.product_name} أ—${r.qty} â€¢ ${Number(r.price_usd).toFixed(2)}$ â€¢ ${statusLabel(r.status)}`);
-    const nav = []; if (page > 1) nav.push(Markup.button.callback("â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚", `adm:allOrders:${page - 1}`)); if (hasNext) nav.push(Markup.button.callback("ط§ظ„طھط§ظ„ظٹ â‍،ï¸ڈ", `adm:allOrders:${page + 1}`));
-    const kb = []; if (nav.length) kb.push(nav); kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
-    await sendOrEdit(ctx, `ًں“¦ ظƒظ„ ط§ظ„ط·ظ„ط¨ط§طھ\n\n${lines.join("\n\n")}`, Markup.inlineKeyboard(kb));
+    if (!slice.length) { await sendOrEdit(ctx, "ظ‹ع؛â€œآ­ ط¸â€‍ط·آ§ ط·ع¾ط¸ث†ط·آ¬ط·آ¯ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾.", Markup.inlineKeyboard([[Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "admin:menu")]])); return; }
+    const lines = slice.map(r => `${r.ufirst ?? "أ¢â‚¬â€‌"}${r.uname ? " @" + r.uname : ""}\n   ${r.product_name} ط£â€”${r.qty} أ¢â‚¬آ¢ ${Number(r.price_usd).toFixed(2)}$ أ¢â‚¬آ¢ ${statusLabel(r.status)}`);
+    const nav = []; if (page > 1) nav.push(Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ§ط¸â€‍ط·آ³ط·آ§ط·آ¨ط¸â€ڑ", `adm:allOrders:${page - 1}`)); if (hasNext) nav.push(Markup.button.callback("ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹ أ¢â€چطŒأ¯آ¸عˆ", `adm:allOrders:${page + 1}`));
+    const kb = []; if (nav.length) kb.push(nav); kb.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "admin:menu")]);
+    await sendOrEdit(ctx, `ظ‹ع؛â€œآ¦ ط¸ئ’ط¸â€‍ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾\n\n${lines.join("\n\n")}`, Markup.inlineKeyboard(kb));
   });
 
-  // â”€â”€ Admin: broadcast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  bot.action("adm:broadcast", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:broadcast" }); await ctx.reply("ًں“£ ط£ط±ط³ظ„ ظ†طµ ط§ظ„ط±ط³ط§ظ„ط© ط§ظ„ط¬ظ…ط§ط¹ظٹط©:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "admin:menu")]])); });
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: broadcast أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
+  bot.action("adm:broadcast", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:broadcast" }); await ctx.reply("ظ‹ع؛â€œآ£ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط¸â€ ط·آµ ط·آ§ط¸â€‍ط·آ±ط·آ³ط·آ§ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·آ¬ط¸â€¦ط·آ§ط·آ¹ط¸ظ¹ط·آ©:", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "admin:menu")]])); });
 
-  // â”€â”€ Admin: deposit methods â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: deposit methods أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action("adm:methods", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const res = await q("SELECT * FROM deposit_methods ORDER BY id"); const rows = res.rows;
-    const kb = rows.map(m => [Markup.button.callback(`${m.active ? "ًںں¢" : "ًں”´"} ${m.name}`, `adm:methodEdit:${m.id}`)]);
-    kb.push([Markup.button.callback("â‍• ط¥ط¶ط§ظپط© ط·ط±ظٹظ‚ط©", "adm:methodAdd")]); kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
-    await sendOrEdit(ctx, "ًں’³ ط·ط±ظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹", Markup.inlineKeyboard(kb));
+    const kb = rows.map(m => [Markup.button.callback(`${m.active ? "ظ‹ع؛ع؛آ¢" : "ظ‹ع؛â€‌آ´"} ${m.name}`, `adm:methodEdit:${m.id}`)]);
+    kb.push([Markup.button.callback("أ¢â€چâ€¢ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط·آ·ط·آ±ط¸ظ¹ط¸â€ڑط·آ©", "adm:methodAdd")]); kb.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "admin:menu")]);
+    await sendOrEdit(ctx, "ظ‹ع؛â€™آ³ ط·آ·ط·آ±ط¸â€ڑ ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹", Markup.inlineKeyboard(kb));
   });
-  bot.action("adm:methodAdd", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addMethod:name" }); await ctx.reply("ًں’³ ط£ط±ط³ظ„ ط§ط³ظ… ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:methods")]])); });
+  bot.action("adm:methodAdd", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addMethod:name" }); await ctx.reply("ظ‹ع؛â€™آ³ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط·آ³ط¸â€¦ ط·آ·ط·آ±ط¸ظ¹ط¸â€ڑط·آ© ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹:", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "adm:methods")]])); });
   bot.action(/^adm:methodEdit:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const id = Number(ctx.match[1]); const res = await q("SELECT * FROM deposit_methods WHERE id=$1", [id]); const m = res.rows[0]; if (!m) return;
-    await sendOrEdit(ctx, `ًں’³ ${m.name}\nط§ظ„ظ…ط¹ط±ظپ: ${m.identifier}\nط§ظ„ط­ط§ظ„ط©: ${m.active ? "ظ…ظپط¹ظ‘ظ„" : "ظ…ظˆظ‚ظˆظپ"}\nًں–¼ طµظˆط±ط©: ${m.image_file_id ? "âœ… ظ…ظˆط¬ظˆط¯ط©" : "â‌Œ ظ„ط§ ظٹظˆط¬ط¯"}\n\n${m.instructions}`,
+    await sendOrEdit(ctx, `ظ‹ع؛â€™آ³ ${m.name}\nط·آ§ط¸â€‍ط¸â€¦ط·آ¹ط·آ±ط¸ظ¾: ${m.identifier}\nط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط·آ©: ${m.active ? "ط¸â€¦ط¸ظ¾ط·آ¹ط¸â€کط¸â€‍" : "ط¸â€¦ط¸ث†ط¸â€ڑط¸ث†ط¸ظ¾"}\nظ‹ع؛â€“آ¼ ط·آµط¸ث†ط·آ±ط·آ©: ${m.image_file_id ? "أ¢إ“â€¦ ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯ط·آ©" : "أ¢â€Œإ’ ط¸â€‍ط·آ§ ط¸ظ¹ط¸ث†ط·آ¬ط·آ¯"}\n\n${m.instructions}`,
       Markup.inlineKeyboard([
-        [Markup.button.callback(m.active ? "ًں”´ طھط¹ط·ظٹظ„" : "ًںں¢ طھظپط¹ظٹظ„", `adm:methodToggle:${id}`), Markup.button.callback("âœڈï¸ڈ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ", `adm:methodInstr:${id}`)],
-        [Markup.button.callback("ًں–¼ ط±ظپط¹/طھط؛ظٹظٹط± ط§ظ„طµظˆط±ط©", `adm:methodImg:${id}`), Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ ط§ظ„طµظˆط±ط©", `adm:methodImgDel:${id}`)],
-        [Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ ط§ظ„ط·ط±ظٹظ‚ط©", `adm:methodDel:${id}`)],
-        [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:methods")]
+        [Markup.button.callback(m.active ? "ظ‹ع؛â€‌آ´ ط·ع¾ط·آ¹ط·آ·ط¸ظ¹ط¸â€‍" : "ظ‹ع؛ع؛آ¢ ط·ع¾ط¸ظ¾ط·آ¹ط¸ظ¹ط¸â€‍", `adm:methodToggle:${id}`), Markup.button.callback("أ¢إ“عˆأ¯آ¸عˆ ط·آ§ط¸â€‍ط·ع¾ط·آ¹ط¸â€‍ط¸ظ¹ط¸â€¦ط·آ§ط·ع¾", `adm:methodInstr:${id}`)],
+        [Markup.button.callback("ظ‹ع؛â€“آ¼ ط·آ±ط¸ظ¾ط·آ¹/ط·ع¾ط·ط›ط¸ظ¹ط¸ظ¹ط·آ± ط·آ§ط¸â€‍ط·آµط¸ث†ط·آ±ط·آ©", `adm:methodImg:${id}`), Markup.button.callback("ظ‹ع؛â€”â€کأ¯آ¸عˆ ط·آ­ط·آ°ط¸ظ¾ ط·آ§ط¸â€‍ط·آµط¸ث†ط·آ±ط·آ©", `adm:methodImgDel:${id}`)],
+        [Markup.button.callback("ظ‹ع؛â€”â€کأ¯آ¸عˆ ط·آ­ط·آ°ط¸ظ¾ ط·آ§ط¸â€‍ط·آ·ط·آ±ط¸ظ¹ط¸â€ڑط·آ©", `adm:methodDel:${id}`)],
+        [Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "adm:methods")]
       ]));
   });
   bot.action(/^adm:methodToggle:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const id = Number(ctx.match[1]); const cur = (await q("SELECT active FROM deposit_methods WHERE id=$1", [id])).rows[0]; if (!cur) return; await q("UPDATE deposit_methods SET active=$1 WHERE id=$2", [!cur.active, id]); });
-  bot.action(/^adm:methodInstr:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editMethodInstructions", methodId: Number(ctx.match[1]) }); await ctx.reply("ًں“‹ ط£ط±ط³ظ„ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ ط§ظ„ط¬ط¯ظٹط¯ط©:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:methods")]])); });
-  bot.action(/^adm:methodDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM deposit_methods WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("ًں—‘ï¸ڈ طھظ… ط§ظ„ط­ط°ظپ."); });
+  bot.action(/^adm:methodInstr:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editMethodInstructions", methodId: Number(ctx.match[1]) }); await ctx.reply("ظ‹ع؛â€œâ€¹ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط·ع¾ط·آ¹ط¸â€‍ط¸ظ¹ط¸â€¦ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯ط·آ©:", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "adm:methods")]])); });
+  bot.action(/^adm:methodDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM deposit_methods WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("ظ‹ع؛â€”â€کأ¯آ¸عˆ ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ­ط·آ°ط¸ظ¾."); });
   bot.action(/^adm:methodImg:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     setStep(ctx.from.id, { kind: "admin:setMethodImage", methodId: Number(ctx.match[1]) });
-    await ctx.reply("ًں–¼ ط£ط±ط³ظ„ ط§ظ„طµظˆط±ط© ط§ظ„طھظٹ طھط±ظٹط¯ ط¥ط¶ط§ظپطھظ‡ط§:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:methods")]]));
+    await ctx.reply("ظ‹ع؛â€“آ¼ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط·آµط¸ث†ط·آ±ط·آ© ط·آ§ط¸â€‍ط·ع¾ط¸ظ¹ ط·ع¾ط·آ±ط¸ظ¹ط·آ¯ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·ع¾ط¸â€،ط·آ§:", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "adm:methods")]]));
   });
   bot.action(/^adm:methodImgDel:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     await q("UPDATE deposit_methods SET image_file_id=NULL WHERE id=$1", [Number(ctx.match[1])]);
-    await ctx.reply("âœ… طھظ… ط­ط°ظپ ط§ظ„طµظˆط±ط©.");
+    await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ­ط·آ°ط¸ظ¾ ط·آ§ط¸â€‍ط·آµط¸ث†ط·آ±ط·آ©.");
   });
 
-  // â”€â”€ Admin: product management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  bot.action(/^adm:editPrice:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editPrice", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`âœڈï¸ڈ ط³ط¹ط±: ${p?.name ?? pid}\nط£ط±ط³ظ„: \`%5\` ط±ط¨ط­ ط£ظˆ \`$2.5\` طھط«ط¨ظٹطھ ط£ظˆ \`reset\``, { parse_mode: "Markdown" }); });
-  bot.action(/^adm:editInstr:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editProductInstructions", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`ًں“‹ ط£ط±ط³ظ„ طھط¹ظ„ظٹظ…ط§طھ ${p?.name ?? pid} ط£ظˆ clear ظ„ظ„ظ…ط³ط­:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `prod:${pid}:0`)]])); });
-  bot.action(/^adm:renameProd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:renameProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`ًں“‌ ط§ظ„ط§ط³ظ… ط§ظ„ط¬ط¯ظٹط¯ ظ„ظ€ "${p?.name ?? pid}" ط£ظˆ reset:`); });
-  bot.action(/^adm:moveProd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:moveProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`ًںڑڑ ظ†ظ‚ظ„ "${p?.name ?? pid}"\nط£ط±ط³ظ„ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط£ظˆ reset:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `prod:${pid}:0`)]])); });
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: product management أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
+  bot.action(/^adm:editPrice:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editPrice", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`أ¢إ“عˆأ¯آ¸عˆ ط·آ³ط·آ¹ط·آ±: ${p?.name ?? pid}\nط·آ£ط·آ±ط·آ³ط¸â€‍: \`%5\` ط·آ±ط·آ¨ط·آ­ ط·آ£ط¸ث† \`$2.5\` ط·ع¾ط·آ«ط·آ¨ط¸ظ¹ط·ع¾ ط·آ£ط¸ث† \`reset\``, { parse_mode: "Markdown" }); });
+  bot.action(/^adm:editInstr:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editProductInstructions", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`ظ‹ع؛â€œâ€¹ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·ع¾ط·آ¹ط¸â€‍ط¸ظ¹ط¸â€¦ط·آ§ط·ع¾ ${p?.name ?? pid} ط·آ£ط¸ث† clear ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·آ­:`, Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", `prod:${pid}:0`)]])); });
+  bot.action(/^adm:renameProd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:renameProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`ظ‹ع؛â€œâ€Œ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯ ط¸â€‍ط¸â‚¬ "${p?.name ?? pid}" ط·آ£ط¸ث† reset:`); });
+  bot.action(/^adm:moveProd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:moveProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`ظ‹ع؛ع‘ع‘ ط¸â€ ط¸â€ڑط¸â€‍ "${p?.name ?? pid}"\nط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ£ط¸ث† reset:`, Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", `prod:${pid}:0`)]])); });
   bot.action(/^adm:hideProd:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const pid = Number(ctx.match[1]); const cur = (await q("SELECT hidden FROM product_overrides WHERE product_id=$1", [pid])).rows[0];
     const nextHidden = !(cur?.hidden ?? false);
     await q("INSERT INTO product_overrides(product_id,hidden) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET hidden=$2, updated_at=NOW()", [pid, nextHidden]);
-    invalidateCaches(); await ctx.reply(nextHidden ? "ًں™ˆ طھظ… ط¥ط®ظپط§ط، ط§ظ„ظ…ظ†طھط¬." : "ًں‘پ طھظ… ط¥ط¸ظ‡ط§ط± ط§ظ„ظ…ظ†طھط¬.");
+    invalidateCaches(); await ctx.reply(nextHidden ? "ظ‹ع؛â„¢ث† ط·ع¾ط¸â€¦ ط·آ¥ط·آ®ط¸ظ¾ط·آ§ط·طŒ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬." : "ظ‹ع؛â€کظ¾ ط·ع¾ط¸â€¦ ط·آ¥ط·آ¸ط¸â€،ط·آ§ط·آ± ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬.");
+  });
+  bot.action(/^adm:deleteProd:(\d+)$/, async ctx => {
+    if (!(await requireAdmin(ctx))) return;
+    const pid = Number(ctx.match[1]);
+    const product = (await q("SELECT name FROM cached_products WHERE id=$1", [pid])).rows[0];
+    if (!product) { await ctx.reply("â‌Œ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
+    await q(
+      `INSERT INTO product_overrides(product_id,product_name,deleted,hidden)
+       VALUES($1,$2,true,true)
+       ON CONFLICT(product_id) DO UPDATE SET deleted=true,hidden=true,updated_at=NOW()`,
+      [pid, product.name]
+    );
+    await q("UPDATE cached_products SET deleted=true,available=false,updated_at=NOW() WHERE id=$1", [pid]);
+    invalidateCaches();
+    await ctx.reply("âœ… طھظ… ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬ ظ†ظ‡ط§ط¦ظٹط§ظ‹ ظ…ظ† ط§ظ„ظƒطھط§ظ„ظˆط¬.");
+    await showMainMenu(ctx);
+  });
+  bot.action(/^adm:deleteProdAsk:(\d+)$/, async ctx => {
+    if (!(await requireAdmin(ctx))) return;
+    const pid = Number(ctx.match[1]);
+    await ctx.reply(
+      "âڑ ï¸ڈ ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬ ظ†ظ‡ط§ط¦ظٹ ظˆظ„ط§ ظٹط¹ظˆط¯ ط¹ظ†ط¯ ط§ظ„ظ…ط²ط§ظ…ظ†ط©. ظ‡ظ„ طھط±ظٹط¯ ط§ظ„ظ…طھط§ط¨ط¹ط©طں",
+      Markup.inlineKeyboard([[
+        Markup.button.callback("âœ… ظ†ط¹ظ…طŒ ط§ط­ط°ظپ", `adm:deleteProd:${pid}`),
+        Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `prod:${pid}:0`),
+      ]])
+    );
+  });
+  bot.action(/^adm:deleteManualProd:(\d+)$/, async ctx => {
+    if (!(await requireAdmin(ctx))) return;
+    const id = Number(ctx.match[1]);
+    const deleted = await q("DELETE FROM manual_products WHERE id=$1 RETURNING id", [id]);
+    if (!deleted.rows.length) { await ctx.reply("â‌Œ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
+    invalidateCaches();
+    await ctx.reply("âœ… طھظ… ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬ ظ†ظ‡ط§ط¦ظٹط§ظ‹.");
+    await showMainMenu(ctx);
+  });
+  bot.action(/^adm:deleteManualProdAsk:(\d+)$/, async ctx => {
+    if (!(await requireAdmin(ctx))) return;
+    const id = Number(ctx.match[1]);
+    await ctx.reply(
+      "âڑ ï¸ڈ ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬ ط§ظ„ظٹط¯ظˆظٹ ظ†ظ‡ط§ط¦ظٹ. ظ‡ظ„ طھط±ظٹط¯ ط§ظ„ظ…طھط§ط¨ط¹ط©طں",
+      Markup.inlineKeyboard([[
+        Markup.button.callback("âœ… ظ†ط¹ظ…طŒ ط§ط­ط°ظپ", `adm:deleteManualProd:${id}`),
+        Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `mprod:${id}:0`),
+      ]])
+    );
   });
 
-  // â”€â”€ Admin: category management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  bot.action(/^adm:catEdit:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editCategoryName", categoryId: Number(ctx.match[1]) }); await ctx.reply("âœڈï¸ڈ ط£ط±ط³ظ„ ط§ظ„ط§ط³ظ… ط§ظ„ط¬ط¯ظٹط¯ ظ„ظ„ظ‚ط³ظ… (ط£ظˆ reset):"); });
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: category management أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
+  bot.action(/^adm:catEdit:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editCategoryName", categoryId: Number(ctx.match[1]) }); await ctx.reply("أ¢إ“عˆأ¯آ¸عˆ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯ ط¸â€‍ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ (ط·آ£ط¸ث† reset):"); });
   bot.action(/^adm:catToggle:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const cid = Number(ctx.match[1]); const cur = (await q("SELECT hidden FROM category_overrides WHERE category_id=$1", [cid])).rows[0];
     const nextHidden = !(cur?.hidden ?? false);
     await q("INSERT INTO category_overrides(category_id,hidden) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET hidden=$2, updated_at=NOW()", [cid, nextHidden]);
-    invalidateCaches(); await ctx.reply(nextHidden ? "ًں™ˆ طھظ… ط¥ط®ظپط§ط، ط§ظ„ظ‚ط³ظ…." : "ًں‘پ طھظ… ط¥ط¸ظ‡ط§ط± ط§ظ„ظ‚ط³ظ….");
+    invalidateCaches(); await ctx.reply(nextHidden ? "ظ‹ع؛â„¢ث† ط·ع¾ط¸â€¦ ط·آ¥ط·آ®ط¸ظ¾ط·آ§ط·طŒ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦." : "ظ‹ع؛â€کظ¾ ط·ع¾ط¸â€¦ ط·آ¥ط·آ¸ط¸â€،ط·آ§ط·آ± ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦.");
   });
-  bot.action(/^adm:catMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); const cur = (await q("SELECT custom_markup_percent FROM category_overrides WHERE category_id=$1", [cid])).rows[0]; setStep(ctx.from.id, { kind: "admin:setCatMarkup", categoryId: cid }); await ctx.reply(`% ظ†ط³ط¨ط© ط±ط¨ط­ ط§ظ„ظ‚ط³ظ… ${cid}\nط§ظ„ط­ط§ظ„ظٹط©: ${cur?.custom_markup_percent ?? "ط؛ظٹط± ظ…ط­ط¯ط¯ط©"}\nط£ط±ط³ظ„ ط§ظ„ظ†ط³ط¨ط© ط£ظˆ reset:`); });
-  bot.action(/^adm:catSort:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); setStep(ctx.from.id, { kind: "admin:setCatSort", categoryId: cid }); await ctx.reply(`ًں”¢ طھط±طھظٹط¨ ط§ظ„ظ‚ط³ظ… ${cid}\nط£ط±ط³ظ„ ط±ظ‚ظ… ط§ظ„طھط±طھظٹط¨ ط£ظˆ reset:`); });
-  bot.action(/^adm:moveCatAll:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:moveCatAll", sourceCategoryId: Number(ctx.match[1]) }); await ctx.reply(`ًںڑڑ ظ†ظ‚ظ„ ط¬ظ…ظٹط¹ ظ…ظ†طھط¬ط§طھ ط§ظ„ظ‚ط³ظ…\nط£ط±ط³ظ„ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط§ظ„ظ‡ط¯ظپ ط£ظˆ cancel:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `cat:${ctx.match[1]}:1:0`)]])); });
+  bot.action(/^adm:catMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); const cur = (await q("SELECT custom_markup_percent FROM category_overrides WHERE category_id=$1", [cid])).rows[0]; setStep(ctx.from.id, { kind: "admin:setCatMarkup", categoryId: cid }); await ctx.reply(`% ط¸â€ ط·آ³ط·آ¨ط·آ© ط·آ±ط·آ¨ط·آ­ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ${cid}\nط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ©: ${cur?.custom_markup_percent ?? "ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ­ط·آ¯ط·آ¯ط·آ©"}\nط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط¸â€ ط·آ³ط·آ¨ط·آ© ط·آ£ط¸ث† reset:`); });
+  bot.action(/^adm:catSort:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); setStep(ctx.from.id, { kind: "admin:setCatSort", categoryId: cid }); await ctx.reply(`ظ‹ع؛â€‌آ¢ ط·ع¾ط·آ±ط·ع¾ط¸ظ¹ط·آ¨ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ${cid}\nط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط·ع¾ط·آ±ط·ع¾ط¸ظ¹ط·آ¨ ط·آ£ط¸ث† reset:`); });
+  bot.action(/^adm:moveCatAll:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:moveCatAll", sourceCategoryId: Number(ctx.match[1]) }); await ctx.reply(`ظ‹ع؛ع‘ع‘ ط¸â€ ط¸â€ڑط¸â€‍ ط·آ¬ط¸â€¦ط¸ظ¹ط·آ¹ ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦\nط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€،ط·آ¯ط¸ظ¾ ط·آ£ط¸ث† cancel:`, Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", `cat:${ctx.match[1]}:1:0`)]])); });
   bot.action(/^adm:moveCatToParent:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const cid = Number(ctx.match[1]);
     setStep(ctx.from.id, { kind: "admin:moveCatToParent", categoryId: cid });
-    await ctx.reply(`ًں“پ ظ†ظ‚ظ„ ط§ظ„ظ‚ط³ظ… ط¥ظ„ظ‰ ط¯ط§ط®ظ„ ظ‚ط³ظ… ط¢ط®ط±\nط£ط±ط³ظ„ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط§ظ„ظ‡ط¯ظپ ط£ظˆ "0" ظ„ظ„ط±ط¬ظˆط¹ ظ„ظ„ط¬ط°ط± ط£ظˆ "cancel" ظ„ظ„ط¥ظ„ط؛ط§ط،:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `cat:${cid}:1:0`)]]));
+    await ctx.reply(`ظ‹ع؛â€œظ¾ ط¸â€ ط¸â€ڑط¸â€‍ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ¥ط¸â€‍ط¸â€° ط·آ¯ط·آ§ط·آ®ط¸â€‍ ط¸â€ڑط·آ³ط¸â€¦ ط·آ¢ط·آ®ط·آ±\nط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€،ط·آ¯ط¸ظ¾ ط·آ£ط¸ث† "0" ط¸â€‍ط¸â€‍ط·آ±ط·آ¬ط¸ث†ط·آ¹ ط¸â€‍ط¸â€‍ط·آ¬ط·آ°ط·آ± ط·آ£ط¸ث† "cancel" ط¸â€‍ط¸â€‍ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ:`, Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", `cat:${cid}:1:0`)]]));
   });
 
-  // â”€â”€ Admin: settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: settings أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action("adm:settings", async ctx => { await showSettingsMenu(ctx); });
-  bot.action("adm:setMarkup", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setMarkup" }); await ctx.reply("âœڈï¸ڈ ط£ط±ط³ظ„ ظ†ط³ط¨ط© ط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ… (ظ…ط«ط§ظ„: 5):", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:settings")]])); });
-  bot.action("adm:setSocialMarkup", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setSocialMarkup" }); await ctx.reply("âœڈï¸ڈ ط£ط±ط³ظ„ ظ†ط³ط¨ط© ط±ط¨ط­ ط§ظ„ط³ظˆط´ظ„:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:settings")]])); });
-  bot.action("adm:setRate", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setRate" }); await ctx.reply("ًں’± ط£ط±ط³ظ„ ط³ط¹ط± ط§ظ„طµط±ظپ (ظ„.ط³/$):", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:settings")]])); });
-  bot.action("adm:newPass", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:newPassword" }); await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط§ظ„ط¬ط¯ظٹط¯ط© (4 ط£ط­ط±ظپ ط¹ظ„ظ‰ ط§ظ„ط£ظ‚ظ„):", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:settings")]])); });
+  bot.action("adm:setMarkup", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setMarkup" }); await ctx.reply("أ¢إ“عˆأ¯آ¸عˆ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط¸â€ ط·آ³ط·آ¨ط·آ© ط·آ§ط¸â€‍ط·آ±ط·آ¨ط·آ­ ط·آ§ط¸â€‍ط·آ¹ط·آ§ط¸â€¦ (ط¸â€¦ط·آ«ط·آ§ط¸â€‍: 5):", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "adm:settings")]])); });
+  bot.action("adm:setSocialMarkup", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setSocialMarkup" }); await ctx.reply("أ¢إ“عˆأ¯آ¸عˆ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط¸â€ ط·آ³ط·آ¨ط·آ© ط·آ±ط·آ¨ط·آ­ ط·آ§ط¸â€‍ط·آ³ط¸ث†ط·آ´ط¸â€‍:", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "adm:settings")]])); });
+  bot.action("adm:setRate", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setRate" }); await ctx.reply("ظ‹ع؛â€™آ± ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ³ط·آ¹ط·آ± ط·آ§ط¸â€‍ط·آµط·آ±ط¸ظ¾ (ط¸â€‍.ط·آ³/$):", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "adm:settings")]])); });
+  bot.action("adm:newPass", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:newPassword" }); await ctx.reply("ظ‹ع؛â€‌â€ک ط·آ£ط·آ±ط·آ³ط¸â€‍ ط¸ئ’ط¸â€‍ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ± ط·آ§ط¸â€‍ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯ط·آ© (4 ط·آ£ط·آ­ط·آ±ط¸ظ¾ ط·آ¹ط¸â€‍ط¸â€° ط·آ§ط¸â€‍ط·آ£ط¸â€ڑط¸â€‍):", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "adm:settings")]])); });
   bot.action("adm:changeLoginCmd", async ctx => {
     if (!(await requireSuperAdmin(ctx))) return;
     const cur = await getAdminLoginCommand();
     setStep(ctx.from.id, { kind: "admin:changeLoginCmd" });
-    await ctx.reply(`ًں”گ ط§ظ„ط£ظ…ط± ط§ظ„ط­ط§ظ„ظٹ: \`${cur}\`\nط£ط±ط³ظ„ ط§ظ„ط£ظ…ط± ط§ظ„ط¬ط¯ظٹط¯:`, { parse_mode: "Markdown" });
+    await ctx.reply(`ظ‹ع؛â€‌ع¯ ط·آ§ط¸â€‍ط·آ£ط¸â€¦ط·آ± ط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط¸ظ¹: \`${cur}\`\nط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط·آ£ط¸â€¦ط·آ± ط·آ§ط¸â€‍ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯:`, { parse_mode: "Markdown" });
   });
   bot.action("adm:toggleStatus", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const cur = await getBotStatus(); const next = cur === "on" ? "off" : "on";
     await setSetting("bot_status", next);
-    await ctx.reply(next === "on" ? "ًںں¢ ط§ظ„ط¨ظˆطھ ط§ظ„ط¢ظ† ط´ط؛ط§ظ„." : "ًں”´ ط§ظ„ط¨ظˆطھ ظ…طھظˆظ‚ظپ ط§ظ„ط¢ظ†.");
+    await ctx.reply(next === "on" ? "ظ‹ع؛ع؛آ¢ ط·آ§ط¸â€‍ط·آ¨ط¸ث†ط·ع¾ ط·آ§ط¸â€‍ط·آ¢ط¸â€  ط·آ´ط·ط›ط·آ§ط¸â€‍." : "ظ‹ع؛â€‌آ´ ط·آ§ط¸â€‍ط·آ¨ط¸ث†ط·ع¾ ط¸â€¦ط·ع¾ط¸ث†ط¸â€ڑط¸ظ¾ ط·آ§ط¸â€‍ط·آ¢ط¸â€ .");
     await showAdminMenu(ctx);
   });
 
-  // â”€â”€ Admin: product API sources â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: product API sources أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action("adm:apis", async ctx => { await showApiSources(ctx); });
   bot.action("adm:apiAdd", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     setStep(ctx.from.id, { kind: "admin:addApi:name" });
-    await ctx.reply("ًں”Œ ط£ط±ط³ظ„ ط§ط³ظ… ط§ظ„ظ€API ط§ظ„ط¬ط¯ظٹط¯:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:apis")]]));
+    await ctx.reply("ظ‹ع؛â€‌إ’ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â‚¬API ط·آ§ط¸â€‍ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯:", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "adm:apis")]]));
   });
   bot.action(/^adm:apiRename:(\d+)$/, async ctx => {
     if (!(await requireSuperAdmin(ctx))) return;
     const source = await getApiSource(Number(ctx.match[1]));
-    if (!source) { await ctx.reply("âڑ ï¸ڈ ظ…طµط¯ط± ط§ظ„ظ€API ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
+    if (!source) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط¸â€¦ط·آµط·آ¯ط·آ± ط·آ§ط¸â€‍ط¸â‚¬API ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯."); return; }
     setStep(ctx.from.id, { kind: "admin:renameApi", sourceId: source.id, oldName: source.name });
-    await ctx.reply(`âœڈï¸ڈ ط§ظ„ط§ط³ظ… ط§ظ„ط­ط§ظ„ظٹ: ${source.name}\nط£ط±ط³ظ„ ط§ظ„ط§ط³ظ… ط§ظ„ط¬ط¯ظٹط¯:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `adm:api:${source.id}`)]]));
+    await ctx.reply(`أ¢إ“عˆأ¯آ¸عˆ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط¸ظ¹: ${source.name}\nط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯:`, Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", `adm:api:${source.id}`)]]));
   });
   bot.action(/^adm:api:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const source = await getApiSource(Number(ctx.match[1]));
-    if (!source) { await ctx.reply("âڑ ï¸ڈ ظ…طµط¯ط± ط§ظ„ظ€API ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
-    const lastSync = source.last_sync_at ? new Date(source.last_sync_at).toLocaleString("ar") : "ظ„ظ… طھطھظ… ط§ظ„ظ…ط²ط§ظ…ظ†ط©";
-    const error = source.last_sync_error ? `\nâڑ ï¸ڈ ط¢ط®ط± ط®ط·ط£: ${source.last_sync_error}` : "";
+    if (!source) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط¸â€¦ط·آµط·آ¯ط·آ± ط·آ§ط¸â€‍ط¸â‚¬API ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯."); return; }
+    const lastSync = source.last_sync_at ? new Date(source.last_sync_at).toLocaleString("ar") : "ط¸â€‍ط¸â€¦ ط·ع¾ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط·آ²ط·آ§ط¸â€¦ط¸â€ ط·آ©";
+    const error = source.last_sync_error ? `\nأ¢ع‘ أ¯آ¸عˆ ط·آ¢ط·آ®ط·آ± ط·آ®ط·آ·ط·آ£: ${source.last_sync_error}` : "";
     const buttons = [];
     const me = await getUser(ctx.from.id);
     if (me?.is_super_admin) {
-      buttons.push([Markup.button.callback("âœڈï¸ڈ طھط؛ظٹظٹط± ط§ط³ظ… API", `adm:apiRename:${source.id}`)]);
+      buttons.push([Markup.button.callback("أ¢إ“عˆأ¯آ¸عˆ ط·ع¾ط·ط›ط¸ظ¹ط¸ظ¹ط·آ± ط·آ§ط·آ³ط¸â€¦ API", `adm:apiRename:${source.id}`)]);
     }
     if (!source.is_primary) {
-      buttons.push([Markup.button.callback(source.active ? "ًں”´ طھط¹ط·ظٹظ„" : "ًںں¢ طھظپط¹ظٹظ„", `adm:apiToggle:${source.id}`), Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ", `adm:apiDel:${source.id}`)]);
+      buttons.push([Markup.button.callback(source.active ? "ظ‹ع؛â€‌آ´ ط·ع¾ط·آ¹ط·آ·ط¸ظ¹ط¸â€‍" : "ظ‹ع؛ع؛آ¢ ط·ع¾ط¸ظ¾ط·آ¹ط¸ظ¹ط¸â€‍", `adm:apiToggle:${source.id}`), Markup.button.callback("ظ‹ع؛â€”â€کأ¯آ¸عˆ ط·آ­ط·آ°ط¸ظ¾", `adm:apiDel:${source.id}`)]);
     }
-    buttons.push([Markup.button.callback("ًں”„ ظ…ط²ط§ظ…ظ†ط© ط§ظ„ط¢ظ†", `adm:apiSync:${source.id}`)]);
-    buttons.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:apis")]);
+    buttons.push([Markup.button.callback("ظ‹ع؛â€‌â€‍ ط¸â€¦ط·آ²ط·آ§ط¸â€¦ط¸â€ ط·آ© ط·آ§ط¸â€‍ط·آ¢ط¸â€ ", `adm:apiSync:${source.id}`)]);
+    buttons.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "adm:apis")]);
     await sendOrEdit(ctx,
-      `ًں”Œ ${source.name}${source.is_primary ? " â­گ (ط§ظ„ط£ط³ط§ط³ظٹ)" : ""}\nط§ظ„ط±ط§ط¨ط·: ${source.base_url}\nط§ظ„ط­ط§ظ„ط©: ${source.active ? "ظ…ظپط¹ظ‘ظ„" : "ظ…ظˆظ‚ظˆظپ"}\nط¢ط®ط± ظ…ط²ط§ظ…ظ†ط©: ${lastSync}${error}`,
+      `ظ‹ع؛â€‌إ’ ${source.name}${source.is_primary ? " أ¢آ­ع¯ (ط·آ§ط¸â€‍ط·آ£ط·آ³ط·آ§ط·آ³ط¸ظ¹)" : ""}\nط·آ§ط¸â€‍ط·آ±ط·آ§ط·آ¨ط·آ·: ${source.base_url}\nط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط·آ©: ${source.active ? "ط¸â€¦ط¸ظ¾ط·آ¹ط¸â€کط¸â€‍" : "ط¸â€¦ط¸ث†ط¸â€ڑط¸ث†ط¸ظ¾"}\nط·آ¢ط·آ®ط·آ± ط¸â€¦ط·آ²ط·آ§ط¸â€¦ط¸â€ ط·آ©: ${lastSync}${error}`,
       Markup.inlineKeyboard(buttons));
   });
   bot.action(/^adm:apiToggle:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const id = Number(ctx.match[1]); const source = await getApiSource(id);
-    if (!source || source.is_primary) { await ctx.reply("âڑ ï¸ڈ ظ„ط§ ظٹظ…ظƒظ† طھط¹ط·ظٹظ„ ط§ظ„ظ€API ط§ظ„ط£ط³ط§ط³ظٹ."); return; }
+    if (!source || source.is_primary) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط¸â€‍ط·آ§ ط¸ظ¹ط¸â€¦ط¸ئ’ط¸â€  ط·ع¾ط·آ¹ط·آ·ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط¸â‚¬API ط·آ§ط¸â€‍ط·آ£ط·آ³ط·آ§ط·آ³ط¸ظ¹."); return; }
     await q("UPDATE api_sources SET active=$1,updated_at=NOW() WHERE id=$2", [!source.active, id]);
     invalidateCaches(); await showApiSources(ctx);
   });
   bot.action(/^adm:apiDel:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const id = Number(ctx.match[1]); const source = await getApiSource(id);
-    if (!source || source.is_primary) { await ctx.reply("âڑ ï¸ڈ ظ„ط§ ظٹظ…ظƒظ† ط­ط°ظپ ط§ظ„ظ€API ط§ظ„ط£ط³ط§ط³ظٹ."); return; }
+    if (!source || source.is_primary) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط¸â€‍ط·آ§ ط¸ظ¹ط¸â€¦ط¸ئ’ط¸â€  ط·آ­ط·آ°ط¸ظ¾ ط·آ§ط¸â€‍ط¸â‚¬API ط·آ§ط¸â€‍ط·آ£ط·آ³ط·آ§ط·آ³ط¸ظ¹."); return; }
     await q("DELETE FROM cached_products WHERE source_id=$1", [id]);
     await q("DELETE FROM api_sources WHERE id=$1", [id]);
-    invalidateCaches(); await ctx.reply("âœ… طھظ… ط­ط°ظپ API ظˆظ…ظ†طھط¬ط§طھظ‡ ظ…ظ† ط§ظ„ظƒطھط§ظ„ظˆط¬."); await showApiSources(ctx);
+    invalidateCaches(); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ­ط·آ°ط¸ظ¾ API ط¸ث†ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ط¸â€، ط¸â€¦ط¸â€  ط·آ§ط¸â€‍ط¸ئ’ط·ع¾ط·آ§ط¸â€‍ط¸ث†ط·آ¬."); await showApiSources(ctx);
   });
   bot.action(/^adm:apiSync:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const source = await getApiSource(Number(ctx.match[1]));
-    if (!source) { await ctx.reply("âڑ ï¸ڈ ظ…طµط¯ط± ط§ظ„ظ€API ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
+    if (!source) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط¸â€¦ط·آµط·آ¯ط·آ± ط·آ§ط¸â€‍ط¸â‚¬API ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯."); return; }
     try {
       const count = await syncApiSource(source);
       invalidateCaches();
-      await ctx.reply(`âœ… طھظ…طھ ظ…ط²ط§ظ…ظ†ط© ${count} ظ…ظ†طھط¬ ظ…ظ† ${source.name}.`);
+      await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ط·ع¾ ط¸â€¦ط·آ²ط·آ§ط¸â€¦ط¸â€ ط·آ© ${count} ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط¸â€¦ط¸â€  ${source.name}.`);
     } catch (err) {
       await q("UPDATE api_sources SET last_sync_error=$1 WHERE id=$2", [String(err?.message ?? err).slice(0, 500), source.id]).catch(() => {});
-      await ctx.reply("â‌Œ ظپط´ظ„طھ ط§ظ„ظ…ط²ط§ظ…ظ†ط©. طھط­ظ‚ظ‚ ظ…ظ† ط§ظ„ط±ط§ط¨ط· ظˆAPI token.");
+      await ctx.reply("أ¢â€Œإ’ ط¸ظ¾ط·آ´ط¸â€‍ط·ع¾ ط·آ§ط¸â€‍ط¸â€¦ط·آ²ط·آ§ط¸â€¦ط¸â€ ط·آ©. ط·ع¾ط·آ­ط¸â€ڑط¸â€ڑ ط¸â€¦ط¸â€  ط·آ§ط¸â€‍ط·آ±ط·آ§ط·آ¨ط·آ· ط¸ث†API token.");
     }
     await showApiSources(ctx);
   });
   bot.action("adm:apiSyncAll", async ctx => {
     if (!(await requireAdmin(ctx))) return;
-    await ctx.reply("âڈ³ ط¨ط¯ط£طھ ظ…ط²ط§ظ…ظ†ط© ط§ظ„ظ…ظ†طھط¬ط§طھ ط¨ط§ظ„ط®ظ„ظپظٹط©...");
+    await ctx.reply("أ¢عˆآ³ ط·آ¨ط·آ¯ط·آ£ط·ع¾ ط¸â€¦ط·آ²ط·آ§ط¸â€¦ط¸â€ ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ¨ط·آ§ط¸â€‍ط·آ®ط¸â€‍ط¸ظ¾ط¸ظ¹ط·آ©...");
     await syncAllApiSources();
-    await ctx.reply("âœ… ط§ظ†طھظ‡طھ ظ…ط²ط§ظ…ظ†ط© ظƒظ„ APIs.");
+    await ctx.reply("أ¢إ“â€¦ ط·آ§ط¸â€ ط·ع¾ط¸â€،ط·ع¾ ط¸â€¦ط·آ²ط·آ§ط¸â€¦ط¸â€ ط·آ© ط¸ئ’ط¸â€‍ APIs.");
     await showApiSources(ctx);
   });
 
-  // â”€â”€ Admin: ping â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: ping أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action("adm:ping", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const [enabled, target, interval] = await Promise.all([getSetting("auto_ping_enabled"), getSetting("auto_ping_target_user_id"), getSetting("auto_ping_interval_min")]);
-    await sendOrEdit(ctx, `ًں”„ ط§ظ„ط¨ظٹظ†ط¬ ط§ظ„طھظ„ظ‚ط§ط¦ظٹ\nط§ظ„ط­ط§ظ„ط©: ${enabled === "on" ? "âœ… ظ…ظپط¹ظ‘ظ„" : "â‌Œ ظ…ظˆظ‚ظˆظپ"}\nط§ظ„ظ…ط³طھظ‡ط¯ظپ: ${target || "ط؛ظٹط± ظ…ط­ط¯ط¯"}\nط§ظ„ظپط§طµظ„: ${interval} ط¯ظ‚ظٹظ‚ط©`,
-      Markup.inlineKeyboard([[Markup.button.callback(enabled === "on" ? "â‌Œ ط¥ظٹظ‚ط§ظپ" : "âœ… طھظپط¹ظٹظ„", "adm:pingToggle")], [Markup.button.callback("ًںژ¯ طھط¹ظٹظٹظ† ط§ظ„ظ…ط³طھظ‡ط¯ظپ", "adm:pingTarget")], [Markup.button.callback("âڈ± طھط¹ظٹظٹظ† ط§ظ„ظپط§طµظ„", "adm:pingInterval")], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]]));
+    await sendOrEdit(ctx, `ظ‹ع؛â€‌â€‍ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط¸â€ ط·آ¬ ط·آ§ط¸â€‍ط·ع¾ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸ظ¹\nط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط·آ©: ${enabled === "on" ? "أ¢إ“â€¦ ط¸â€¦ط¸ظ¾ط·آ¹ط¸â€کط¸â€‍" : "أ¢â€Œإ’ ط¸â€¦ط¸ث†ط¸â€ڑط¸ث†ط¸ظ¾"}\nط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط¸â€،ط·آ¯ط¸ظ¾: ${target || "ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط·آ­ط·آ¯ط·آ¯"}\nط·آ§ط¸â€‍ط¸ظ¾ط·آ§ط·آµط¸â€‍: ${interval} ط·آ¯ط¸â€ڑط¸ظ¹ط¸â€ڑط·آ©`,
+      Markup.inlineKeyboard([[Markup.button.callback(enabled === "on" ? "أ¢â€Œإ’ ط·آ¥ط¸ظ¹ط¸â€ڑط·آ§ط¸ظ¾" : "أ¢إ“â€¦ ط·ع¾ط¸ظ¾ط·آ¹ط¸ظ¹ط¸â€‍", "adm:pingToggle")], [Markup.button.callback("ظ‹ع؛عکآ¯ ط·ع¾ط·آ¹ط¸ظ¹ط¸ظ¹ط¸â€  ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط¸â€،ط·آ¯ط¸ظ¾", "adm:pingTarget")], [Markup.button.callback("أ¢عˆآ± ط·ع¾ط·آ¹ط¸ظ¹ط¸ظ¹ط¸â€  ط·آ§ط¸â€‍ط¸ظ¾ط·آ§ط·آµط¸â€‍", "adm:pingInterval")], [Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "admin:menu")]]));
   });
-  bot.action("adm:pingToggle", async ctx => { if (!(await requireAdmin(ctx))) return; const cur = await getSetting("auto_ping_enabled"); await setSetting("auto_ping_enabled", cur === "on" ? "off" : "on"); await ctx.reply(cur === "on" ? "â‌Œ طھظ… ط¥ظٹظ‚ط§ظپ ط§ظ„ط¨ظٹظ†ط¬." : "âœ… طھظ… طھظپط¹ظٹظ„ ط§ظ„ط¨ظٹظ†ط¬."); });
-  bot.action("adm:pingTarget", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:pingTarget" }); await ctx.reply("ًںژ¯ ط£ط±ط³ظ„ ID ط§ظ„ظ…ط³طھط®ط¯ظ… ط§ظ„ظ‡ط¯ظپ:"); });
-  bot.action("adm:pingInterval", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:pingInterval" }); await ctx.reply("âڈ± ط£ط±ط³ظ„ ط§ظ„ظپط§طµظ„ ط§ظ„ط²ظ…ظ†ظٹ ط¨ط§ظ„ط¯ظ‚ط§ط¦ظ‚:"); });
+  bot.action("adm:pingToggle", async ctx => { if (!(await requireAdmin(ctx))) return; const cur = await getSetting("auto_ping_enabled"); await setSetting("auto_ping_enabled", cur === "on" ? "off" : "on"); await ctx.reply(cur === "on" ? "أ¢â€Œإ’ ط·ع¾ط¸â€¦ ط·آ¥ط¸ظ¹ط¸â€ڑط·آ§ط¸ظ¾ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط¸â€ ط·آ¬." : "أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط¸ظ¾ط·آ¹ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط¸â€ ط·آ¬."); });
+  bot.action("adm:pingTarget", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:pingTarget" }); await ctx.reply("ظ‹ع؛عکآ¯ ط·آ£ط·آ±ط·آ³ط¸â€‍ ID ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ط·آ§ط¸â€‍ط¸â€،ط·آ¯ط¸ظ¾:"); });
+  bot.action("adm:pingInterval", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:pingInterval" }); await ctx.reply("أ¢عˆآ± ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط¸ظ¾ط·آ§ط·آµط¸â€‍ ط·آ§ط¸â€‍ط·آ²ط¸â€¦ط¸â€ ط¸ظ¹ ط·آ¨ط·آ§ط¸â€‍ط·آ¯ط¸â€ڑط·آ§ط·آ¦ط¸â€ڑ:"); });
 
-  // â”€â”€ Admin: contacts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: contacts أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action("adm:contacts", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const links = (await q("SELECT * FROM contact_links ORDER BY id")).rows;
-    const rows = links.map(l => [Markup.button.callback(`${l.active ? "ًںں¢" : "ًں”´"} ${l.name}`, `adm:contactEdit:${l.id}`)]);
-    rows.push([Markup.button.callback("â‍• ط¥ط¶ط§ظپط©", "adm:addContact")]); rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
-    await sendOrEdit(ctx, "ًں“‍ ظˆط³ط§ط¦ظ„ ط§ظ„طھظˆط§طµظ„:", Markup.inlineKeyboard(rows));
+    const rows = links.map(l => [Markup.button.callback(`${l.active ? "ظ‹ع؛ع؛آ¢" : "ظ‹ع؛â€‌آ´"} ${l.name}`, `adm:contactEdit:${l.id}`)]);
+    rows.push([Markup.button.callback("أ¢â€چâ€¢ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ©", "adm:addContact")]); rows.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "admin:menu")]);
+    await sendOrEdit(ctx, "ظ‹ع؛â€œâ€چ ط¸ث†ط·آ³ط·آ§ط·آ¦ط¸â€‍ ط·آ§ط¸â€‍ط·ع¾ط¸ث†ط·آ§ط·آµط¸â€‍:", Markup.inlineKeyboard(rows));
   });
-  bot.action("adm:addContact", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addContact:name" }); await ctx.reply("ًں“‍ ط£ط±ط³ظ„ ط§ط³ظ… ظˆط³ظٹظ„ط© ط§ظ„طھظˆط§طµظ„:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:contacts")]])); });
+  bot.action("adm:addContact", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addContact:name" }); await ctx.reply("ظ‹ع؛â€œâ€چ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط·آ³ط¸â€¦ ط¸ث†ط·آ³ط¸ظ¹ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·ع¾ط¸ث†ط·آ§ط·آµط¸â€‍:", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "adm:contacts")]])); });
   bot.action(/^adm:contactEdit:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const id = Number(ctx.match[1]); const l = (await q("SELECT * FROM contact_links WHERE id=$1", [id])).rows[0]; if (!l) return;
-    await sendOrEdit(ctx, `ًں“‍ ${l.name}\n${l.link}`,
-      Markup.inlineKeyboard([[Markup.button.callback(l.active ? "ًں”´ ط¥ط®ظپط§ط،" : "ًںں¢ ط¥ط¸ظ‡ط§ط±", `adm:contactToggle:${id}`), Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ", `adm:contactDel:${id}`)], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:contacts")]]));
+    await sendOrEdit(ctx, `ظ‹ع؛â€œâ€چ ${l.name}\n${l.link}`,
+      Markup.inlineKeyboard([[Markup.button.callback(l.active ? "ظ‹ع؛â€‌آ´ ط·آ¥ط·آ®ط¸ظ¾ط·آ§ط·طŒ" : "ظ‹ع؛ع؛آ¢ ط·آ¥ط·آ¸ط¸â€،ط·آ§ط·آ±", `adm:contactToggle:${id}`), Markup.button.callback("ظ‹ع؛â€”â€کأ¯آ¸عˆ ط·آ­ط·آ°ط¸ظ¾", `adm:contactDel:${id}`)], [Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "adm:contacts")]]));
   });
   bot.action(/^adm:contactToggle:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const id = Number(ctx.match[1]); const l = (await q("SELECT active FROM contact_links WHERE id=$1", [id])).rows[0]; if (!l) return; await q("UPDATE contact_links SET active=$1 WHERE id=$2", [!l.active, id]); });
-  bot.action(/^adm:contactDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM contact_links WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("ًں—‘ï¸ڈ طھظ… ط§ظ„ط­ط°ظپ."); });
+  bot.action(/^adm:contactDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM contact_links WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("ظ‹ع؛â€”â€کأ¯آ¸عˆ ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ­ط·آ°ط¸ظ¾."); });
 
-  // â”€â”€ Admin: manual product categories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: manual product categories أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action("adm:manualCats", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const cats = (await q("SELECT * FROM manual_categories WHERE parent_id=0 ORDER BY position,id")).rows;
     const rows = cats.map(c => [
-      Markup.button.callback(`${c.active ? "ًں“‚" : "ًں”’"} ${c.name}`, `mcat:${c.id}:1:0`)
+      Markup.button.callback(`${c.active ? "ظ‹ع؛â€œâ€ڑ" : "ظ‹ع؛â€‌â€™"} ${c.name}`, `mcat:${c.id}:1:0`)
     ]);
-    rows.push([Markup.button.callback("â‍• ط¥ط¶ط§ظپط© ظ‚ط³ظ… ظٹط¯ظˆظٹ", "adm:addManualCat:0")]);
-    rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:manualProds")]);
-    await sendOrEdit(ctx, "ًں§؛ ط£ظ‚ط³ط§ظ… ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ظٹط¯ظˆظٹط©:", Markup.inlineKeyboard(rows));
+    rows.push([Markup.button.callback("أ¢â€چâ€¢ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط¸â€ڑط·آ³ط¸â€¦ ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹", "adm:addManualCat:0")]);
+    rows.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "adm:manualProds")]);
+    await sendOrEdit(ctx, "ظ‹ع؛آ§ط› ط·آ£ط¸â€ڑط·آ³ط·آ§ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹ط·آ©:", Markup.inlineKeyboard(rows));
   });
   bot.action(/^adm:manualCats:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const parentId = Number(ctx.match[1]);
     const parent = (await q("SELECT name FROM manual_categories WHERE id=$1", [parentId])).rows[0];
     const cats = (await q("SELECT * FROM manual_categories WHERE parent_id=$1 ORDER BY position,id", [parentId])).rows;
-    const rows = cats.map(c => [Markup.button.callback(`${c.active ? "ًں“‚" : "ًں”’"} ${c.name}`, `mcat:${c.id}:1:${parentId}`)]);
-    rows.push([Markup.button.callback("â‍• ط¥ط¶ط§ظپط© ظ‚ط³ظ… ظپط±ط¹ظٹ", `adm:addManualCat:${parentId}`)]);
-    rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", `mcat:${parentId}:1:0`)]);
-    await sendOrEdit(ctx, `ًں“‚ ط£ظ‚ط³ط§ظ… ط¯ط§ط®ظ„ "${parent?.name ?? parentId}":`, Markup.inlineKeyboard(rows));
+    const rows = cats.map(c => [Markup.button.callback(`${c.active ? "ظ‹ع؛â€œâ€ڑ" : "ظ‹ع؛â€‌â€™"} ${c.name}`, `mcat:${c.id}:1:${parentId}`)]);
+    rows.push([Markup.button.callback("أ¢â€چâ€¢ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط¸â€ڑط·آ³ط¸â€¦ ط¸ظ¾ط·آ±ط·آ¹ط¸ظ¹", `adm:addManualCat:${parentId}`)]);
+    rows.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", `mcat:${parentId}:1:0`)]);
+    await sendOrEdit(ctx, `ظ‹ع؛â€œâ€ڑ ط·آ£ط¸â€ڑط·آ³ط·آ§ط¸â€¦ ط·آ¯ط·آ§ط·آ®ط¸â€‍ "${parent?.name ?? parentId}":`, Markup.inlineKeyboard(rows));
   });
   bot.action(/^adm:addManualCat:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     setStep(ctx.from.id, { kind: "admin:addManualCategory:name", parentId: Number(ctx.match[1]) });
-    await ctx.reply("ًں§؛ ط£ط±ط³ظ„ ط§ط³ظ… ظ‚ط³ظ… ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ظٹط¯ظˆظٹط©:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:manualCats")]]));
+    await ctx.reply("ظ‹ع؛آ§ط› ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط·آ³ط¸â€¦ ط¸â€ڑط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹ط·آ©:", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "adm:manualCats")]]));
   });
   bot.action(/^adm:mcatEdit:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     setStep(ctx.from.id, { kind: "admin:editManualCategoryName", categoryId: Number(ctx.match[1]) });
-    await ctx.reply("âœڈï¸ڈ ط£ط±ط³ظ„ ط§ظ„ط§ط³ظ… ط§ظ„ط¬ط¯ظٹط¯ ظ„ظ„ظ‚ط³ظ… ط§ظ„ظٹط¯ظˆظٹ:");
+    await ctx.reply("أ¢إ“عˆأ¯آ¸عˆ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯ ط¸â€‍ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹:");
   });
   bot.action(/^adm:mcatToggle:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const id = Number(ctx.match[1]);
     const cat = (await q("SELECT active FROM manual_categories WHERE id=$1", [id])).rows[0];
-    if (!cat) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ‚ط³ظ… ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
+    if (!cat) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯."); return; }
     await q("UPDATE manual_categories SET active=$1,updated_at=NOW() WHERE id=$2", [!cat.active, id]);
     invalidateCaches();
-    await ctx.reply(cat.active ? "ًں™ˆ طھظ… طھط¹ط·ظٹظ„ ط§ظ„ظ‚ط³ظ…." : "ًں‘پ طھظ… طھظپط¹ظٹظ„ ط§ظ„ظ‚ط³ظ….");
+    await ctx.reply(cat.active ? "ظ‹ع؛â„¢ث† ط·ع¾ط¸â€¦ ط·ع¾ط·آ¹ط·آ·ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦." : "ظ‹ع؛â€کظ¾ ط·ع¾ط¸â€¦ ط·ع¾ط¸ظ¾ط·آ¹ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦.");
     await showManualCategory(ctx, id, 1, 0);
   });
   bot.action(/^adm:mcatMoveAll:(\d+)$/, async ctx => {
@@ -2887,18 +2989,18 @@ async function startBot() {
       [ids]
     );
     invalidateCaches();
-    await ctx.reply(`âœ… طھظ… ط¥ط®ط±ط§ط¬ ${moved.rows.length} ظ…ظ†طھط¬ط§ظ‹ ظ…ظ† ط§ظ„ظ‚ط³ظ… ظˆط¬ط¹ظ„ظ‡ط§ ط¶ظ…ظ† ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©.`);
+    await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ¥ط·آ®ط·آ±ط·آ§ط·آ¬ ${moved.rows.length} ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط¸â€¹ ط¸â€¦ط¸â€  ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط¸ث†ط·آ¬ط·آ¹ط¸â€‍ط¸â€،ط·آ§ ط·آ¶ط¸â€¦ط¸â€  ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط·آ¹ط·آ§ط¸â€¦ط·آ©.`);
     await showManualCategory(ctx, rootId, 1, 0);
   });
   bot.action(/^adm:mcatDel:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const id = Number(ctx.match[1]);
     const cat = (await q("SELECT name FROM manual_categories WHERE id=$1", [id])).rows[0];
-    if (!cat) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ‚ط³ظ… ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
-    await sendOrEdit(ctx, `âڑ ï¸ڈ ط³ظٹطھظ… ط­ط°ظپ ط§ظ„ظ‚ط³ظ… "${cat.name}" ظˆظƒظ„ ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ظپط±ط¹ظٹط©.\nط³طھظڈظ†ظ‚ظ„ ط§ظ„ظ…ظ†طھط¬ط§طھ ط¥ظ„ظ‰ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©. ظ‡ظ„ طھطھط§ط¨ط¹طں`,
+    if (!cat) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯."); return; }
+    await sendOrEdit(ctx, `أ¢ع‘ أ¯آ¸عˆ ط·آ³ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ­ط·آ°ط¸ظ¾ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ "${cat.name}" ط¸ث†ط¸ئ’ط¸â€‍ ط·آ§ط¸â€‍ط·آ£ط¸â€ڑط·آ³ط·آ§ط¸â€¦ ط·آ§ط¸â€‍ط¸ظ¾ط·آ±ط·آ¹ط¸ظ¹ط·آ©.\nط·آ³ط·ع¾ط¸عˆط¸â€ ط¸â€ڑط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ¥ط¸â€‍ط¸â€° ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط·آ¹ط·آ§ط¸â€¦ط·آ©. ط¸â€،ط¸â€‍ ط·ع¾ط·ع¾ط·آ§ط·آ¨ط·آ¹ط·ع؛`,
       Markup.inlineKeyboard([
-        [Markup.button.callback("âœ… ظ†ط¹ظ…طŒ ط§ط­ط°ظپ ط§ظ„ظ‚ط³ظ…", `adm:mcatDelConfirm:${id}`)],
-        [Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `mcat:${id}:1:0`)]
+        [Markup.button.callback("أ¢إ“â€¦ ط¸â€ ط·آ¹ط¸â€¦ط·إ’ ط·آ§ط·آ­ط·آ°ط¸ظ¾ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦", `adm:mcatDelConfirm:${id}`)],
+        [Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", `mcat:${id}:1:0`)]
       ]));
   });
   bot.action(/^adm:mcatDelConfirm:(\d+)$/, async ctx => {
@@ -2912,22 +3014,22 @@ async function startBot() {
     await q("UPDATE manual_products SET category_id=0,category_is_virtual=false,updated_at=NOW() WHERE category_id=ANY($1)", [ids]);
     await q("DELETE FROM manual_categories WHERE id=ANY($1)", [ids]);
     invalidateCaches();
-    await ctx.reply("âœ… طھظ… ط­ط°ظپ ط§ظ„ظ‚ط³ظ… ظˆظ†ظ‚ظ„ ظ…ظ†طھط¬ط§طھظ‡ ط¥ظ„ظ‰ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©.");
+    await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ­ط·آ°ط¸ظ¾ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط¸ث†ط¸â€ ط¸â€ڑط¸â€‍ ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ط¸â€، ط·آ¥ط¸â€‍ط¸â€° ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط·آ¹ط·آ§ط¸â€¦ط·آ©.");
     await showCategory(ctx, 0, 1, 0);
   });
 
-  // â”€â”€ Admin: virtual categories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: virtual categories أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action("adm:vcList", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const vcs = (await q("SELECT * FROM virtual_categories WHERE parent_id=0 ORDER BY position")).rows;
-    const rows = vcs.map(v => [Markup.button.callback(`${v.active ? "ًں“‚" : "ًں”’"} ${v.name}`, `vcat:${v.id}:1:0`)]);
-    rows.push([Markup.button.callback("â‍• ط¥ط¶ط§ظپط© ظ‚ط³ظ…", "adm:addVCat")]); rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
-    await sendOrEdit(ctx, "ًں“پ ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ظ…ط®طµطµط©:", Markup.inlineKeyboard(rows));
+    const rows = vcs.map(v => [Markup.button.callback(`${v.active ? "ظ‹ع؛â€œâ€ڑ" : "ظ‹ع؛â€‌â€™"} ${v.name}`, `vcat:${v.id}:1:0`)]);
+    rows.push([Markup.button.callback("أ¢â€چâ€¢ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط¸â€ڑط·آ³ط¸â€¦", "adm:addVCat")]); rows.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "admin:menu")]);
+    await sendOrEdit(ctx, "ظ‹ع؛â€œظ¾ ط·آ§ط¸â€‍ط·آ£ط¸â€ڑط·آ³ط·آ§ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط·آ®ط·آµط·آµط·آ©:", Markup.inlineKeyboard(rows));
   });
-  bot.action("adm:addVCat", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addVirtualCategory:name", parentId: 0 }); await ctx.reply("ًں“پ ط£ط±ط³ظ„ ط§ط³ظ… ط§ظ„ظ‚ط³ظ… ط§ظ„ظ…ط®طµطµ:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:vcList")]])); });
-  bot.action(/^adm:addVCatSub:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const pv = (await q("SELECT name FROM virtual_categories WHERE id=$1", [pid])).rows[0]; setStep(ctx.from.id, { kind: "admin:addVirtualCategory:name", parentId: pid }); await ctx.reply(`ًں“پ ط£ط±ط³ظ„ ط§ط³ظ… ط§ظ„ظ‚ط³ظ… ط§ظ„ظپط±ط¹ظٹ ط¯ط§ط®ظ„ "${pv?.name ?? pid}":`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `vcat:${pid}:1:0`)]])); });
-  bot.action(/^adm:vcEdit:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editVCatName", vcId: Number(ctx.match[1]) }); await ctx.reply("âœڈï¸ڈ ط£ط±ط³ظ„ ط§ظ„ط§ط³ظ… ط§ظ„ط¬ط¯ظٹط¯ ظ„ظ„ظ‚ط³ظ…:"); });
-  bot.action(/^adm:vcToggle:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const id = Number(ctx.match[1]); const v = (await q("SELECT active FROM virtual_categories WHERE id=$1", [id])).rows[0]; if (!v) return; await q("UPDATE virtual_categories SET active=$1, updated_at=NOW() WHERE id=$2", [!v.active, id]); await ctx.reply(!v.active ? "ًں‘پ طھظ… ط§ظ„ط¥ط¸ظ‡ط§ط±." : "ًں™ˆ طھظ… ط§ظ„ط¥ط®ظپط§ط،."); });
+  bot.action("adm:addVCat", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addVirtualCategory:name", parentId: 0 }); await ctx.reply("ظ‹ع؛â€œظ¾ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط·آ®ط·آµط·آµ:", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "adm:vcList")]])); });
+  bot.action(/^adm:addVCatSub:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const pv = (await q("SELECT name FROM virtual_categories WHERE id=$1", [pid])).rows[0]; setStep(ctx.from.id, { kind: "admin:addVirtualCategory:name", parentId: pid }); await ctx.reply(`ظ‹ع؛â€œظ¾ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸ظ¾ط·آ±ط·آ¹ط¸ظ¹ ط·آ¯ط·آ§ط·آ®ط¸â€‍ "${pv?.name ?? pid}":`, Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", `vcat:${pid}:1:0`)]])); });
+  bot.action(/^adm:vcEdit:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editVCatName", vcId: Number(ctx.match[1]) }); await ctx.reply("أ¢إ“عˆأ¯آ¸عˆ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯ ط¸â€‍ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦:"); });
+  bot.action(/^adm:vcToggle:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const id = Number(ctx.match[1]); const v = (await q("SELECT active FROM virtual_categories WHERE id=$1", [id])).rows[0]; if (!v) return; await q("UPDATE virtual_categories SET active=$1, updated_at=NOW() WHERE id=$2", [!v.active, id]); await ctx.reply(!v.active ? "ظ‹ع؛â€کظ¾ ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¥ط·آ¸ط¸â€،ط·آ§ط·آ±." : "ظ‹ع؛â„¢ث† ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¥ط·آ®ط¸ظ¾ط·آ§ط·طŒ."); });
   bot.action(/^adm:vcMoveAll:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const rootId = Number(ctx.match[1]);
@@ -2945,18 +3047,18 @@ async function startBot() {
       [ids]
     );
     invalidateCaches();
-    await ctx.reply(`âœ… طھظ… ط¥ط®ط±ط§ط¬ ${manual.rows.length + api.rows.length} ظ…ظ†طھط¬ط§ظ‹ ظ…ظ† ط§ظ„ظ‚ط³ظ….`);
+    await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ¥ط·آ®ط·آ±ط·آ§ط·آ¬ ${manual.rows.length + api.rows.length} ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط¸â€¹ ط¸â€¦ط¸â€  ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦.`);
     await showVirtualCategory(ctx, rootId, 1, 0);
   });
   bot.action(/^adm:vcDel:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const id = Number(ctx.match[1]);
     const cat = (await q("SELECT name FROM virtual_categories WHERE id=$1", [id])).rows[0];
-    if (!cat) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ‚ط³ظ… ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
-    await sendOrEdit(ctx, `âڑ ï¸ڈ ط³ظٹطھظ… ط­ط°ظپ ط§ظ„ظ‚ط³ظ… "${cat.name}" ظˆظƒظ„ ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ظپط±ط¹ظٹط©.\nط³طھظڈظ†ظ‚ظ„ ط§ظ„ظ…ظ†طھط¬ط§طھ ط¥ظ„ظ‰ ط£ظ‚ط³ط§ظ…ظ‡ط§ ط§ظ„ط£طµظ„ظٹط©/ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©. ظ‡ظ„ طھطھط§ط¨ط¹طں`,
+    if (!cat) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯."); return; }
+    await sendOrEdit(ctx, `أ¢ع‘ أ¯آ¸عˆ ط·آ³ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ­ط·آ°ط¸ظ¾ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ "${cat.name}" ط¸ث†ط¸ئ’ط¸â€‍ ط·آ§ط¸â€‍ط·آ£ط¸â€ڑط·آ³ط·آ§ط¸â€¦ ط·آ§ط¸â€‍ط¸ظ¾ط·آ±ط·آ¹ط¸ظ¹ط·آ©.\nط·آ³ط·ع¾ط¸عˆط¸â€ ط¸â€ڑط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ¥ط¸â€‍ط¸â€° ط·آ£ط¸â€ڑط·آ³ط·آ§ط¸â€¦ط¸â€،ط·آ§ ط·آ§ط¸â€‍ط·آ£ط·آµط¸â€‍ط¸ظ¹ط·آ©/ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط·آ¹ط·آ§ط¸â€¦ط·آ©. ط¸â€،ط¸â€‍ ط·ع¾ط·ع¾ط·آ§ط·آ¨ط·آ¹ط·ع؛`,
       Markup.inlineKeyboard([
-        [Markup.button.callback("âœ… ظ†ط¹ظ…طŒ ط§ط­ط°ظپ ط§ظ„ظ‚ط³ظ…", `adm:vcDelConfirm:${id}`)],
-        [Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `vcat:${id}:1:0`)]
+        [Markup.button.callback("أ¢إ“â€¦ ط¸â€ ط·آ¹ط¸â€¦ط·إ’ ط·آ§ط·آ­ط·آ°ط¸ظ¾ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦", `adm:vcDelConfirm:${id}`)],
+        [Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", `vcat:${id}:1:0`)]
       ]));
   });
   bot.action(/^adm:vcDelConfirm:(\d+)$/, async ctx => {
@@ -2971,90 +3073,90 @@ async function startBot() {
     await q("UPDATE product_overrides SET custom_category_id=NULL,updated_at=NOW() WHERE custom_category_id=ANY($1)", [ids]);
     await q("DELETE FROM virtual_categories WHERE id=ANY($1)", [ids]);
     invalidateCaches();
-    await ctx.reply("âœ… طھظ… ط­ط°ظپ ط§ظ„ظ‚ط³ظ… ظˆظ†ظ‚ظ„ ط§ظ„ظ…ظ†طھط¬ط§طھ ط®ط§ط±ط¬ظ‡.");
+    await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ­ط·آ°ط¸ظ¾ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط¸ث†ط¸â€ ط¸â€ڑط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ®ط·آ§ط·آ±ط·آ¬ط¸â€،.");
     await showCategory(ctx, 0, 1, 0);
   });
 
-  // â”€â”€ Admin: manual products â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: manual products أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action("adm:manualProds", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const prods = (await q("SELECT * FROM manual_products ORDER BY id")).rows;
     const pendingCount = (await q("SELECT COUNT(*)::int AS c FROM manual_orders WHERE status='pending'")).rows[0]?.c ?? 0;
-    const rows = prods.map(p => [Markup.button.callback(`${p.active ? "ًں›’" : "â‌Œ"} ${p.name}`, `adm:manualProd:${p.id}`)]);
-    rows.push([Markup.button.callback(`ًں“‹ ط·ظ„ط¨ط§طھ ظ…ط¹ظ„ظ‚ط©${pendingCount > 0 ? ` (${pendingCount})` : ""}`, "adm:manualOrders")]);
-    rows.push([Markup.button.callback("ًں§؛ ط£ظ‚ط³ط§ظ… ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ظٹط¯ظˆظٹط©", "adm:manualCats")]);
-    rows.push([Markup.button.callback("â‍• ط¥ط¶ط§ظپط© ظ…ظ†طھط¬ ظٹط¯ظˆظٹ", "adm:addManual")]); rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
-    await sendOrEdit(ctx, "ًں›’ ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ظٹط¯ظˆظٹط©:", Markup.inlineKeyboard(rows));
+    const rows = prods.map(p => [Markup.button.callback(`${p.active ? "ظ‹ع؛â€؛â€™" : "أ¢â€Œإ’"} ${p.name}`, `adm:manualProd:${p.id}`)]);
+    rows.push([Markup.button.callback(`ظ‹ع؛â€œâ€¹ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ ط¸â€¦ط·آ¹ط¸â€‍ط¸â€ڑط·آ©${pendingCount > 0 ? ` (${pendingCount})` : ""}`, "adm:manualOrders")]);
+    rows.push([Markup.button.callback("ظ‹ع؛آ§ط› ط·آ£ط¸â€ڑط·آ³ط·آ§ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹ط·آ©", "adm:manualCats")]);
+    rows.push([Markup.button.callback("أ¢â€چâ€¢ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹", "adm:addManual")]); rows.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "admin:menu")]);
+    await sendOrEdit(ctx, "ظ‹ع؛â€؛â€™ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹ط·آ©:", Markup.inlineKeyboard(rows));
   });
-  bot.action("adm:addManual", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addManualProduct:name" }); await ctx.reply("ًں“‌ ط£ط±ط³ظ„ ط§ط³ظ… ط§ظ„ظ…ظ†طھط¬ ط§ظ„ظٹط¯ظˆظٹ:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:manualProds")]])); });
+  bot.action("adm:addManual", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:addManualProduct:name" }); await ctx.reply("ظ‹ع؛â€œâ€Œ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹:", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "adm:manualProds")]])); });
   bot.action(/^adm:addManualInCat:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const categoryId = Number(ctx.match[1]);
     const cat = (await q("SELECT name FROM manual_categories WHERE id=$1", [categoryId])).rows[0];
-    if (!cat) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ‚ط³ظ… ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
+    if (!cat) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯."); return; }
     setStep(ctx.from.id, { kind: "admin:addManualProduct:name", manualCategoryId: categoryId });
-    await ctx.reply(`ًں“‌ ط£ط±ط³ظ„ ط§ط³ظ… ط§ظ„ظ…ظ†طھط¬ ظ„ط¥ط¶ط§ظپطھظ‡ ط¯ط§ط®ظ„ "${cat.name}":`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `mcat:${categoryId}:1:0`)]]));
+    await ctx.reply(`ظ‹ع؛â€œâ€Œ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط¸â€‍ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·ع¾ط¸â€، ط·آ¯ط·آ§ط·آ®ط¸â€‍ "${cat.name}":`, Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", `mcat:${categoryId}:1:0`)]]));
   });
   bot.action(/^adm:manualProd:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const pid = Number(ctx.match[1]); const p = (await q("SELECT * FROM manual_products WHERE id=$1", [pid])).rows[0]; if (!p) return;
-    await sendOrEdit(ctx, `ًں›’ ${p.name}\nط§ظ„ط³ط¹ط±: ${Number(p.price_usd).toFixed(2)}$\nط§ظ„ط­ط§ظ„ط©: ${p.active ? "âœ…" : "â‌Œ"}`,
-      Markup.inlineKeyboard([[Markup.button.callback(p.active ? "â‌Œ طھط¹ط·ظٹظ„" : "âœ… طھظپط¹ظٹظ„", `adm:manualToggle:${pid}`)], [Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ", `adm:manualDel:${pid}`)], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:manualProds")]]));
+    await sendOrEdit(ctx, `ظ‹ع؛â€؛â€™ ${p.name}\nط·آ§ط¸â€‍ط·آ³ط·آ¹ط·آ±: ${Number(p.price_usd).toFixed(2)}$\nط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط·آ©: ${p.active ? "أ¢إ“â€¦" : "أ¢â€Œإ’"}`,
+      Markup.inlineKeyboard([[Markup.button.callback(p.active ? "أ¢â€Œإ’ ط·ع¾ط·آ¹ط·آ·ط¸ظ¹ط¸â€‍" : "أ¢إ“â€¦ ط·ع¾ط¸ظ¾ط·آ¹ط¸ظ¹ط¸â€‍", `adm:manualToggle:${pid}`)], [Markup.button.callback("ظ‹ع؛â€”â€کأ¯آ¸عˆ ط·آ­ط·آ°ط¸ظ¾", `adm:manualDel:${pid}`)], [Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "adm:manualProds")]]));
   });
-  bot.action(/^adm:manualToggle:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const p = (await q("SELECT active FROM manual_products WHERE id=$1", [pid])).rows[0]; if (!p) return; await q("UPDATE manual_products SET active=$1, updated_at=NOW() WHERE id=$2", [!p.active, pid]); await ctx.reply(!p.active ? "âœ… طھظ… ط§ظ„طھظپط¹ظٹظ„." : "â‌Œ طھظ… ط§ظ„طھط¹ط·ظٹظ„."); });
-  bot.action(/^adm:manualDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM manual_products WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("ًں—‘ï¸ڈ طھظ… ط§ظ„ط­ط°ظپ."); });
+  bot.action(/^adm:manualToggle:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const p = (await q("SELECT active FROM manual_products WHERE id=$1", [pid])).rows[0]; if (!p) return; await q("UPDATE manual_products SET active=$1, updated_at=NOW() WHERE id=$2", [!p.active, pid]); await ctx.reply(!p.active ? "أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·ع¾ط¸ظ¾ط·آ¹ط¸ظ¹ط¸â€‍." : "أ¢â€Œإ’ ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·ع¾ط·آ¹ط·آ·ط¸ظ¹ط¸â€‍."); });
+  bot.action(/^adm:manualDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM manual_products WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("ظ‹ع؛â€”â€کأ¯آ¸عˆ ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ­ط·آ°ط¸ظ¾."); });
   bot.action("adm:manualOrders", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const orders = (await q("SELECT * FROM manual_orders WHERE status='pending' ORDER BY id DESC LIMIT 30")).rows;
-    if (!orders.length) { await sendOrEdit(ctx, "ًں“­ ظ„ط§ طھظˆط¬ط¯ ط·ظ„ط¨ط§طھ ظٹط¯ظˆظٹط© ظ…ط¹ظ„ظ‚ط©.", Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:manualProds")]])); return; }
-    const rows = orders.map(o => [Markup.button.callback(`${o.product_name.slice(0, 20)} â€¢ ${Number(o.price_usd).toFixed(2)}$`.slice(0, 60), `adm:mord:${o.id}`)]);
-    rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:manualProds")]);
-    await sendOrEdit(ctx, `ًں“‹ ط§ظ„ط·ظ„ط¨ط§طھ ط§ظ„ظٹط¯ظˆظٹط© ط§ظ„ظ…ط¹ظ„ظ‚ط© (${orders.length}):`, Markup.inlineKeyboard(rows));
+    if (!orders.length) { await sendOrEdit(ctx, "ظ‹ع؛â€œآ­ ط¸â€‍ط·آ§ ط·ع¾ط¸ث†ط·آ¬ط·آ¯ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹ط·آ© ط¸â€¦ط·آ¹ط¸â€‍ط¸â€ڑط·آ©.", Markup.inlineKeyboard([[Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "adm:manualProds")]])); return; }
+    const rows = orders.map(o => [Markup.button.callback(`${o.product_name.slice(0, 20)} أ¢â‚¬آ¢ ${Number(o.price_usd).toFixed(2)}$`.slice(0, 60), `adm:mord:${o.id}`)]);
+    rows.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "adm:manualProds")]);
+    await sendOrEdit(ctx, `ظ‹ع؛â€œâ€¹ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ¹ط¸â€‍ط¸â€ڑط·آ© (${orders.length}):`, Markup.inlineKeyboard(rows));
   });
   bot.action(/^adm:mord:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o) return;
     const u = (await q("SELECT * FROM users WHERE id=$1", [o.user_id])).rows[0];
     const rate = await getExchangeRate(); const syp = Math.round(Number(o.price_usd) * rate);
-    await sendOrEdit(ctx, `ًں“‹ ط·ظ„ط¨ ظٹط¯ظˆظٹ\nًں‘¤ ${u?.username ? "@" + u.username : `ID:${o.user_id}`}\nًں›’ ${o.product_name}\nًں’° ${Number(o.price_usd).toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³\nط§ظ„ط­ط§ظ„ط©: ${o.status}`,
-      Markup.inlineKeyboard([[Markup.button.callback("âœ… ظ‚ط¨ظˆظ„ ظˆطھط³ظ„ظٹظ…", `adm:mordAccept:${oid}`), Markup.button.callback("â‌Œ ط±ظپط¶ ظˆط§ط³طھط±ط¯ط§ط¯", `adm:mordReject:${oid}`)], [Markup.button.callback("ًں’¬ ط¥ط±ط³ط§ظ„ ط±ط³ط§ظ„ط©", `adm:mordMsg:${oid}`)], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:manualOrders")]]));
+    await sendOrEdit(ctx, `ظ‹ع؛â€œâ€¹ ط·آ·ط¸â€‍ط·آ¨ ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹\nظ‹ع؛â€کآ¤ ${u?.username ? "@" + u.username : `ID:${o.user_id}`}\nظ‹ع؛â€؛â€™ ${o.product_name}\nظ‹ع؛â€™آ° ${Number(o.price_usd).toFixed(2)}$ | ${syp.toLocaleString("en-US")} ط¸â€‍.ط·آ³\nط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€‍ط·آ©: ${o.status}`,
+      Markup.inlineKeyboard([[Markup.button.callback("أ¢إ“â€¦ ط¸â€ڑط·آ¨ط¸ث†ط¸â€‍ ط¸ث†ط·ع¾ط·آ³ط¸â€‍ط¸ظ¹ط¸â€¦", `adm:mordAccept:${oid}`), Markup.button.callback("أ¢â€Œإ’ ط·آ±ط¸ظ¾ط·آ¶ ط¸ث†ط·آ§ط·آ³ط·ع¾ط·آ±ط·آ¯ط·آ§ط·آ¯", `adm:mordReject:${oid}`)], [Markup.button.callback("ظ‹ع؛â€™آ¬ ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ ط·آ±ط·آ³ط·آ§ط¸â€‍ط·آ©", `adm:mordMsg:${oid}`)], [Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "adm:manualOrders")]]));
   });
-  bot.action(/^adm:mordAccept:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o || o.status !== "pending") { await ctx.reply("âڑ ï¸ڈ طھظ… ظ…ط¹ط§ظ„ط¬طھظ‡ ظ…ط³ط¨ظ‚ط§ظ‹."); return; } setStep(ctx.from.id, { kind: "admin:manualOrderAccept", orderId: oid, userId: Number(o.user_id), productName: o.product_name, priceUsd: Number(o.price_usd) }); await ctx.reply(`âœڈï¸ڈ ط£ط±ط³ظ„ ط±ط³ط§ظ„ط© ط§ظ„طھط³ظ„ظٹظ… ط£ظˆ "skip":`); });
+  bot.action(/^adm:mordAccept:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o || o.status !== "pending") { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·ع¾ط¸â€¦ ط¸â€¦ط·آ¹ط·آ§ط¸â€‍ط·آ¬ط·ع¾ط¸â€، ط¸â€¦ط·آ³ط·آ¨ط¸â€ڑط·آ§ط¸â€¹."); return; } setStep(ctx.from.id, { kind: "admin:manualOrderAccept", orderId: oid, userId: Number(o.user_id), productName: o.product_name, priceUsd: Number(o.price_usd) }); await ctx.reply(`أ¢إ“عˆأ¯آ¸عˆ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ±ط·آ³ط·آ§ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·ع¾ط·آ³ط¸â€‍ط¸ظ¹ط¸â€¦ ط·آ£ط¸ث† "skip":`); });
   bot.action(/^adm:mordReject:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
-    const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o || o.status !== "pending") { await ctx.reply("âڑ ï¸ڈ طھظ… ظ…ط¹ط§ظ„ط¬طھظ‡."); return; }
+    const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o || o.status !== "pending") { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·ع¾ط¸â€¦ ط¸â€¦ط·آ¹ط·آ§ط¸â€‍ط·آ¬ط·ع¾ط¸â€،."); return; }
     await q("UPDATE manual_orders SET status='rejected', updated_at=NOW() WHERE id=$1", [oid]);
     await adjustBalance(Number(o.user_id), Number(o.price_usd));
-    await ctx.reply(`âœ… طھظ… ط§ظ„ط±ظپط¶ ظˆط¥ط¹ط§ط¯ط© ط§ظ„ط±طµظٹط¯.`);
+    await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ±ط¸ظ¾ط·آ¶ ط¸ث†ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط·آ§ط¸â€‍ط·آ±ط·آµط¸ظ¹ط·آ¯.`);
     const rate = await getExchangeRate(); const syp = Math.round(Number(o.price_usd) * rate);
-    // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
-    await ctx.telegram.sendMessage(o.user_id, `â‌Œ طھظ… ط±ظپط¶ ط·ظ„ط¨ظƒ\nًں›’ ${o.product_name}\nًں’° طھظ…طھ ط¥ط¹ط§ط¯ط© ${Number(o.price_usd).toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³`, Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])).catch(() => {});
+    // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط¸â€‍ط·آ§ ط¸â€ ط·آ¹ط·آ±ط·آ¶ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ أ¢â€‌â‚¬أ¢â€‌â‚¬
+    await ctx.telegram.sendMessage(o.user_id, `أ¢â€Œإ’ ط·ع¾ط¸â€¦ ط·آ±ط¸ظ¾ط·آ¶ ط·آ·ط¸â€‍ط·آ¨ط¸ئ’\nظ‹ع؛â€؛â€™ ${o.product_name}\nظ‹ع؛â€™آ° ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ${Number(o.price_usd).toFixed(2)}$ | ${syp.toLocaleString("en-US")} ط¸â€‍.ط·آ³`, Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]])).catch(() => {});
   });
-  bot.action(/^adm:mordMsg:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const oid = Number(ctx.match[1]); const o = (await q("SELECT user_id FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o) return; setStep(ctx.from.id, { kind: "admin:manualOrderMsg", orderId: oid, userId: Number(o.user_id) }); await ctx.reply(`ًں’¬ ط£ط±ط³ظ„ ط§ظ„ط±ط³ط§ظ„ط© ظ„ظ„ظ…ط³طھط®ط¯ظ… ${o.user_id}:`); });
+  bot.action(/^adm:mordMsg:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const oid = Number(ctx.match[1]); const o = (await q("SELECT user_id FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o) return; setStep(ctx.from.id, { kind: "admin:manualOrderMsg", orderId: oid, userId: Number(o.user_id) }); await ctx.reply(`ظ‹ع؛â€™آ¬ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط·آ±ط·آ³ط·آ§ط¸â€‍ط·آ© ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ${o.user_id}:`); });
 
-  // â”€â”€ Admin: nav buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: nav buttons أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action("adm:btnLabels", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const [b, h, p2, n] = await Promise.all([getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel()]);
-    await sendOrEdit(ctx, `ًں”ک ط£ط²ط±ط§ط± ط§ظ„طھظ†ظ‚ظ„:\nط±ط¬ظˆط¹: ${b}\nط§ظ„ط±ط¦ظٹط³ظٹط©: ${h}\nط§ظ„ط³ط§ط¨ظ‚: ${p2}\nط§ظ„طھط§ظ„ظٹ: ${n}`,
-      Markup.inlineKeyboard([[Markup.button.callback("âœڈï¸ڈ ط²ط± ط§ظ„ط±ط¬ظˆط¹", "adm:btnEdit:btn_back_label:ط±ط¬ظˆط¹")], [Markup.button.callback("âœڈï¸ڈ ط²ط± ط§ظ„ط±ط¦ظٹط³ظٹط©", "adm:btnEdit:btn_home_label:ط§ظ„ط±ط¦ظٹط³ظٹط©")], [Markup.button.callback("âœڈï¸ڈ ط²ط± ط§ظ„ط³ط§ط¨ظ‚", "adm:btnEdit:btn_prev_label:ط§ظ„ط³ط§ط¨ظ‚")], [Markup.button.callback("âœڈï¸ڈ ط²ط± ط§ظ„طھط§ظ„ظٹ", "adm:btnEdit:btn_next_label:ط§ظ„طھط§ظ„ظٹ")], [Markup.button.callback("ًں”„ ط¥ط¹ط§ط¯ط© ط§ظ„ط§ظپطھط±ط§ط¶ظٹ", "adm:btnReset")], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:settings")]]));
+    await sendOrEdit(ctx, `ظ‹ع؛â€‌ع© ط·آ£ط·آ²ط·آ±ط·آ§ط·آ± ط·آ§ط¸â€‍ط·ع¾ط¸â€ ط¸â€ڑط¸â€‍:\nط·آ±ط·آ¬ط¸ث†ط·آ¹: ${b}\nط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©: ${h}\nط·آ§ط¸â€‍ط·آ³ط·آ§ط·آ¨ط¸â€ڑ: ${p2}\nط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹: ${n}`,
+      Markup.inlineKeyboard([[Markup.button.callback("أ¢إ“عˆأ¯آ¸عˆ ط·آ²ط·آ± ط·آ§ط¸â€‍ط·آ±ط·آ¬ط¸ث†ط·آ¹", "adm:btnEdit:btn_back_label:ط·آ±ط·آ¬ط¸ث†ط·آ¹")], [Markup.button.callback("أ¢إ“عˆأ¯آ¸عˆ ط·آ²ط·آ± ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "adm:btnEdit:btn_home_label:ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©")], [Markup.button.callback("أ¢إ“عˆأ¯آ¸عˆ ط·آ²ط·آ± ط·آ§ط¸â€‍ط·آ³ط·آ§ط·آ¨ط¸â€ڑ", "adm:btnEdit:btn_prev_label:ط·آ§ط¸â€‍ط·آ³ط·آ§ط·آ¨ط¸â€ڑ")], [Markup.button.callback("أ¢إ“عˆأ¯آ¸عˆ ط·آ²ط·آ± ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹", "adm:btnEdit:btn_next_label:ط·آ§ط¸â€‍ط·ع¾ط·آ§ط¸â€‍ط¸ظ¹")], [Markup.button.callback("ظ‹ع؛â€‌â€‍ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط·آ§ط¸â€‍ط·آ§ط¸ظ¾ط·ع¾ط·آ±ط·آ§ط·آ¶ط¸ظ¹", "adm:btnReset")], [Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "adm:settings")]]));
   });
-  bot.action(/^adm:btnEdit:([^:]+):(.+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const key = ctx.match[1]; setStep(ctx.from.id, { kind: "admin:editBtnLabel", key }); await ctx.reply(`âœڈï¸ڈ ط£ط±ط³ظ„ ط§ظ„ظ†طµ ط§ظ„ط¬ط¯ظٹط¯ ظ„ظ„ط²ط±:`); });
+  bot.action(/^adm:btnEdit:([^:]+):(.+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const key = ctx.match[1]; setStep(ctx.from.id, { kind: "admin:editBtnLabel", key }); await ctx.reply(`أ¢إ“عˆأ¯آ¸عˆ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط¸â€ ط·آµ ط·آ§ط¸â€‍ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯ ط¸â€‍ط¸â€‍ط·آ²ط·آ±:`); });
   bot.action("adm:btnReset", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     await Promise.all(["btn_back_label", "btn_home_label", "btn_prev_label", "btn_next_label"].map(k => setSetting(k, DEFAULTS[k])));
-    await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ظ„ط£ط²ط±ط§ط± ظ„ظ„ط§ظپطھط±ط§ط¶ظٹ.");
+    await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط·آ§ط¸â€‍ط·آ£ط·آ²ط·آ±ط·آ§ط·آ± ط¸â€‍ط¸â€‍ط·آ§ط¸ظ¾ط·ع¾ط·آ±ط·آ§ط·آ¶ط¸ظ¹.");
   });
 
-  // â”€â”€ Admin: AI support â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Admin: AI support أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.action("adm:aiSupport", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     clearAiHistory(ctx.from.id);
     setStep(ctx.from.id, { kind: "admin:aiSupport" });
-    await ctx.reply(`ًں› ï¸ڈ ظ…ط³ط§ط¹ط¯ ط§ظ„ط¥ط¯ط§ط±ط©${hasAiKey() ? "" : " (ظˆط¶ط¹ FAQ)"}\nط£ط±ط³ظ„ ط³ط¤ط§ظ„ظƒ ط£ظˆ "ط®ط±ظˆط¬" ظ„ظ„ط¥ظ†ظ‡ط§ط،:`, Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]]));
+    await ctx.reply(`ظ‹ع؛â€؛ أ¯آ¸عˆ ط¸â€¦ط·آ³ط·آ§ط·آ¹ط·آ¯ ط·آ§ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ©${hasAiKey() ? "" : " (ط¸ث†ط·آ¶ط·آ¹ FAQ)"}\nط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ³ط·آ¤ط·آ§ط¸â€‍ط¸ئ’ ط·آ£ط¸ث† "ط·آ®ط·آ±ط¸ث†ط·آ¬" ط¸â€‍ط¸â€‍ط·آ¥ط¸â€ ط¸â€،ط·آ§ط·طŒ:`, Markup.inlineKeyboard([[Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "admin:menu")]]));
   });
 
-  // â”€â”€ Photo handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Photo handler أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.on("photo", async ctx => {
     const step = getStep(ctx.from.id);
     const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
@@ -3062,7 +3164,7 @@ async function startBot() {
     if (step.kind === "admin:setMethodImage") {
       await q("UPDATE deposit_methods SET image_file_id=$1 WHERE id=$2", [fileId, step.methodId]);
       setStep(ctx.from.id, { kind: "idle" });
-      await ctx.reply("âœ… طھظ… ط­ظپط¸ ط§ظ„طµظˆط±ط©. ط³طھط¸ظ‡ط± ظ„ظ„ظ…ط³طھط®ط¯ظ…ظٹظ† ط¹ظ†ط¯ ط§ط®طھظٹط§ط± ظ‡ط°ظ‡ ط§ظ„ط·ط±ظٹظ‚ط©.");
+      await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ­ط¸ظ¾ط·آ¸ ط·آ§ط¸â€‍ط·آµط¸ث†ط·آ±ط·آ©. ط·آ³ط·ع¾ط·آ¸ط¸â€،ط·آ± ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ط¸ظ¹ط¸â€  ط·آ¹ط¸â€ ط·آ¯ ط·آ§ط·آ®ط·ع¾ط¸ظ¹ط·آ§ط·آ± ط¸â€،ط·آ°ط¸â€، ط·آ§ط¸â€‍ط·آ·ط·آ±ط¸ظ¹ط¸â€ڑط·آ©.");
       return;
     }
 
@@ -3070,13 +3172,13 @@ async function startBot() {
       await q("INSERT INTO deposit_methods(name,identifier,instructions,image_file_id) VALUES($1,$2,$3,$4)",
         [step.name, step.identifier, step.instructions, fileId]);
       setStep(ctx.from.id, { kind: "idle" });
-      await ctx.reply("âœ… طھظ… ط¥ط¶ط§ظپط© ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹ ظ…ط¹ ط§ظ„طµظˆط±ط©.");
+      await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط·آ·ط·آ±ط¸ظ¹ط¸â€ڑط·آ© ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ ط¸â€¦ط·آ¹ ط·آ§ط¸â€‍ط·آµط¸ث†ط·آ±ط·آ©.");
       return;
     }
 
-    // â”€â”€ طھط¯ظپظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹ ط§ظ„ط¬ط¯ظٹط¯: ط§ط³طھظ„ط§ظ… ط§ظ„طµظˆط±ط© â”€â”€
+    // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·ع¾ط·آ¯ط¸ظ¾ط¸â€ڑ ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ ط·آ§ط¸â€‍ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯: ط·آ§ط·آ³ط·ع¾ط¸â€‍ط·آ§ط¸â€¦ ط·آ§ط¸â€‍ط·آµط¸ث†ط·آ±ط·آ© أ¢â€‌â‚¬أ¢â€‌â‚¬
     if (step.kind === "deposit:info") {
-      // ط¥ط°ط§ ط£ط±ط³ظ„ ط§ظ„ظ…ط³طھط®ط¯ظ… ط§ظ„ظ…ط¨ظ„ط؛ ظپظٹ طھط¹ظ„ظٹظ‚ ط§ظ„طµظˆط±ط©طŒ ظ†ظ‚ط±ط£ظ‡ ظ…ط¨ط§ط´ط±ط©.
+      // ط·آ¥ط·آ°ط·آ§ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط¸ظ¾ط¸ظ¹ ط·ع¾ط·آ¹ط¸â€‍ط¸ظ¹ط¸â€ڑ ط·آ§ط¸â€‍ط·آµط¸ث†ط·آ±ط·آ©ط·إ’ ط¸â€ ط¸â€ڑط·آ±ط·آ£ط¸â€، ط¸â€¦ط·آ¨ط·آ§ط·آ´ط·آ±ط·آ©.
       const caption = ctx.message.caption?.trim() || "";
       const captionAmount = caption
         ? extractAmountFromText(caption, await getExchangeRate())
@@ -3087,61 +3189,61 @@ async function startBot() {
         amount: step.amount ?? captionAmount,
       };
       if (newStep.amount !== null) {
-        // ظ„ط¯ظٹظ†ط§ ط§ظ„ظ…ط¨ظ„ط؛ ظˆط§ظ„طµظˆط±ط©طŒ ط§ظƒظ…ظ„ ط§ظ„ط·ظ„ط¨
+        // ط¸â€‍ط·آ¯ط¸ظ¹ط¸â€ ط·آ§ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط¸ث†ط·آ§ط¸â€‍ط·آµط¸ث†ط·آ±ط·آ©ط·إ’ ط·آ§ط¸ئ’ط¸â€¦ط¸â€‍ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨
         await completeDepositRequest(ctx, newStep);
       } else {
-        // ط§ط³طھظ„ظ…ظ†ط§ ط§ظ„طµظˆط±ط© ظ‚ط¨ظ„ ط§ظ„ظ…ط¨ظ„ط؛طŒ ط§ط·ظ„ط¨ ط§ظ„ظ…ط¨ظ„ط؛
+        // ط·آ§ط·آ³ط·ع¾ط¸â€‍ط¸â€¦ط¸â€ ط·آ§ ط·آ§ط¸â€‍ط·آµط¸ث†ط·آ±ط·آ© ط¸â€ڑط·آ¨ط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط›ط·إ’ ط·آ§ط·آ·ط¸â€‍ط·آ¨ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط›
         setStep(ctx.from.id, newStep);
-        await ctx.reply("ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„ط°ظٹ ظ‚ظ…طھ ط¨طھط­ظˆظٹظ„ظ‡:",
-          Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "dep:cancel")]]));
+        await ctx.reply("ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط·آ§ط¸â€‍ط·آ°ط¸ظ¹ ط¸â€ڑط¸â€¦ط·ع¾ ط·آ¨ط·ع¾ط·آ­ط¸ث†ط¸ظ¹ط¸â€‍ط¸â€،:",
+          Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "dep:cancel")]]));
       }
       return;
     }
   });
 
-  // â”€â”€ Text router â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ Text router أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
   bot.on("text", async (ctx, next) => {
     const step = getStep(ctx.from.id);
     const txt = ctx.message.text.trim();
 
-    // طھط­ظ‚ظ‚ ظ…ظ† ط£ظ…ط± ط§ظ„ط¯ط®ظˆظ„ ط§ظ„ط³ط±ظٹ
+    // ط·ع¾ط·آ­ط¸â€ڑط¸â€ڑ ط¸â€¦ط¸â€  ط·آ£ط¸â€¦ط·آ± ط·آ§ط¸â€‍ط·آ¯ط·آ®ط¸ث†ط¸â€‍ ط·آ§ط¸â€‍ط·آ³ط·آ±ط¸ظ¹
     if (!txt.startsWith("/")) {
       const loginCmd = await getAdminLoginCommand();
       if (txt === loginCmd) {
         await ensureUser(ctx);
         setStep(ctx.from.id, { kind: "admin:login" });
-        await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±:");
+        await ctx.reply("ظ‹ع؛â€‌â€ک ط·آ£ط·آ±ط·آ³ط¸â€‍ ط¸ئ’ط¸â€‍ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ±:");
         return;
       }
     }
 
     if (txt.startsWith("/")) return next();
 
-    // â”€â”€ طھط¯ظپظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹ ط§ظ„ط¬ط¯ظٹط¯: ط§ط³طھظ„ط§ظ… ط§ظ„ظ…ط¨ظ„ط؛ â”€â”€
+    // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·ع¾ط·آ¯ط¸ظ¾ط¸â€ڑ ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ ط·آ§ط¸â€‍ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯: ط·آ§ط·آ³ط·ع¾ط¸â€‍ط·آ§ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› أ¢â€‌â‚¬أ¢â€‌â‚¬
     if (step.kind === "deposit:info") {
       const exchangeRate = await getExchangeRate();
       const amount = extractAmountFromText(txt, exchangeRate);
       if (!amount || amount <= 0) {
-        await ctx.reply("âڑ ï¸ڈ ظ„ظ… ط£ط³طھط·ط¹ ظپظ‡ظ… ط§ظ„ظ…ط¨ظ„ط؛. ط£ط±ط³ظ„ظ‡ ط¨ط´ظƒظ„ ط£ظˆط¶ط­ (ظ…ط«ط§ظ„: 5$ ط£ظˆ 1000 ظ„.ط³).",
-          Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "dep:cancel")]]));
+        await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط¸â€‍ط¸â€¦ ط·آ£ط·آ³ط·ع¾ط·آ·ط·آ¹ ط¸ظ¾ط¸â€،ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط›. ط·آ£ط·آ±ط·آ³ط¸â€‍ط¸â€، ط·آ¨ط·آ´ط¸ئ’ط¸â€‍ ط·آ£ط¸ث†ط·آ¶ط·آ­ (ط¸â€¦ط·آ«ط·آ§ط¸â€‍: 5$ ط·آ£ط¸ث† 1000 ط¸â€‍.ط·آ³).",
+          Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "dep:cancel")]]));
         return;
       }
       const newStep = { ...step, amount };
       if (newStep.photoFileId) {
-        // ظ„ط¯ظٹظ†ط§ ط§ظ„ظ…ط¨ظ„ط؛ ظˆط§ظ„طµظˆط±ط©طŒ ط§ظƒظ…ظ„ ط§ظ„ط·ظ„ط¨
+        // ط¸â€‍ط·آ¯ط¸ظ¹ط¸â€ ط·آ§ ط·آ§ط¸â€‍ط¸â€¦ط·آ¨ط¸â€‍ط·ط› ط¸ث†ط·آ§ط¸â€‍ط·آµط¸ث†ط·آ±ط·آ©ط·إ’ ط·آ§ط¸ئ’ط¸â€¦ط¸â€‍ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨
         await completeDepositRequest(ctx, newStep);
       } else {
         setStep(ctx.from.id, newStep);
-        await ctx.reply(`ط£ط±ط³ظ„ طµظˆط±ط© ط¥ط´ط¹ط§ط± ط§ظ„طھط­ظˆظٹظ„.`,
-          Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "dep:cancel")]]));
+        await ctx.reply(`ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آµط¸ث†ط·آ±ط·آ© ط·آ¥ط·آ´ط·آ¹ط·آ§ط·آ± ط·آ§ط¸â€‍ط·ع¾ط·آ­ط¸ث†ط¸ظ¹ط¸â€‍.`,
+          Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "dep:cancel")]]));
       }
       return;
     }
 
     if (step.kind === "order:qty") {
-      const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ط±ظ‚ظ… طµط­ظٹط­ ظ…ظˆط¬ط¨."); return; }
+      const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ£ط·آ¯ط·آ®ط¸â€‍ ط·آ±ط¸â€ڑط¸â€¦ ط·آµط·آ­ط¸ظ¹ط·آ­ ط¸â€¦ط¸ث†ط·آ¬ط·آ¨."); return; }
       const qv = step.qtyValues; const qty = Array.isArray(qv) ? n : Math.floor(n);
-      if (qv && !Array.isArray(qv)) { if (qty < qv.min || qty > qv.max) { await ctx.reply(`âڑ ï¸ڈ ط§ظ„ظƒظ…ظٹط© ط¨ظٹظ† ${qv.min.toLocaleString("en-US")} ظˆ ${qv.max.toLocaleString("en-US")}.`); return; } }
+      if (qv && !Array.isArray(qv)) { if (qty < qv.min || qty > qv.max) { await ctx.reply(`أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط¸ئ’ط¸â€¦ط¸ظ¹ط·آ© ط·آ¨ط¸ظ¹ط¸â€  ${qv.min.toLocaleString("en-US")} ط¸ث† ${qv.max.toLocaleString("en-US")}.`); return; } }
       let all = await getCachedProducts(); let p = all.find(x => x.id === step.productId);
       if (!p) { all = await fetchAllProducts(); p = all.find(x => x.id === step.productId); }
       if (!p) return;
@@ -3162,20 +3264,20 @@ async function startBot() {
        const debited = await debitBalance(ctx.from.id, step.priceUsd);
        if (!debited) {
          setStep(ctx.from.id, { kind: "idle" });
-         await ctx.reply("â‌Œ ط±طµظٹط¯ ط؛ظٹط± ظƒط§ظپظچ ط­ط§ظ„ظٹط§ظ‹. ط­ط§ظˆظ„ طھط­ط¯ظٹط« ط§ظ„ط±طµظٹط¯ ط«ظ… ط£ط¹ط¯ ط§ظ„ط·ظ„ط¨.");
+         await ctx.reply("أ¢â€Œإ’ ط·آ±ط·آµط¸ظ¹ط·آ¯ ط·ط›ط¸ظ¹ط·آ± ط¸ئ’ط·آ§ط¸ظ¾ط¸ع† ط·آ­ط·آ§ط¸â€‍ط¸ظ¹ط·آ§ط¸â€¹. ط·آ­ط·آ§ط¸ث†ط¸â€‍ ط·ع¾ط·آ­ط·آ¯ط¸ظ¹ط·آ« ط·آ§ط¸â€‍ط·آ±ط·آµط¸ظ¹ط·آ¯ ط·آ«ط¸â€¦ ط·آ£ط·آ¹ط·آ¯ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨.");
          return;
        }
       const ins = await q("INSERT INTO manual_orders(user_id,product_id,product_name,price_usd,note) VALUES($1,$2,$3,$4,$5) RETURNING *",
         [ctx.from.id, m.id, m.name, m.price_usd, note]);
       const ord = ins.rows[0];
       setStep(ctx.from.id, { kind: "idle" });
-      // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
-      await ctx.reply(`âœ… طھظ… ط§ط³طھظ„ط§ظ… ط·ظ„ط¨ظƒ\nًں›’ ${m.name}\nط³ظٹطھظ… ط§ظ„طھظ†ظپظٹط° ظپظٹ ط£ظ‚ط±ط¨ ظˆظ‚طھ.`, Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
+      // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط¸â€‍ط·آ§ ط¸â€ ط·آ¹ط·آ±ط·آ¶ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ أ¢â€‌â‚¬أ¢â€‌â‚¬
+      await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ§ط·آ³ط·ع¾ط¸â€‍ط·آ§ط¸â€¦ ط·آ·ط¸â€‍ط·آ¨ط¸ئ’\nظ‹ع؛â€؛â€™ ${m.name}\nط·آ³ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·ع¾ط¸â€ ط¸ظ¾ط¸ظ¹ط·آ° ط¸ظ¾ط¸ظ¹ ط·آ£ط¸â€ڑط·آ±ط·آ¨ ط¸ث†ط¸â€ڑط·ع¾.`, Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]]));
       const admins = await listAdmins();
       const rate = await getExchangeRate(); const syp = Math.round(step.priceUsd * rate);
       for (const a of admins) {
-        await ctx.telegram.sendMessage(a.id, `ًں“‹ ط·ظ„ط¨ ظٹط¯ظˆظٹ ط¬ط¯ظٹط¯\nًں‘¤ ${ctx.from.first_name ?? ctx.from.id}\nًں›’ ${m.name}\nًں’° ${step.priceUsd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³${note ? `\nًں“‌ ${note}` : ""}`,
-          Markup.inlineKeyboard([[Markup.button.callback("ًں“‹ ط¹ط±ط¶ ط§ظ„ط·ظ„ط¨", `adm:mord:${ord.id}`)]])).catch(() => {});
+        await ctx.telegram.sendMessage(a.id, `ظ‹ع؛â€œâ€¹ ط·آ·ط¸â€‍ط·آ¨ ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹ ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯\nظ‹ع؛â€کآ¤ ${ctx.from.first_name ?? ctx.from.id}\nظ‹ع؛â€؛â€™ ${m.name}\nظ‹ع؛â€™آ° ${step.priceUsd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ط¸â€‍.ط·آ³${note ? `\nظ‹ع؛â€œâ€Œ ${note}` : ""}`,
+          Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛â€œâ€¹ ط·آ¹ط·آ±ط·آ¶ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨", `adm:mord:${ord.id}`)]])).catch(() => {});
       }
       return;
     }
@@ -3184,7 +3286,7 @@ async function startBot() {
       case "admin:login": {
         const expected = await getAdminPassword();
         if (txt !== expected) {
-          await ctx.reply("â‌Œ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط®ط§ط·ط¦ط©.", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "home")]]));
+          await ctx.reply("أ¢â€Œإ’ ط¸ئ’ط¸â€‍ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ± ط·آ®ط·آ§ط·آ·ط·آ¦ط·آ©.", Markup.inlineKeyboard([[Markup.button.callback("أ¢â€Œإ’ ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ", "home")]]));
           return;
         }
         const userRow = await getUser(ctx.from.id);
@@ -3196,96 +3298,96 @@ async function startBot() {
         authedAdminIds.add(ctx.from.id);
         await setAdminSession(ctx.from.id, true);
         setStep(ctx.from.id, { kind: "idle" });
-        await ctx.reply(`âœ… طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„${becomeSuper ? " (ظ…ط¯ظٹط± ط£ط¹ظ„ظ‰) ًںŒں" : ""}.`);
+        await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط·آ³ط·آ¬ط¸ظ¹ط¸â€‍ ط·آ§ط¸â€‍ط·آ¯ط·آ®ط¸ث†ط¸â€‍${becomeSuper ? " (ط¸â€¦ط·آ¯ط¸ظ¹ط·آ± ط·آ£ط·آ¹ط¸â€‍ط¸â€°) ظ‹ع؛إ’ع؛" : ""}.`);
         await showAdminMenu(ctx); return;
       }
-      case "admin:setMarkup": { const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ط±ظ‚ظ…ط§ظ‹ طµط§ظ„ط­ط§ظ‹."); return; } await setSetting("markup_percent", String(n)); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ…: ${n}%.`); await showSettingsMenu(ctx); return; }
-      case "admin:setSocialMarkup": { const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ط±ظ‚ظ…ط§ظ‹ طµط§ظ„ط­ط§ظ‹."); return; } await setSetting("social_markup_percent", String(n)); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ط±ط¨ط­ ط§ظ„ط³ظˆط´ظ„: ${n}%.`); await showSettingsMenu(ctx); return; }
-      case "admin:setRate": { const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("âڑ ï¸ڈ ط³ط¹ط± طµط±ظپ ط؛ظٹط± طµط§ظ„ط­."); return; } await setSetting("exchange_rate", String(n)); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ط³ط¹ط± ط§ظ„طµط±ظپ: ${n} ظ„.ط³/$.`); await showSettingsMenu(ctx); return; }
-      case "admin:newPassword": { if (txt.length < 4) { await ctx.reply("âڑ ï¸ڈ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ظ‚طµظٹط±ط© ط¬ط¯ط§ظ‹."); return; } await setSetting("admin_password", txt); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… طھط­ط¯ظٹط« ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±."); return; }
+      case "admin:setMarkup": { const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ£ط·آ¯ط·آ®ط¸â€‍ ط·آ±ط¸â€ڑط¸â€¦ط·آ§ط¸â€¹ ط·آµط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€¹."); return; } await setSetting("markup_percent", String(n)); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`أ¢إ“â€¦ ط·آ§ط¸â€‍ط·آ±ط·آ¨ط·آ­ ط·آ§ط¸â€‍ط·آ¹ط·آ§ط¸â€¦: ${n}%.`); await showSettingsMenu(ctx); return; }
+      case "admin:setSocialMarkup": { const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ£ط·آ¯ط·آ®ط¸â€‍ ط·آ±ط¸â€ڑط¸â€¦ط·آ§ط¸â€¹ ط·آµط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€¹."); return; } await setSetting("social_markup_percent", String(n)); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`أ¢إ“â€¦ ط·آ±ط·آ¨ط·آ­ ط·آ§ط¸â€‍ط·آ³ط¸ث†ط·آ´ط¸â€‍: ${n}%.`); await showSettingsMenu(ctx); return; }
+      case "admin:setRate": { const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ³ط·آ¹ط·آ± ط·آµط·آ±ط¸ظ¾ ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­."); return; } await setSetting("exchange_rate", String(n)); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`أ¢إ“â€¦ ط·آ³ط·آ¹ط·آ± ط·آ§ط¸â€‍ط·آµط·آ±ط¸ظ¾: ${n} ط¸â€‍.ط·آ³/$.`); await showSettingsMenu(ctx); return; }
+      case "admin:newPassword": { if (txt.length < 4) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط¸ئ’ط¸â€‍ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ± ط¸â€ڑط·آµط¸ظ¹ط·آ±ط·آ© ط·آ¬ط·آ¯ط·آ§ط¸â€¹."); return; } await setSetting("admin_password", txt); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط·آ­ط·آ¯ط¸ظ¹ط·آ« ط¸ئ’ط¸â€‍ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ±ط¸ث†ط·آ±."); return; }
       case "admin:changeLoginCmd": {
-        if (txt.length < 5) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ط£ظ…ط± ظ‚طµظٹط± ط¬ط¯ط§ظ‹ (5 ط£ط­ط±ظپ ط¹ظ„ظ‰ ط§ظ„ط£ظ‚ظ„)."); return; }
+        if (txt.length < 5) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط·آ£ط¸â€¦ط·آ± ط¸â€ڑط·آµط¸ظ¹ط·آ± ط·آ¬ط·آ¯ط·آ§ط¸â€¹ (5 ط·آ£ط·آ­ط·آ±ط¸ظ¾ ط·آ¹ط¸â€‍ط¸â€° ط·آ§ط¸â€‍ط·آ£ط¸â€ڑط¸â€‍)."); return; }
         await setSetting("admin_login_command", txt); setStep(ctx.from.id, { kind: "idle" });
-        await ctx.reply(`âœ… طھظ… طھط؛ظٹظٹط± ط£ظ…ط± ط§ظ„ط¯ط®ظˆظ„.`, { parse_mode: "Markdown" }); return;
+        await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط·ط›ط¸ظ¹ط¸ظ¹ط·آ± ط·آ£ط¸â€¦ط·آ± ط·آ§ط¸â€‍ط·آ¯ط·آ®ط¸ث†ط¸â€‍.`, { parse_mode: "Markdown" }); return;
       }
       case "admin:depositApproveAmount": {
-        const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ظ…ط¨ظ„ط؛ط§ظ‹ طµط§ظ„ط­ط§ظ‹."); return; }
+        const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ£ط·آ¯ط·آ®ط¸â€‍ ط¸â€¦ط·آ¨ط¸â€‍ط·ط›ط·آ§ط¸â€¹ ط·آµط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€¹."); return; }
         const updated = await q("UPDATE deposit_requests SET status='approved', amount=$1, processed_by=$2, processed_at=NOW() WHERE id=$3 AND status='pending' RETURNING *", [String(n), ctx.from.id, step.depositId]);
-        if (!updated.rows.length) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âڑ ï¸ڈ طھظ…طھ ظ…ط¹ط§ظ„ط¬ط© ظ‡ط°ط§ ط§ظ„ط·ظ„ط¨ ظ…ط³ط¨ظ‚ط§ظ‹ ط¨ظˆط§ط³ط·ط© ظ…ط¯ظٹط± ط¢ط®ط±."); return; }
+        if (!updated.rows.length) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·ع¾ط¸â€¦ط·ع¾ ط¸â€¦ط·آ¹ط·آ§ط¸â€‍ط·آ¬ط·آ© ط¸â€،ط·آ°ط·آ§ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸â€¦ط·آ³ط·آ¨ط¸â€ڑط·آ§ط¸â€¹ ط·آ¨ط¸ث†ط·آ§ط·آ³ط·آ·ط·آ© ط¸â€¦ط·آ¯ط¸ظ¹ط·آ± ط·آ¢ط·آ®ط·آ±."); return; }
         const d = updated.rows[0];
         await adjustBalance(d.user_id, n);
-        await clearDepositForOtherAdmins(ctx.from.id, step.depositId, `âœ… ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹ â€” طھظ…طھ ط§ظ„ظ…ظˆط§ظپظ‚ط© (+${n}$)`);
+        await clearDepositForOtherAdmins(ctx.from.id, step.depositId, `أ¢إ“â€¦ ط·آ·ط¸â€‍ط·آ¨ ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ أ¢â‚¬â€‌ ط·ع¾ط¸â€¦ط·ع¾ ط·آ§ط¸â€‍ط¸â€¦ط¸ث†ط·آ§ط¸ظ¾ط¸â€ڑط·آ© (+${n}$)`);
         setStep(ctx.from.id, { kind: "idle" });
-        await ctx.reply(`âœ… طھظ…طھ ط¥ط¶ط§ظپط© ${n}$ ظ„ظ„ظ…ط³طھط®ط¯ظ… ${d.user_id}.`);
-        // â”€â”€ ط±ط³ط§ظ„ط© ظˆط§ط¶ط­ط© ظ„ظ„ظ…ط³طھط®ط¯ظ… ط¨ط¯ظˆظ† ط±ظ‚ظ… ط·ظ„ط¨ â”€â”€
-        try { await ctx.telegram.sendMessage(d.user_id, `âœ… طھظ… ظ‚ط¨ظˆظ„ ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹ظƒطŒ ظˆطھظ…طھ ط¥ط¶ط§ظپط© ${n}$ ط¥ظ„ظ‰ ط±طµظٹط¯ظƒ.`); } catch { /* ignore */ }
+        await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ${n}$ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ${d.user_id}.`);
+        // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·آ±ط·آ³ط·آ§ط¸â€‍ط·آ© ط¸ث†ط·آ§ط·آ¶ط·آ­ط·آ© ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ط·آ¨ط·آ¯ط¸ث†ط¸â€  ط·آ±ط¸â€ڑط¸â€¦ ط·آ·ط¸â€‍ط·آ¨ أ¢â€‌â‚¬أ¢â€‌â‚¬
+        try { await ctx.telegram.sendMessage(d.user_id, `أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط¸â€ڑط·آ¨ط¸ث†ط¸â€‍ ط·آ·ط¸â€‍ط·آ¨ ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ط¸ئ’ط·إ’ ط¸ث†ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ${n}$ ط·آ¥ط¸â€‍ط¸â€° ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ئ’.`); } catch { /* ignore */ }
         return;
       }
       case "admin:userBalance": {
-        const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ظ…ط¨ظ„ط؛ط§ظ‹ طµط§ظ„ط­ط§ظ‹."); return; }
+        const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ£ط·آ¯ط·آ®ط¸â€‍ ط¸â€¦ط·آ¨ط¸â€‍ط·ط›ط·آ§ط¸â€¹ ط·آµط·آ§ط¸â€‍ط·آ­ط·آ§ط¸â€¹."); return; }
         const delta = step.mode === "add" ? n : -n; await adjustBalance(step.userId, delta); setStep(ctx.from.id, { kind: "idle" });
-        const u = await getUser(step.userId); await ctx.reply(`âœ… طھظ… ط§ظ„طھط¹ط¯ظٹظ„. ط§ظ„ط±طµظٹط¯ ط§ظ„ط¬ط¯ظٹط¯: ${u ? Number(u.balance).toFixed(2) : "?"}$`);
-        try { await ctx.telegram.sendMessage(step.userId, step.mode === "add" ? `ًں’° طھظ…طھ ط¥ط¶ط§ظپط© ${n}$ ط¥ظ„ظ‰ ط±طµظٹط¯ظƒ.` : `ًں’¸ طھظ… ط®طµظ… ${n}$ ظ…ظ† ط±طµظٹط¯ظƒ.`); } catch { /* ignore */ }
+        const u = await getUser(step.userId); await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·ع¾ط·آ¹ط·آ¯ط¸ظ¹ط¸â€‍. ط·آ§ط¸â€‍ط·آ±ط·آµط¸ظ¹ط·آ¯ ط·آ§ط¸â€‍ط·آ¬ط·آ¯ط¸ظ¹ط·آ¯: ${u ? Number(u.balance).toFixed(2) : "?"}$`);
+        try { await ctx.telegram.sendMessage(step.userId, step.mode === "add" ? `ظ‹ع؛â€™آ° ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ${n}$ ط·آ¥ط¸â€‍ط¸â€° ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ئ’.` : `ظ‹ع؛â€™آ¸ ط·ع¾ط¸â€¦ ط·آ®ط·آµط¸â€¦ ${n}$ ط¸â€¦ط¸â€  ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ئ’.`); } catch { /* ignore */ }
         return;
       }
-      case "admin:findUser": { const found = await searchUser(txt); setStep(ctx.from.id, { kind: "idle" }); if (!found.length) { await ctx.reply("âڑ ï¸ڈ ظ„ط§ ظٹظˆط¬ط¯ ظ†طھط§ط¦ط¬."); return; } const kb = found.map(u => [Markup.button.callback(`${u.first_name ?? "â€”"}${u.username ? " @" + u.username : ""} â€¢ ${Number(u.balance).toFixed(2)}$`, `adm:user:${u.id}`)]); kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]); await ctx.reply(`ظ†طھط§ط¦ط¬ (${found.length}):`, Markup.inlineKeyboard(kb)); return; }
+      case "admin:findUser": { const found = await searchUser(txt); setStep(ctx.from.id, { kind: "idle" }); if (!found.length) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط¸â€‍ط·آ§ ط¸ظ¹ط¸ث†ط·آ¬ط·آ¯ ط¸â€ ط·ع¾ط·آ§ط·آ¦ط·آ¬."); return; } const kb = found.map(u => [Markup.button.callback(`${u.first_name ?? "أ¢â‚¬â€‌"}${u.username ? " @" + u.username : ""} أ¢â‚¬آ¢ ${Number(u.balance).toFixed(2)}$`, `adm:user:${u.id}`)]); kb.push([Markup.button.callback("أ¢آ¬â€¦أ¯آ¸عˆ ط·آ±ط·آ¬ط¸ث†ط·آ¹", "admin:menu")]); await ctx.reply(`ط¸â€ ط·ع¾ط·آ§ط·آ¦ط·آ¬ (${found.length}):`, Markup.inlineKeyboard(kb)); return; }
       case "admin:editPrice": {
         if (txt.toLowerCase() === "reset") {
           await q("INSERT INTO product_overrides(product_id,product_name) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET custom_markup_percent=NULL, custom_price_usd=NULL, updated_at=NOW()", [step.productId, step.productName]);
-          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ظ„ط³ط¹ط± ظ„ظ„ط§ظپطھط±ط§ط¶ظٹ."); return;
+          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط·آ§ط¸â€‍ط·آ³ط·آ¹ط·آ± ط¸â€‍ط¸â€‍ط·آ§ط¸ظ¾ط·ع¾ط·آ±ط·آ§ط·آ¶ط¸ظ¹."); return;
         }
         const m = txt.match(/^([%$])\s*(-?\d+(\.\d+)?)$/);
-        if (!m) { await ctx.reply("âڑ ï¸ڈ طµظٹط؛ط© ط؛ظٹط± طµط­ظٹط­ط©. ظ…ط«ط§ظ„: `%5` ط£ظˆ `$2.5`."); return; }
+        if (!m) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آµط¸ظ¹ط·ط›ط·آ© ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­ط·آ©. ط¸â€¦ط·آ«ط·آ§ط¸â€‍: `%5` ط·آ£ط¸ث† `$2.5`."); return; }
         const v = Number(m[2]);
         if (m[1] === "%") await q("INSERT INTO product_overrides(product_id,product_name,custom_markup_percent) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_markup_percent=$3, custom_price_usd=NULL, updated_at=NOW()", [step.productId, step.productName, String(v)]);
         else await q("INSERT INTO product_overrides(product_id,product_name,custom_price_usd) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_price_usd=$3, custom_markup_percent=NULL, updated_at=NOW()", [step.productId, step.productName, String(v)]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… طھظ… ط­ظپط¸ ط§ظ„ط³ط¹ط±.`); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ­ط¸ظ¾ط·آ¸ ط·آ§ط¸â€‍ط·آ³ط·آ¹ط·آ±.`); return;
       }
       case "admin:editProductInstructions": {
         const value = txt.toLowerCase() === "clear" ? null : txt;
         await q("INSERT INTO product_overrides(product_id,product_name,instructions) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET instructions=$3, updated_at=NOW()", [step.productId, step.productName, value]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? "âœ… طھظ… ط­ظپط¸ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ." : "âœ… طھظ… ظ…ط³ط­ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ."); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? "أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ­ط¸ظ¾ط·آ¸ ط·آ§ط¸â€‍ط·ع¾ط·آ¹ط¸â€‍ط¸ظ¹ط¸â€¦ط·آ§ط·ع¾." : "أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط¸â€¦ط·آ³ط·آ­ ط·آ§ط¸â€‍ط·ع¾ط·آ¹ط¸â€‍ط¸ظ¹ط¸â€¦ط·آ§ط·ع¾."); return;
       }
       case "admin:renameProduct": {
         const value = txt.toLowerCase() === "reset" ? null : txt;
         await q("INSERT INTO product_overrides(product_id,product_name,custom_name) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_name=$3, updated_at=NOW()", [step.productId, step.productName, value]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? `âœ… طھظ… طھط؛ظٹظٹط± ط§ظ„ط§ط³ظ… ط¥ظ„ظ‰ "${value}".` : "âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ظ„ط§ط³ظ… ظ„ظ„ط§ظپطھط±ط§ط¶ظٹ."); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? `أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط·ط›ط¸ظ¹ط¸ظ¹ط·آ± ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦ ط·آ¥ط¸â€‍ط¸â€° "${value}".` : "أ¢إ“â€¦ ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦ ط¸â€‍ط¸â€‍ط·آ§ط¸ظ¾ط·ع¾ط·آ±ط·آ§ط·آ¶ط¸ظ¹."); return;
       }
       case "admin:moveProduct": {
         if (txt.toLowerCase() === "reset") {
           await q("INSERT INTO product_overrides(product_id,product_name) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=NULL, updated_at=NOW()", [step.productId, step.productName]);
-          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ظ„ظ…ظ†طھط¬ ظ„ظ‚ط³ظ…ظ‡ ط§ظ„ط£طµظ„ظٹ."); return;
+          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ط¸â€، ط·آ§ط¸â€‍ط·آ£ط·آµط¸â€‍ط¸ظ¹."); return;
         }
-        const catId = Number(txt); if (!Number.isFinite(catId)) { await ctx.reply("âڑ ï¸ڈ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط؛ظٹط± طµط§ظ„ط­."); return; }
+        const catId = Number(txt); if (!Number.isFinite(catId)) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­."); return; }
         await q("INSERT INTO product_overrides(product_id,product_name,custom_category_id) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=$3, updated_at=NOW()", [step.productId, step.productName, catId]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… طھظ… ظ†ظ‚ظ„ ط§ظ„ظ…ظ†طھط¬ ط¥ظ„ظ‰ ط§ظ„ظ‚ط³ظ… ${catId}.`); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط¸â€ ط¸â€ڑط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·آ¥ط¸â€‍ط¸â€° ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ${catId}.`); return;
       }
       case "admin:editCategoryName": {
         const value = txt.toLowerCase() === "reset" ? null : txt;
         await q("INSERT INTO category_overrides(category_id,custom_name) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_name=$2, updated_at=NOW()", [step.categoryId, value]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? `âœ… طھظ… طھط؛ظٹظٹط± ط§ط³ظ… ط§ظ„ظ‚ط³ظ….` : "âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ط³ظ… ط§ظ„ظ‚ط³ظ…."); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(value ? `أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط·ط›ط¸ظ¹ط¸ظ¹ط·آ± ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦.` : "أ¢إ“â€¦ ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦."); return;
       }
       case "admin:setCatMarkup": {
         if (txt.toLowerCase() === "reset") {
           await q("INSERT INTO category_overrides(category_id) VALUES($1) ON CONFLICT(category_id) DO UPDATE SET custom_markup_percent=NULL, updated_at=NOW()", [step.categoryId]);
-          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ظ†ط³ط¨ط© ط§ظ„ظ‚ط³ظ… ظ„ظ„ط§ظپطھط±ط§ط¶ظٹ."); return;
+          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط¸â€ ط·آ³ط·آ¨ط·آ© ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط¸â€‍ط¸â€‍ط·آ§ط¸ظ¾ط·ع¾ط·آ±ط·آ§ط·آ¶ط¸ظ¹."); return;
         }
-        const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("âڑ ï¸ڈ ظ†ط³ط¨ط© ط؛ظٹط± طµط§ظ„ط­ط©."); return; }
+        const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط¸â€ ط·آ³ط·آ¨ط·آ© ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­ط·آ©."); return; }
         await q("INSERT INTO category_overrides(category_id,custom_markup_percent) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_markup_percent=$2, updated_at=NOW()", [step.categoryId, String(n)]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ظ†ط³ط¨ط© ط§ظ„ظ‚ط³ظ…: ${n}%.`); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`أ¢إ“â€¦ ط¸â€ ط·آ³ط·آ¨ط·آ© ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦: ${n}%.`); return;
       }
       case "admin:setCatSort": {
         if (txt.toLowerCase() === "reset") {
           await q("INSERT INTO category_overrides(category_id) VALUES($1) ON CONFLICT(category_id) DO UPDATE SET sort_order=NULL, updated_at=NOW()", [step.categoryId]);
-          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ظ„طھط±طھظٹط¨."); return;
+          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط·آ§ط¸â€‍ط·ع¾ط·آ±ط·ع¾ط¸ظ¹ط·آ¨."); return;
         }
-        const n = Number(txt); if (!Number.isFinite(n)) { await ctx.reply("âڑ ï¸ڈ ط±ظ‚ظ… ط؛ظٹط± طµط§ظ„ط­."); return; }
+        const n = Number(txt); if (!Number.isFinite(n)) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ±ط¸â€ڑط¸â€¦ ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­."); return; }
         await q("INSERT INTO category_overrides(category_id,sort_order) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET sort_order=$2, updated_at=NOW()", [step.categoryId, n]);
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… طھظ… طھط¹ظٹظٹظ† ط§ظ„طھط±طھظٹط¨: ${n}.`); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط·آ¹ط¸ظ¹ط¸ظ¹ط¸â€  ط·آ§ط¸â€‍ط·ع¾ط·آ±ط·ع¾ط¸ظ¹ط·آ¨: ${n}.`); return;
       }
       case "admin:moveCatAll": {
-        if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("â‌Œ طھظ… ط§ظ„ط¥ظ„ط؛ط§ط،."); return; }
-        const targetCatId = Number(txt); if (!Number.isFinite(targetCatId)) { await ctx.reply("âڑ ï¸ڈ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط؛ظٹط± طµط§ظ„ط­."); return; }
+        if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢â€Œإ’ ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ."); return; }
+        const targetCatId = Number(txt); if (!Number.isFinite(targetCatId)) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­."); return; }
         const all = await getCachedProducts();
         const toMove = all.filter(p => p.parent_id === step.sourceCategoryId);
         let moved = 0;
@@ -3293,27 +3395,27 @@ async function startBot() {
           await q("INSERT INTO product_overrides(product_id,product_name,custom_category_id) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=$3, updated_at=NOW()", [p.id, p.name, targetCatId]);
           moved++;
         }
-        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… طھظ… ظ†ظ‚ظ„ ${moved} ظ…ظ†طھط¬ ط¥ظ„ظ‰ ط§ظ„ظ‚ط³ظ… ${targetCatId}.`); return;
+        invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط¸â€ ط¸â€ڑط¸â€‍ ${moved} ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·آ¥ط¸â€‍ط¸â€° ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ${targetCatId}.`); return;
       }
       case "admin:moveCatToParent": {
-        if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("â‌Œ طھظ… ط§ظ„ط¥ظ„ط؛ط§ط،."); return; }
+        if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢â€Œإ’ ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¥ط¸â€‍ط·ط›ط·آ§ط·طŒ."); return; }
         const targetParent = Number(txt);
-        if (!Number.isFinite(targetParent)) { await ctx.reply("âڑ ï¸ڈ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط؛ظٹط± طµط§ظ„ط­. ط£ط±ط³ظ„ 0 ظ„ظ„ط¬ط°ط± ط£ظˆ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ…."); return; }
+        if (!Number.isFinite(targetParent)) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­. ط·آ£ط·آ±ط·آ³ط¸â€‍ 0 ط¸â€‍ط¸â€‍ط·آ¬ط·آ°ط·آ± ط·آ£ط¸ث† ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦."); return; }
         const parentVal = targetParent === 0 ? null : targetParent;
         await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=$2, updated_at=NOW()", [step.categoryId, parentVal]);
         invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
-        await ctx.reply(parentVal ? `âœ… طھظ… ظ†ظ‚ظ„ ط§ظ„ظ‚ط³ظ… ط¥ظ„ظ‰ ط¯ط§ط®ظ„ ط§ظ„ظ‚ط³ظ… ${parentVal}.` : `âœ… طھظ… ظ†ظ‚ظ„ ط§ظ„ظ‚ط³ظ… ط¥ظ„ظ‰ ط§ظ„ظ…ط³طھظˆظ‰ ط§ظ„ط±ط¦ظٹط³ظٹ.`); return;
+        await ctx.reply(parentVal ? `أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط¸â€ ط¸â€ڑط¸â€‍ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ¥ط¸â€‍ط¸â€° ط·آ¯ط·آ§ط·آ®ط¸â€‍ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ${parentVal}.` : `أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط¸â€ ط¸â€ڑط¸â€‍ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ¥ط¸â€‍ط¸â€° ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط¸ث†ط¸â€° ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹.`); return;
       }
       case "admin:userMessage": {
-        if (!txt) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ط±ط³ط§ظ„ط© ظپط§ط±ط؛ط©."); return; }
+        if (!txt) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط·آ±ط·آ³ط·آ§ط¸â€‍ط·آ© ط¸ظ¾ط·آ§ط·آ±ط·ط›ط·آ©."); return; }
         try {
-          await ctx.telegram.sendMessage(step.userId, `ًں“© ط±ط³ط§ظ„ط© ظ…ظ† ط§ظ„ط¥ط¯ط§ط±ط©:\n\n${txt}`);
+          await ctx.telegram.sendMessage(step.userId, `ظ‹ع؛â€œآ© ط·آ±ط·آ³ط·آ§ط¸â€‍ط·آ© ط¸â€¦ط¸â€  ط·آ§ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ©:\n\n${txt}`);
           await q("INSERT INTO admin_messages(admin_id,user_id,message) VALUES($1,$2,$3)", [ctx.from.id, step.userId, txt]);
           setStep(ctx.from.id, { kind: "idle" });
-          await ctx.reply("âœ… طھظ… ط¥ط±ط³ط§ظ„ ط§ظ„ط±ط³ط§ظ„ط© ظ„ظ„ظ…ط³طھط®ط¯ظ… ط¨ط´ظƒظ„ ط®ط§طµ.");
+          await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ ط·آ§ط¸â€‍ط·آ±ط·آ³ط·آ§ط¸â€‍ط·آ© ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ط·آ¨ط·آ´ط¸ئ’ط¸â€‍ ط·آ®ط·آ§ط·آµ.");
         } catch {
           setStep(ctx.from.id, { kind: "idle" });
-          await ctx.reply("â‌Œ طھط¹ط°ط± ط¥ط±ط³ط§ظ„ ط§ظ„ط±ط³ط§ظ„ط©. ط±ط¨ظ…ط§ ط§ظ„ظ…ط³طھط®ط¯ظ… ط­ط¸ط± ط§ظ„ط¨ظˆطھ.");
+          await ctx.reply("أ¢â€Œإ’ ط·ع¾ط·آ¹ط·آ°ط·آ± ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ ط·آ§ط¸â€‍ط·آ±ط·آ³ط·آ§ط¸â€‍ط·آ©. ط·آ±ط·آ¨ط¸â€¦ط·آ§ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ط·آ­ط·آ¸ط·آ± ط·آ§ط¸â€‍ط·آ¨ط¸ث†ط·ع¾.");
         }
         return;
       }
@@ -3326,38 +3428,55 @@ async function startBot() {
           await new Promise(r => setTimeout(r, 50));
         }
         await q("INSERT INTO broadcasts(message,sent_by,sent_count) VALUES($1,$2,$3)", [txt, ctx.from.id, sent]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… طھظ… ط§ظ„ط¥ط±ط³ط§ظ„ ظ„ظ€ ${sent} ظ…ط³طھط®ط¯ظ….`); return;
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ§ط¸â€‍ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ ط¸â€‍ط¸â‚¬ ${sent} ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦.`); return;
       }
-      case "admin:addMethod:name": { setStep(ctx.from.id, { kind: "admin:addMethod:id", name: txt }); await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ط§ظ„ظ…ط¹ط±ظپ/ط§ظ„ط±ظ‚ظ…:"); return; }
-      case "admin:addMethod:id": { setStep(ctx.from.id, { kind: "admin:addMethod:instr", name: step.name, identifier: txt }); await ctx.reply("ًں“‹ ط£ط±ط³ظ„ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ:"); return; }
+      case "admin:addMethod:name": { setStep(ctx.from.id, { kind: "admin:addMethod:id", name: txt }); await ctx.reply("ظ‹ع؛â€‌â€ک ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط·آ¹ط·آ±ط¸ظ¾/ط·آ§ط¸â€‍ط·آ±ط¸â€ڑط¸â€¦:"); return; }
+      case "admin:addMethod:id": { setStep(ctx.from.id, { kind: "admin:addMethod:instr", name: step.name, identifier: txt }); await ctx.reply("ظ‹ع؛â€œâ€¹ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط·ع¾ط·آ¹ط¸â€‍ط¸ظ¹ط¸â€¦ط·آ§ط·ع¾:"); return; }
       case "admin:addMethod:instr": {
         setStep(ctx.from.id, { kind: "admin:addMethod:photo", name: step.name, identifier: step.identifier, instructions: txt });
-        await ctx.reply("ًں–¼ ط£ط±ط³ظ„ طµظˆط±ط© ظ„ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹ ط£ظˆ ط§ظƒطھط¨ *skip* ظ„طھط®ط·ظ‘ظٹ:", { parse_mode: "Markdown" }); return;
+        await ctx.reply("ظ‹ع؛â€“آ¼ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آµط¸ث†ط·آ±ط·آ© ط¸â€‍ط·آ·ط·آ±ط¸ظ¹ط¸â€ڑط·آ© ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ ط·آ£ط¸ث† ط·آ§ط¸ئ’ط·ع¾ط·آ¨ *skip* ط¸â€‍ط·ع¾ط·آ®ط·آ·ط¸â€کط¸ظ¹:", { parse_mode: "Markdown" }); return;
       }
       case "admin:addMethod:photo": {
         if (txt.toLowerCase() === "skip") {
           await q("INSERT INTO deposit_methods(name,identifier,instructions) VALUES($1,$2,$3)", [step.name, step.identifier, step.instructions]);
-          setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… ط¥ط¶ط§ظپط© ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹ ط¨ط¯ظˆظ† طµظˆط±ط©."); return;
+          setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط·آ·ط·آ±ط¸ظ¹ط¸â€ڑط·آ© ط·آ§ط¸â€‍ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹ ط·آ¨ط·آ¯ط¸ث†ط¸â€  ط·آµط¸ث†ط·آ±ط·آ©."); return;
         }
-        await ctx.reply("âڑ ï¸ڈ ط£ط±ط³ظ„ طµظˆط±ط© ط£ظˆ ط§ظƒطھط¨ *skip* ظ„طھط®ط·ظ‘ظٹ.", { parse_mode: "Markdown" }); return;
+        await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آµط¸ث†ط·آ±ط·آ© ط·آ£ط¸ث† ط·آ§ط¸ئ’ط·ع¾ط·آ¨ *skip* ط¸â€‍ط·ع¾ط·آ®ط·آ·ط¸â€کط¸ظ¹.", { parse_mode: "Markdown" }); return;
       }
       case "admin:addApi:name": {
-        setStep(ctx.from.id, { kind: "admin:addApi:token", name: txt });
-        await ctx.reply(`ًں”‘ ط£ط±ط³ظ„ API token ظپظ‚ط·.\nط³ظٹطھظ… ط§ط³طھط®ط¯ط§ظ… ط±ط§ط¨ط· ط§ظ„ظ€API ط§ظ„ط£ط³ط§ط³ظٹ:\n${ORANOS_BASE}\n\nظ„ظ† ظٹط¸ظ‡ط± ط§ظ„ظ€token ظ„ظ„ظ…ط³طھط®ط¯ظ…ظٹظ† ظˆط³ظٹظڈط­ظپط¸ ظ…ط´ظپط±ط§ظ‹.`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:apis")]]));
+        if (!txt.trim()) { await ctx.reply("â‌Œ ط§ط³ظ… ط§ظ„ظ€API ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ظپط§ط±ط؛ط§ظ‹."); return; }
+        setStep(ctx.from.id, { kind: "admin:addApi:base", name: txt.trim() });
+        await ctx.reply(
+          "ًں”Œ ط£ط±ط³ظ„ ط±ط§ط¨ط· ط§ظ„ظ€API ط§ظ„ط¬ط¯ظٹط¯.\nظ…ط«ط§ظ„ طھط¬ط±ظٹط¨ظٹ: https://api.example.com",
+          Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:apis")]])
+        );
+        return;
+      }
+      case "admin:addApi:base": {
+        const baseUrl = normalizeApiBase(txt);
+        if (!/^https?:\/\/\S+$/i.test(baseUrl)) {
+          await ctx.reply("â‌Œ ط£ط±ط³ظ„ ط±ط§ط¨ط· API طµط­ظٹط­ط§ظ‹ ظٹط¨ط¯ط£ ط¨ظ€ https:// ط£ظˆ http://.");
+          return;
+        }
+        setStep(ctx.from.id, { kind: "admin:addApi:token", name: step.name, baseUrl });
+        await ctx.reply(
+          "ًں”‘ ط£ط±ط³ظ„ API token ظپظ‚ط·.\nط³ظٹطھظ… ط¬ظ„ط¨ ط§ظ„ظ…ظ†طھط¬ط§طھ ظ…ط¨ط§ط´ط±ط© ظ…ظ† ظ‡ط°ط§ ط§ظ„ط±ط§ط¨ط· ظˆظ…ط²ط§ظ…ظ†طھظ‡ط§ ظ…ط¹ ظƒطھط§ظ„ظˆط¬ ط§ظ„ظ€API ط§ظ„ط£ط³ط§ط³ظٹ.\nظ„ظ† ظٹط¸ظ‡ط± ط§ظ„ظ€token ظ„ظ„ظ…ط³طھط®ط¯ظ…ظٹظ† ظˆط³ظٹظڈط­ظپط¸ ظ…ط´ظپط±ط§ظ‹.",
+          Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:apis")]])
+        );
         return;
       }
       case "admin:addApi:token": {
-        if (!txt) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ€API token ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ظپط§ط±ط؛ط§ظ‹."); return; }
+        if (!txt) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط¸â‚¬API token ط¸â€‍ط·آ§ ط¸ظ¹ط¸â€¦ط¸ئ’ط¸â€  ط·آ£ط¸â€  ط¸ظ¹ط¸ئ’ط¸ث†ط¸â€  ط¸ظ¾ط·آ§ط·آ±ط·ط›ط·آ§ط¸â€¹."); return; }
         const draft = {
           id: 0,
           name: step.name,
-          base_url: normalizeApiBase(ORANOS_BASE),
+          base_url: step.baseUrl,
           token_encrypted: encryptApiToken(txt),
           active: true,
           is_primary: false,
         };
         try {
-          // ط§ط®طھط¨ط± ط§ظ„ظ€API ظ‚ط¨ظ„ ط¥ظ†ط´ط§ط، ط§ظ„ط³ط¬ظ„ ط­طھظ‰ ظ„ط§ ظٹط¨ظ‚ظ‰ API ظپط§ط±ط؛ط§ظ‹ ط¹ظ†ط¯ ظپط´ظ„ ط§ظ„طھظˆط«ظٹظ‚.
+          // ط·آ§ط·آ®ط·ع¾ط·آ¨ط·آ± ط·آ§ط¸â€‍ط¸â‚¬API ط¸â€ڑط·آ¨ط¸â€‍ ط·آ¥ط¸â€ ط·آ´ط·آ§ط·طŒ ط·آ§ط¸â€‍ط·آ³ط·آ¬ط¸â€‍ ط·آ­ط·ع¾ط¸â€° ط¸â€‍ط·آ§ ط¸ظ¹ط·آ¨ط¸â€ڑط¸â€° API ط¸ظ¾ط·آ§ط·آ±ط·ط›ط·آ§ط¸â€¹ ط·آ¹ط¸â€ ط·آ¯ ط¸ظ¾ط·آ´ط¸â€‍ ط·آ§ط¸â€‍ط·ع¾ط¸ث†ط·آ«ط¸ظ¹ط¸â€ڑ.
           const products = await fetchProductsFromApi(draft);
           const validProducts = products.filter(raw => raw && (raw.id ?? raw.product_id ?? raw.productId) != null);
           if (!validProducts.length) throw new Error("API returned no products with valid IDs");
@@ -3376,10 +3495,10 @@ async function startBot() {
           }
           invalidateCaches();
           setStep(ctx.from.id, { kind: "idle" });
-          await ctx.reply(`âœ… طھظ…طھ ط¥ط¶ط§ظپط© ${step.name} ظˆظ…ط²ط§ظ…ظ†ط© ${count} ظ…ظ†طھط¬.`);
+          await ctx.reply(`أ¢إ“â€¦ ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ${step.name} ط¸ث†ط¸â€¦ط·آ²ط·آ§ط¸â€¦ط¸â€ ط·آ© ${count} ط¸â€¦ط¸â€ ط·ع¾ط·آ¬.`);
         } catch (err) {
           setStep(ctx.from.id, { kind: "idle" });
-          await ctx.reply(`â‌Œ ظپط´ظ„طھ ط¥ط¶ط§ظپط© ط§ظ„ظ€API ظˆظ„ظ… ظٹطھظ… ط­ظپط¸ظ‡ ظ„ط£ظ†ظ‡ ظپط§ط±ط؛ ط£ظˆ ظپط´ظ„ ط§ظ„طھظˆط«ظٹظ‚.\nط§ظ„ط³ط¨ط¨: ${String(err?.message ?? err).slice(0, 180)}`);
+          await ctx.reply(`أ¢â€Œإ’ ط¸ظ¾ط·آ´ط¸â€‍ط·ع¾ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط·آ§ط¸â€‍ط¸â‚¬API ط¸ث†ط¸â€‍ط¸â€¦ ط¸ظ¹ط·ع¾ط¸â€¦ ط·آ­ط¸ظ¾ط·آ¸ط¸â€، ط¸â€‍ط·آ£ط¸â€ ط¸â€، ط¸ظ¾ط·آ§ط·آ±ط·ط› ط·آ£ط¸ث† ط¸ظ¾ط·آ´ط¸â€‍ ط·آ§ط¸â€‍ط·ع¾ط¸ث†ط·آ«ط¸ظ¹ط¸â€ڑ.\nط·آ§ط¸â€‍ط·آ³ط·آ¨ط·آ¨: ${String(err?.message ?? err).slice(0, 180)}`);
         }
         await showApiSources(ctx);
         return;
@@ -3387,31 +3506,31 @@ async function startBot() {
       case "admin:renameApi": {
         if (!(await requireSuperAdmin(ctx))) return;
         const value = txt.trim();
-        if (!value) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ط§ط³ظ… ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ظپط§ط±ط؛ط§ظ‹."); return; }
+        if (!value) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ§ط¸â€‍ط·آ§ط·آ³ط¸â€¦ ط¸â€‍ط·آ§ ط¸ظ¹ط¸â€¦ط¸ئ’ط¸â€  ط·آ£ط¸â€  ط¸ظ¹ط¸ئ’ط¸ث†ط¸â€  ط¸ظ¾ط·آ§ط·آ±ط·ط›ط·آ§ط¸â€¹."); return; }
         await q("UPDATE api_sources SET name=$1,updated_at=NOW() WHERE id=$2", [value, step.sourceId]);
         invalidateCaches();
         setStep(ctx.from.id, { kind: "idle" });
-        await ctx.reply("âœ… طھظ… طھط؛ظٹظٹط± ط§ط³ظ… API.");
+        await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط·ط›ط¸ظ¹ط¸ظ¹ط·آ± ط·آ§ط·آ³ط¸â€¦ API.");
         await showApiSources(ctx);
         return;
       }
       case "admin:editMethodInstructions": {
         await q("UPDATE deposit_methods SET instructions=$1 WHERE id=$2", [txt, step.methodId]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… طھط­ط¯ظٹط« ط§ظ„طھط¹ظ„ظٹظ…ط§طھ."); return;
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط·آ­ط·آ¯ط¸ظ¹ط·آ« ط·آ§ط¸â€‍ط·ع¾ط·آ¹ط¸â€‍ط¸ظ¹ط¸â€¦ط·آ§ط·ع¾."); return;
       }
-      case "admin:addContact:name": { setStep(ctx.from.id, { kind: "admin:addContact:link", name: txt }); await ctx.reply("ًں”— ط£ط±ط³ظ„ ط§ظ„ط±ط§ط¨ط· ط£ظˆ @username:"); return; }
+      case "admin:addContact:name": { setStep(ctx.from.id, { kind: "admin:addContact:link", name: txt }); await ctx.reply("ظ‹ع؛â€‌â€” ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط·آ±ط·آ§ط·آ¨ط·آ· ط·آ£ط¸ث† @username:"); return; }
       case "admin:addContact:link": {
         await q("INSERT INTO contact_links(name,link) VALUES($1,$2)", [step.name, txt]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… ط¥ط¶ط§ظپط© ظˆط³ظٹظ„ط© ط§ظ„طھظˆط§طµظ„."); return;
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط¸ث†ط·آ³ط¸ظ¹ط¸â€‍ط·آ© ط·آ§ط¸â€‍ط·ع¾ط¸ث†ط·آ§ط·آµط¸â€‍."); return;
       }
       case "admin:addVirtualCategory:name": {
         const pos = (await q("SELECT COALESCE(MAX(position),0)+1 AS p FROM virtual_categories WHERE parent_id=$1", [step.parentId ?? 0])).rows[0]?.p ?? 1;
         await q("INSERT INTO virtual_categories(name,parent_id,position) VALUES($1,$2,$3)", [txt, step.parentId ?? 0, pos]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… ط¥ط¶ط§ظپط© ط§ظ„ظ‚ط³ظ… ط§ظ„ظ…ط®طµطµ."); return;
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط·آ®ط·آµط·آµ."); return;
       }
       case "admin:editVCatName": {
         await q("UPDATE virtual_categories SET name=$1, updated_at=NOW() WHERE id=$2", [txt, step.vcId]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… طھط؛ظٹظٹط± ط§ط³ظ… ط§ظ„ظ‚ط³ظ…."); return;
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط·ط›ط¸ظ¹ط¸ظ¹ط·آ± ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦."); return;
       }
       case "admin:addManualProduct:name": {
         setStep(ctx.from.id, {
@@ -3419,11 +3538,11 @@ async function startBot() {
           name: txt,
           manualCategoryId: step.manualCategoryId ?? 0,
         });
-        await ctx.reply("ًں’µ ط£ط±ط³ظ„ ط§ظ„ط³ط¹ط± ط¨ط§ظ„ط¯ظˆظ„ط§ط±:");
+        await ctx.reply("ظ‹ع؛â€™آµ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ§ط¸â€‍ط·آ³ط·آ¹ط·آ± ط·آ¨ط·آ§ط¸â€‍ط·آ¯ط¸ث†ط¸â€‍ط·آ§ط·آ±:");
         return;
       }
       case "admin:addManualProduct:price": {
-        const price = Number(txt); if (!Number.isFinite(price) || price < 0) { await ctx.reply("âڑ ï¸ڈ ط³ط¹ط± ط؛ظٹط± طµط§ظ„ط­."); return; }
+        const price = Number(txt); if (!Number.isFinite(price) || price < 0) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ³ط·آ¹ط·آ± ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­."); return; }
         if (step.manualCategoryId > 0) {
           await q(
             "INSERT INTO manual_products(name,category_id,category_is_virtual,price_usd) VALUES($1,$2,true,$3)",
@@ -3431,26 +3550,26 @@ async function startBot() {
           );
           invalidateCaches();
           setStep(ctx.from.id, { kind: "idle" });
-          await ctx.reply("âœ… طھظ… ط¥ط¶ط§ظپط© ط§ظ„ظ…ظ†طھط¬ ط¯ط§ط®ظ„ ط§ظ„ظ‚ط³ظ… ط§ظ„ظٹط¯ظˆظٹ.");
+          await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·آ¯ط·آ§ط·آ®ط¸â€‍ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹.");
           return;
         }
         setStep(ctx.from.id, { kind: "admin:addManualProduct:category", name: step.name, price });
         const cats = (await q("SELECT id,name FROM manual_categories ORDER BY id")).rows;
         const catText = cats.length
           ? cats.map(c => `${c.id}: ${c.name}`).join("\n")
-          : "ظ„ط§ طھظˆط¬ط¯ ط£ظ‚ط³ط§ظ… ط¨ط¹ط¯";
-        await ctx.reply(`ًں“‚ ط£ط±ط³ظ„ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط§ظ„ظٹط¯ظˆظٹطŒ ط£ظˆ 0 ظ„ظˆط¶ط¹ ط§ظ„ظ…ظ†طھط¬ ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©:\n\n${catText}`);
+          : "ط¸â€‍ط·آ§ ط·ع¾ط¸ث†ط·آ¬ط·آ¯ ط·آ£ط¸â€ڑط·آ³ط·آ§ط¸â€¦ ط·آ¨ط·آ¹ط·آ¯";
+        await ctx.reply(`ظ‹ع؛â€œâ€ڑ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹ط·إ’ ط·آ£ط¸ث† 0 ط¸â€‍ط¸ث†ط·آ¶ط·آ¹ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط¸ظ¾ط¸ظ¹ ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط·آ¹ط·آ§ط¸â€¦ط·آ©:\n\n${catText}`);
         return;
       }
       case "admin:addManualProduct:category": {
         const categoryId = Number(txt);
         if (!Number.isInteger(categoryId) || categoryId < 0) {
-          await ctx.reply("âڑ ï¸ڈ ط£ط±ط³ظ„ ط±ظ‚ظ… ظ‚ط³ظ… طµط­ظٹط­ ط£ظˆ 0 ظ„ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©.");
+          await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ±ط¸â€ڑط¸â€¦ ط¸â€ڑط·آ³ط¸â€¦ ط·آµط·آ­ط¸ظ¹ط·آ­ ط·آ£ط¸ث† 0 ط¸â€‍ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط·آ¹ط·آ§ط¸â€¦ط·آ©.");
           return;
         }
         if (categoryId > 0) {
           const cat = (await q("SELECT id FROM manual_categories WHERE id=$1", [categoryId])).rows[0];
-          if (!cat) { await ctx.reply("âڑ ï¸ڈ ظ‡ط°ط§ ط§ظ„ظ‚ط³ظ… ط؛ظٹط± ظ…ظˆط¬ظˆط¯. ط£ط±ط³ظ„ ط±ظ‚ظ…ط§ظ‹ ظ…ظ† ط§ظ„ظ‚ط§ط¦ظ…ط©."); return; }
+          if (!cat) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط¸â€،ط·آ°ط·آ§ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·ط›ط¸ظ¹ط·آ± ط¸â€¦ط¸ث†ط·آ¬ط¸ث†ط·آ¯. ط·آ£ط·آ±ط·آ³ط¸â€‍ ط·آ±ط¸â€ڑط¸â€¦ط·آ§ط¸â€¹ ط¸â€¦ط¸â€  ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ©."); return; }
         }
         await q(
           "INSERT INTO manual_products(name,category_id,category_is_virtual,price_usd) VALUES($1,$2,$3,$4)",
@@ -3458,7 +3577,7 @@ async function startBot() {
         );
         invalidateCaches();
         setStep(ctx.from.id, { kind: "idle" });
-        await ctx.reply(categoryId > 0 ? "âœ… طھظ… ط¥ط¶ط§ظپط© ط§ظ„ظ…ظ†طھط¬ ط¯ط§ط®ظ„ ط§ظ„ظ‚ط³ظ… ط§ظ„ظٹط¯ظˆظٹ." : "âœ… طھظ… ط¥ط¶ط§ظپط© ط§ظ„ظ…ظ†طھط¬ ط§ظ„ظٹط¯ظˆظٹ ط¥ظ„ظ‰ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©.");
+        await ctx.reply(categoryId > 0 ? "أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·آ¯ط·آ§ط·آ®ط¸â€‍ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹." : "أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ¥ط·آ¶ط·آ§ط¸ظ¾ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹ ط·آ¥ط¸â€‍ط¸â€° ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ© ط·آ§ط¸â€‍ط·آ¹ط·آ§ط¸â€¦ط·آ©.");
         return;
       }
       case "admin:addManualCategory:name": {
@@ -3466,47 +3585,47 @@ async function startBot() {
         const pos = (await q("SELECT COALESCE(MAX(position),0)+1 AS p FROM manual_categories WHERE parent_id=$1", [parentId])).rows[0]?.p ?? 1;
         await q("INSERT INTO manual_categories(name,parent_id,position) VALUES($1,$2,$3)", [txt, parentId, pos]);
         setStep(ctx.from.id, { kind: "idle" });
-        await ctx.reply("âœ… طھظ… ط¥ظ†ط´ط§ط، ظ‚ط³ظ… ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ظٹط¯ظˆظٹط©.");
+        await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ¥ط¸â€ ط·آ´ط·آ§ط·طŒ ط¸â€ڑط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€¦ط¸â€ ط·ع¾ط·آ¬ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹ط·آ©.");
         await showManualCategory(ctx, parentId, 1, 0);
         return;
       }
       case "admin:editManualCategoryName": {
         await q("UPDATE manual_categories SET name=$1,updated_at=NOW() WHERE id=$2", [txt, step.categoryId]);
         setStep(ctx.from.id, { kind: "idle" });
-        await ctx.reply("âœ… طھظ… طھط؛ظٹظٹط± ط§ط³ظ… ط§ظ„ظ‚ط³ظ… ط§ظ„ظٹط¯ظˆظٹ.");
+        await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط·ط›ط¸ظ¹ط¸ظ¹ط·آ± ط·آ§ط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸â€ڑط·آ³ط¸â€¦ ط·آ§ط¸â€‍ط¸ظ¹ط·آ¯ط¸ث†ط¸ظ¹.");
         return;
       }
       case "admin:manualOrderAccept": {
         const delivery = txt.toLowerCase() === "skip" ? null : txt;
         await q("UPDATE manual_orders SET status='accepted', admin_note=$1, updated_at=NOW() WHERE id=$2", [delivery, step.orderId]);
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… ظ‚ط¨ظˆظ„ ط§ظ„ط·ظ„ط¨.");
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط¸â€ڑط·آ¨ط¸ث†ط¸â€‍ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨.");
         if (step.userId) {
-          // â”€â”€ ظ„ط§ ظ†ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… â”€â”€
-          const msg = delivery ? `âœ… طھظ… طھظ†ظپظٹط° ط·ظ„ط¨ظƒ\nًں›’ ${step.productName}\n\nًں“¦ ${delivery}` : `âœ… طھظ… طھظ†ظپظٹط° ط·ظ„ط¨ظƒ\nًں›’ ${step.productName}`;
-          await ctx.telegram.sendMessage(step.userId, msg, Markup.inlineKeyboard([[Markup.button.callback("ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])).catch(() => {});
+          // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط¸â€‍ط·آ§ ط¸â€ ط·آ¹ط·آ±ط·آ¶ ط·آ±ط¸â€ڑط¸â€¦ ط·آ§ط¸â€‍ط·آ·ط¸â€‍ط·آ¨ ط¸â€‍ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ أ¢â€‌â‚¬أ¢â€‌â‚¬
+          const msg = delivery ? `أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط¸â€ ط¸ظ¾ط¸ظ¹ط·آ° ط·آ·ط¸â€‍ط·آ¨ط¸ئ’\nظ‹ع؛â€؛â€™ ${step.productName}\n\nظ‹ع؛â€œآ¦ ${delivery}` : `أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط¸â€ ط¸ظ¾ط¸ظ¹ط·آ° ط·آ·ط¸â€‍ط·آ¨ط¸ئ’\nظ‹ع؛â€؛â€™ ${step.productName}`;
+          await ctx.telegram.sendMessage(step.userId, msg, Markup.inlineKeyboard([[Markup.button.callback("ظ‹ع؛عˆ  ط·آ§ط¸â€‍ط·آ±ط·آ¦ط¸ظ¹ط·آ³ط¸ظ¹ط·آ©", "home")]])).catch(() => {});
         }
         return;
       }
       case "admin:manualOrderMsg": {
         if (step.userId) {
-          await ctx.telegram.sendMessage(step.userId, `ًں“© ط±ط³ط§ظ„ط© ظ…ظ† ط§ظ„ط¥ط¯ط§ط±ط©:\n${txt}`).catch(() => {});
+          await ctx.telegram.sendMessage(step.userId, `ظ‹ع؛â€œآ© ط·آ±ط·آ³ط·آ§ط¸â€‍ط·آ© ط¸â€¦ط¸â€  ط·آ§ط¸â€‍ط·آ¥ط·آ¯ط·آ§ط·آ±ط·آ©:\n${txt}`).catch(() => {});
           await q("INSERT INTO admin_messages(admin_id,user_id,message) VALUES($1,$2,$3)", [ctx.from.id, step.userId, txt]);
         }
-        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… ط¥ط±ط³ط§ظ„ ط§ظ„ط±ط³ط§ظ„ط©."); return;
+        setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ ط·آ§ط¸â€‍ط·آ±ط·آ³ط·آ§ط¸â€‍ط·آ©."); return;
       }
       case "admin:setUserMarkup": {
         if (txt.toLowerCase() === "reset") {
           await setUserMarkup(step.userId, null);
-          setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ظ†ط³ط¨ط© ط§ظ„ظ…ط³طھط®ط¯ظ… ظ„ظ„ط§ظپطھط±ط§ط¶ظٹ."); return;
+          setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ط·ع¾ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط¸â€ ط·آ³ط·آ¨ط·آ© ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ ط¸â€‍ط¸â€‍ط·آ§ط¸ظ¾ط·ع¾ط·آ±ط·آ§ط·آ¶ط¸ظ¹."); return;
         }
-        const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("âڑ ï¸ڈ ظ†ط³ط¨ط© ط؛ظٹط± طµط§ظ„ط­ط©."); return; }
-        await setUserMarkup(step.userId, n); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ظ†ط³ط¨ط© ط±ط¨ط­ ط§ظ„ظ…ط³طھط®ط¯ظ…: ${n}%.`); return;
+        const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط¸â€ ط·آ³ط·آ¨ط·آ© ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­ط·آ©."); return; }
+        await setUserMarkup(step.userId, n); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`أ¢إ“â€¦ ط¸â€ ط·آ³ط·آ¨ط·آ© ط·آ±ط·آ¨ط·آ­ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦: ${n}%.`); return;
       }
-      case "admin:pingTarget": { await setSetting("auto_ping_target_user_id", txt.replace(/\D/g, "")); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… طھط¹ظٹظٹظ† ط§ظ„ظ‡ط¯ظپ."); return; }
-      case "admin:pingInterval": { const n = Number(txt); if (!Number.isFinite(n) || n < 1) { await ctx.reply("âڑ ï¸ڈ ط±ظ‚ظ… ط؛ظٹط± طµط§ظ„ط­."); return; } await setSetting("auto_ping_interval_min", String(n)); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ط§ظ„ظپط§طµظ„: ${n} ط¯ظ‚ظٹظ‚ط©.`); return; }
-      case "admin:editBtnLabel": { await setSetting(step.key, txt); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… طھط­ط¯ظٹط« ط§ظ„ط²ط±."); return; }
+      case "admin:pingTarget": { await setSetting("auto_ping_target_user_id", txt.replace(/\D/g, "")); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط·آ¹ط¸ظ¹ط¸ظ¹ط¸â€  ط·آ§ط¸â€‍ط¸â€،ط·آ¯ط¸ظ¾."); return; }
+      case "admin:pingInterval": { const n = Number(txt); if (!Number.isFinite(n) || n < 1) { await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ±ط¸â€ڑط¸â€¦ ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ§ط¸â€‍ط·آ­."); return; } await setSetting("auto_ping_interval_min", String(n)); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`أ¢إ“â€¦ ط·آ§ط¸â€‍ط¸ظ¾ط·آ§ط·آµط¸â€‍: ${n} ط·آ¯ط¸â€ڑط¸ظ¹ط¸â€ڑط·آ©.`); return; }
+      case "admin:editBtnLabel": { await setSetting(step.key, txt); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("أ¢إ“â€¦ ط·ع¾ط¸â€¦ ط·ع¾ط·آ­ط·آ¯ط¸ظ¹ط·آ« ط·آ§ط¸â€‍ط·آ²ط·آ±."); return; }
       case "admin:aiSupport": {
-        if (txt === "ط®ط±ظˆط¬" || txt === "exit") { clearAiHistory(ctx.from.id); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("ًں‘‹ طھظ… ط¥ظ†ظ‡ط§ط، ط¬ظ„ط³ط© ط§ظ„ط°ظƒط§ط، ط§ظ„ط§طµط·ظ†ط§ط¹ظٹ."); return; }
+        if (txt === "ط·آ®ط·آ±ط¸ث†ط·آ¬" || txt === "exit") { clearAiHistory(ctx.from.id); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("ظ‹ع؛â€کâ€¹ ط·ع¾ط¸â€¦ ط·آ¥ط¸â€ ط¸â€،ط·آ§ط·طŒ ط·آ¬ط¸â€‍ط·آ³ط·آ© ط·آ§ط¸â€‍ط·آ°ط¸ئ’ط·آ§ط·طŒ ط·آ§ط¸â€‍ط·آ§ط·آµط·آ·ط¸â€ ط·آ§ط·آ¹ط¸ظ¹."); return; }
         const reply = await callAiSupport(ctx.from.id, txt);
         await ctx.reply(reply, { parse_mode: "Markdown" }); return;
       }
@@ -3517,21 +3636,21 @@ async function startBot() {
   bot.catch(async (err, ctx) => {
     console.error("Telegraf error:", err?.message ?? err);
     try {
-      if (ctx?.callbackQuery) await ctx.answerCbQuery("âڑ ï¸ڈ ط­ط¯ط« ط®ط·ط£ ظ…ط¤ظ‚طھطŒ ط­ط§ظˆظ„ ظ…ط±ط© ط£ط®ط±ظ‰.").catch(() => {});
-      else if (ctx?.chat) await ctx.reply("âڑ ï¸ڈ ط­ط¯ط« ط®ط·ط£ ظ…ط¤ظ‚طھ. ط­ط§ظˆظ„ ظ…ط±ط© ط£ط®ط±ظ‰ ط¨ط¹ط¯ ظ„ط­ط¸ط§طھ.").catch(() => {});
-    } catch { /* ظ„ط§ ظ†ط³ظ…ط­ ظ„ط®ط·ط£ ط§ظ„ط¥ط´ط¹ط§ط± ط¨ط¥ظٹظ‚ط§ظپ ط§ظ„ظ…ط¹ط§ظ„ط¬ */ }
+      if (ctx?.callbackQuery) await ctx.answerCbQuery("أ¢ع‘ أ¯آ¸عˆ ط·آ­ط·آ¯ط·آ« ط·آ®ط·آ·ط·آ£ ط¸â€¦ط·آ¤ط¸â€ڑط·ع¾ط·إ’ ط·آ­ط·آ§ط¸ث†ط¸â€‍ ط¸â€¦ط·آ±ط·آ© ط·آ£ط·آ®ط·آ±ط¸â€°.").catch(() => {});
+      else if (ctx?.chat) await ctx.reply("أ¢ع‘ أ¯آ¸عˆ ط·آ­ط·آ¯ط·آ« ط·آ®ط·آ·ط·آ£ ط¸â€¦ط·آ¤ط¸â€ڑط·ع¾. ط·آ­ط·آ§ط¸ث†ط¸â€‍ ط¸â€¦ط·آ±ط·آ© ط·آ£ط·آ®ط·آ±ط¸â€° ط·آ¨ط·آ¹ط·آ¯ ط¸â€‍ط·آ­ط·آ¸ط·آ§ط·ع¾.").catch(() => {});
+    } catch { /* ط¸â€‍ط·آ§ ط¸â€ ط·آ³ط¸â€¦ط·آ­ ط¸â€‍ط·آ®ط·آ·ط·آ£ ط·آ§ط¸â€‍ط·آ¥ط·آ´ط·آ¹ط·آ§ط·آ± ط·آ¨ط·آ¥ط¸ظ¹ط¸â€ڑط·آ§ط¸ظ¾ ط·آ§ط¸â€‍ط¸â€¦ط·آ¹ط·آ§ط¸â€‍ط·آ¬ */ }
   });
 
   void bot.telegram.setMyCommands([
-    { command: "start", description: "ًںڑ€ ط¨ط¯ط،" },
-    { command: "menu", description: "ًں“‹ ط§ظ„ظ‚ط§ط¦ظ…ط©" },
-    { command: "balance", description: "ًں’° ط±طµظٹط¯ظٹ" },
-    { command: "deposit", description: "ًں’³ ط¥ظٹط¯ط§ط¹" },
-    { command: "orders", description: "ًں“¦ ط·ظ„ط¨ط§طھظٹ" },
-    { command: "support", description: "ًں“‍ ط§ظ„ط¯ط¹ظ…" },
+    { command: "start", description: "ظ‹ع؛ع‘â‚¬ ط·آ¨ط·آ¯ط·طŒ" },
+    { command: "menu", description: "ظ‹ع؛â€œâ€¹ ط·آ§ط¸â€‍ط¸â€ڑط·آ§ط·آ¦ط¸â€¦ط·آ©" },
+    { command: "balance", description: "ظ‹ع؛â€™آ° ط·آ±ط·آµط¸ظ¹ط·آ¯ط¸ظ¹" },
+    { command: "deposit", description: "ظ‹ع؛â€™آ³ ط·آ¥ط¸ظ¹ط·آ¯ط·آ§ط·آ¹" },
+    { command: "orders", description: "ظ‹ع؛â€œآ¦ ط·آ·ط¸â€‍ط·آ¨ط·آ§ط·ع¾ط¸ظ¹" },
+    { command: "support", description: "ظ‹ع؛â€œâ€چ ط·آ§ط¸â€‍ط·آ¯ط·آ¹ط¸â€¦" },
   ]).catch(err => console.error("setMyCommands failed:", err?.message ?? err));
 
-  // â”€â”€ طھط³ط®ظٹظ† ط§ظ„ظƒط§ط´ ظ…ط¨ظƒط±ط§ظ‹ ظ„طھط³ط±ظٹط¹ ط£ظˆظ„ ط§ط³طھط¬ط§ط¨ط© â”€â”€
+  // أ¢â€‌â‚¬أ¢â€‌â‚¬ ط·ع¾ط·آ³ط·آ®ط¸ظ¹ط¸â€  ط·آ§ط¸â€‍ط¸ئ’ط·آ§ط·آ´ ط¸â€¦ط·آ¨ط¸ئ’ط·آ±ط·آ§ط¸â€¹ ط¸â€‍ط·ع¾ط·آ³ط·آ±ط¸ظ¹ط·آ¹ ط·آ£ط¸ث†ط¸â€‍ ط·آ§ط·آ³ط·ع¾ط·آ¬ط·آ§ط·آ¨ط·آ© أ¢â€‌â‚¬أ¢â€‌â‚¬
   getCachedProducts().catch(() => {}); getAllOverridesCached().catch(() => {}); getCachedContent(0).catch(() => {});
   startBackgroundRefresher();
   void syncAllApiSources().catch(err => console.error("Initial product sync failed:", err?.message ?? err));
@@ -3539,8 +3658,8 @@ async function startBot() {
   let telegramShutdownRequested = false;
   const shouldStopTelegram = () => telegramShutdownRequested;
 
-  // ط¥ط¹ط¯ط§ط¯ polling طµط±ظٹط­: Telegraf ظٹط³طھط®ط¯ظ… timeout=50 ظپظٹ ط·ظ„ط¨ getUpdates.
-  // ظ„ط§ ظ†ط­ط°ظپ ط§ظ„طھط­ط¯ظٹط«ط§طھ ط§ظ„ظ…ط¹ظ„ظ‚ط© ط¹ظ†ط¯ ط¥ط¹ط§ط¯ط© ط§ظ„ط§طھطµط§ظ„ ط­طھظ‰ ظ„ط§ طھط¶ظٹط¹ ط±ط³ط§ط¦ظ„ ط§ظ„ظ…ط³طھط®ط¯ظ….
+  // ط·آ¥ط·آ¹ط·آ¯ط·آ§ط·آ¯ polling ط·آµط·آ±ط¸ظ¹ط·آ­: Telegraf ط¸ظ¹ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦ timeout=50 ط¸ظ¾ط¸ظ¹ ط·آ·ط¸â€‍ط·آ¨ getUpdates.
+  // ط¸â€‍ط·آ§ ط¸â€ ط·آ­ط·آ°ط¸ظ¾ ط·آ§ط¸â€‍ط·ع¾ط·آ­ط·آ¯ط¸ظ¹ط·آ«ط·آ§ط·ع¾ ط·آ§ط¸â€‍ط¸â€¦ط·آ¹ط¸â€‍ط¸â€ڑط·آ© ط·آ¹ط¸â€ ط·آ¯ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط·آ§ط¸â€‍ط·آ§ط·ع¾ط·آµط·آ§ط¸â€‍ ط·آ­ط·ع¾ط¸â€° ط¸â€‍ط·آ§ ط·ع¾ط·آ¶ط¸ظ¹ط·آ¹ ط·آ±ط·آ³ط·آ§ط·آ¦ط¸â€‍ ط·آ§ط¸â€‍ط¸â€¦ط·آ³ط·ع¾ط·آ®ط·آ¯ط¸â€¦.
   const pollingConfig = {
     timeout: 50,
     dropPendingUpdates: false,
@@ -3549,7 +3668,7 @@ async function startBot() {
 
   const stopTelegram = reason => {
     telegramShutdownRequested = true;
-    // ظپظٹ ظˆط¶ط¹ webhook ظ„ط§ ظٹظ†ط´ط¦ Telegraf ط®ط§ط¯ظ…ط§ظ‹ ط¯ط§ط®ظ„ظٹط§ظ‹.
+    // ط¸ظ¾ط¸ظ¹ ط¸ث†ط·آ¶ط·آ¹ webhook ط¸â€‍ط·آ§ ط¸ظ¹ط¸â€ ط·آ´ط·آ¦ Telegraf ط·آ®ط·آ§ط·آ¯ط¸â€¦ط·آ§ط¸â€¹ ط·آ¯ط·آ§ط·آ®ط¸â€‍ط¸ظ¹ط·آ§ط¸â€¹.
     if (!bot.polling && !bot.webhookServer) return;
     try {
       bot.stop(reason);
@@ -3558,19 +3677,20 @@ async function startBot() {
     }
   };
 
-  const webhookUrl = process.env.WEBHOOK_URL;
+  const railwayDomain = String(process.env.RAILWAY_PUBLIC_DOMAIN ?? "").replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+  const webhookUrl = process.env.WEBHOOK_URL || (railwayDomain ? `https://${railwayDomain}` : "");
   if (webhookUrl) {
     try {
       await bot.telegram.setWebhook(`${webhookUrl.replace(/\/+$/, "")}/bot${token}`);
-      console.log(`âœ… Webhook set: ${webhookUrl}/bot${token}`);
+      console.log("âœ… Telegram webhook set successfully");
     } catch (err) {
-      // ط¥ط°ط§ ظƒط§ظ† ط±ط§ط¨ط· Railway ط؛ظٹط± طµط­ظٹط­ ظ†ط¹ظˆط¯ ط¥ظ„ظ‰ polling ظ…ط¹ ط¥ط¹ط§ط¯ط© ط§طھطµط§ظ„ ظ…ط³طھظ…ط±ط©.
+      // ط·آ¥ط·آ°ط·آ§ ط¸ئ’ط·آ§ط¸â€  ط·آ±ط·آ§ط·آ¨ط·آ· Railway ط·ط›ط¸ظ¹ط·آ± ط·آµط·آ­ط¸ظ¹ط·آ­ ط¸â€ ط·آ¹ط¸ث†ط·آ¯ ط·آ¥ط¸â€‍ط¸â€° polling ط¸â€¦ط·آ¹ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط·آ§ط·ع¾ط·آµط·آ§ط¸â€‍ ط¸â€¦ط·آ³ط·ع¾ط¸â€¦ط·آ±ط·آ©.
       console.error("setWebhook failed, switching to reconnecting polling:", err?.message ?? err);
       await bot.telegram.deleteWebhook().catch(() => {});
       void runPollingWithReconnect(bot, pollingConfig, shouldStopTelegram);
     }
   } else {
-    // ظ„ط§ ظ†طھط±ظƒ ط±ظپط¶ bot.launch ظٹظ†ظ‡ظٹ polling ظ†ظ‡ط§ط¦ظٹط§ظ‹ ط¨ط¹ط¯ timeout ط£ظˆ ط§ظ†ظ‚ط·ط§ط¹ ظ…ط¤ظ‚طھ.
+    // ط¸â€‍ط·آ§ ط¸â€ ط·ع¾ط·آ±ط¸ئ’ ط·آ±ط¸ظ¾ط·آ¶ bot.launch ط¸ظ¹ط¸â€ ط¸â€،ط¸ظ¹ polling ط¸â€ ط¸â€،ط·آ§ط·آ¦ط¸ظ¹ط·آ§ط¸â€¹ ط·آ¨ط·آ¹ط·آ¯ timeout ط·آ£ط¸ث† ط·آ§ط¸â€ ط¸â€ڑط·آ·ط·آ§ط·آ¹ ط¸â€¦ط·آ¤ط¸â€ڑط·ع¾.
     void runPollingWithReconnect(bot, pollingConfig, shouldStopTelegram);
   }
 
@@ -3588,11 +3708,11 @@ async function startBot() {
     req.on("error", () => {}); req.end();
   }, 4 * 60_000).unref();
 
-  console.log("âœ… ط§ظ„ط¨ظˆطھ ظٹط¹ظ…ظ„ ط¨ظ†ط¬ط§ط­! (v2.3)");
+  console.log("أ¢إ“â€¦ ط·آ§ط¸â€‍ط·آ¨ط¸ث†ط·ع¾ ط¸ظ¹ط·آ¹ط¸â€¦ط¸â€‍ ط·آ¨ط¸â€ ط·آ¬ط·آ§ط·آ­! (v2.3)");
   return bot;
 }
 
-// â”€â”€ Express health server + webhook receiver â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// أ¢â€‌â‚¬أ¢â€‌â‚¬ Express health server + webhook receiver أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
 const app = express();
 const PORT = Number(process.env.PORT ?? 3000);
 app.use(express.json({ limit: "256kb" }));
@@ -3601,7 +3721,7 @@ app.get("/health", (_, res) => res.json({ status: "ok", time: new Date().toISOSt
 
 app.post(/^\/bot.+/, (req, res) => {
   if (_botRef) {
-    // ط§ظ„ط±ط¯ ظ…ط¨ط§ط´ط±ط© ط¹ظ„ظ‰ Telegram ظٹظ…ظ†ط¹ ط¥ط¹ط§ط¯ط© ط¥ط±ط³ط§ظ„ ظ†ظپط³ ط§ظ„طھط­ط¯ظٹط« ط¹ظ†ط¯ ط¨ط·ط، ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ ط£ظˆ API
+    // ط·آ§ط¸â€‍ط·آ±ط·آ¯ ط¸â€¦ط·آ¨ط·آ§ط·آ´ط·آ±ط·آ© ط·آ¹ط¸â€‍ط¸â€° Telegram ط¸ظ¹ط¸â€¦ط¸â€ ط·آ¹ ط·آ¥ط·آ¹ط·آ§ط·آ¯ط·آ© ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ ط¸â€ ط¸ظ¾ط·آ³ ط·آ§ط¸â€‍ط·ع¾ط·آ­ط·آ¯ط¸ظ¹ط·آ« ط·آ¹ط¸â€ ط·آ¯ ط·آ¨ط·آ·ط·طŒ ط¸â€ڑط·آ§ط·آ¹ط·آ¯ط·آ© ط·آ§ط¸â€‍ط·آ¨ط¸ظ¹ط·آ§ط¸â€ ط·آ§ط·ع¾ ط·آ£ط¸ث† API
     res.sendStatus(200);
     _botRef.handleUpdate(req.body).catch(err => { console.error("webhook error:", err); });
   } else {
@@ -3609,10 +3729,10 @@ app.post(/^\/bot.+/, (req, res) => {
   }
 });
 
-// â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// أ¢â€‌â‚¬أ¢â€‌â‚¬ Start أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬أ¢â€‌â‚¬
 const server = http.createServer(app);
 server.requestTimeout = 15_000;
 server.headersTimeout = 10_000;
 server.on("error", err => console.error("HTTP server error:", err?.message ?? err));
-server.listen(PORT, () => console.log(`ًںڑ€ Server on port ${PORT}`));
+server.listen(PORT, () => console.log(`ظ‹ع؛ع‘â‚¬ Server on port ${PORT}`));
 startBot().then(bot => { _botRef = bot; }).catch(err => { console.error("Failed to start:", err); process.exit(1); });
