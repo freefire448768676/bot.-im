@@ -537,7 +537,142 @@ try {
   windows1252Reverse = null;
 }
 
+function repairArabicEncodingV2(value) {
+  if (value == null) return value;
+  const state = repairArabicEncodingV2._state ?? (() => {
+    const cp1256 = new TextDecoder("windows-1256");
+    const utf8 = new TextEncoder();
+    const mangle = input => cp1256.decode(utf8.encode(input));
+    const displaySymbols = [
+      "🛒", "💰", "💳", "📦", "📞", "🔄", "🏠", "❌", "✅", "⚠️", "📋", "📥",
+      "👤", "💵", "⏳", "🔑", "🧾", "🔢", "📭", "📈", "💱", "📝", "🙈", "👁",
+      "🛠️", "🚀", "📣", "👥", "⚙️", "🖼", "🔒", "🔓", "📨", "💬", "✏️",
+      "↩️", "⬅️", "➡️", "🔁", "🔍", "🗑️", "➕", "➖", "📊", "📡", "🧹",
+      "🧠", "🤖", "🎯", "🔧", "🛍️", "📄", "🔗", "👑", "🌟", "📂", "📁",
+      "🟢", "🔴", "⛔", "🚚", "🚫", "⏱", "🙏", "👇", "×", "•", "—", "→",
+    ];
+    const sourceChars = [];
+    for (let code = 0x20; code <= 0x06ff; code++) sourceChars.push(String.fromCodePoint(code));
+    sourceChars.push(...displaySymbols);
+
+    const decodeMap = new Map();
+    const truncated = [];
+    for (let passes = 1; passes <= 3; passes++) {
+      for (const sourceChar of sourceChars) {
+        let corrupted = sourceChar;
+        for (let pass = 0; pass < passes; pass++) corrupted = mangle(corrupted);
+        if (corrupted !== sourceChar && corrupted.length > 1) decodeMap.set(corrupted, sourceChar);
+        if (passes === 3 && displaySymbols.includes(sourceChar) && corrupted.endsWith("\u00a0")) {
+          truncated.push([corrupted.slice(0, -1), sourceChar]);
+          if (corrupted.endsWith("ط¢آ\u00a0")) truncated.push([corrupted.slice(0, -4), sourceChar]);
+        }
+      }
+    }
+    // The pasted source lost the final bytes for these common Arabic letters.
+    truncated.push(["ط·آ¸أ¢â‚¬", "ن"]);
+    truncated.push(["ط·آ¸ط«â€", "و"]);
+
+    const keys = [...decodeMap.keys()].sort((a, b) => b.length - a.length);
+    const truncatedKeys = [...new Map(truncated).entries()]
+      .sort((a, b) => b[0].length - a[0].length);
+    const escapeRegex = input => input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return { decodeMap, keys, truncatedKeys, escapeRegex };
+  })();
+  repairArabicEncodingV2._state = state;
+
+  let text = String(value);
+  const marker = char => `\uE000${char}\uE001`;
+  for (const [prefix, char] of state.truncatedKeys) {
+    const escaped = state.escapeRegex(prefix);
+    text = text.replace(new RegExp(`${escaped}  `, "g"), marker(char) + " ");
+    text = text.replace(
+      new RegExp(`${escaped} (?=ط|ظ|أ|ً|[.,:;!?،؛)\\]}"'$])`, "g"),
+      marker(char),
+    );
+    text = text.replace(new RegExp(`${escaped}(?=ط|ظ|أ|ً)`, "g"), marker(char));
+    text = text.replace(
+      new RegExp(`${escaped}(?=$|[.,:;!?،؛)\\]}"'$])`, "g"),
+      char,
+    );
+  }
+
+  let output = "";
+  for (let index = 0; index < text.length;) {
+    let found;
+    for (const key of state.keys) {
+      if (text.startsWith(key, index)) {
+        found = key;
+        break;
+      }
+    }
+    if (found) {
+      output += state.decodeMap.get(found);
+      index += found.length;
+    } else {
+      output += text[index];
+      index += 1;
+    }
+  }
+  output = output.replace(/\uE000([\s\S]*?)\uE001/g, "$1");
+  const textFixes = [
+    ["âڑ ï¸ڈ", "⚠️"],
+    ["ن،ذا", "هذا"],
+    ["إظن،ار", "إظهار"],
+    ["المظâ€ تج", "المنتج"],
+    ["ظâ€ هائياً", "نهائياً"],
+    ["كافظعâ€", "كافٍ"],
+    ["المستخدموظââ‚¬", "المستخدمون"],
+    ["مزامنتن،ا", "مزامنتها"],
+    ["إضافتن،ا", "إضافتها"],
+    ["إضافة منتج ن،نا", "إضافة منتج هنا"],
+    ["اختيار ن،ذن، الطريقة", "اختيار هذه الطريقة"],
+    ["جعلن، إداري", "جعله إداري"],
+    ["جعلن، مديراً أعلى", "جعله مديراً أعلى"],
+    ["تعيينن،", "تعيينه"],
+    ["انتن،ت", "انتهت"],
+    ["طلباتن،", "طلباته"],
+    ["منتجاتن،", "منتجاته"],
+    ["قسمن،", "قسمه"],
+    ["خارجن،", "خارجه"],
+    ["معالجتن،", "معالجته"],
+    ["ستظن،ر", "ستظهر"],
+    ["تحويلن،", "تحويله"],
+    ["فن،م", "فهم"],
+    ["أرسلن،", "أرسله"],
+    ["إنن،اء", "إنهاء"],
+    ["المستن،دف", "المستهدف"],
+    ["الن،دف", "المستهدف"],
+    ["الآظââ‚¬", "الآن"],
+    ["مزامنتن،ا", "مزامنتها"],
+    ["مزامظââ‚¬ تها", "مزامنتها"],
+    ["البياظââ‚¬ ات", "البيانات"],
+    ["بدظثâ€ ن", "بدون"],
+    ["يكظثâ€ ن", "يمكن"],
+    ["يمكظâ€  أظâ€  يكوظâ€  فارغاً", "يمكن أن يكون فارغاً"],
+    ["يمكن أن يمكن فارغاً", "يمكن أن يكون فارغاً"],
+    ["ظثâ€ API token", "أو API token"],
+    ["مظâ€  الكتالوج", "من الكتالوج"],
+    ["ظâ€ عم، احذف", "تأكيد، احذف"],
+    ["ظثâ€ نقل", "دون نقل"],
+    ["ںââ‚¬؛ ï¸ڈ", "🛠️"],
+    ["ًںââ‚¬؛ ï¸ڈ", "🛠️"],
+    ["ںââ‚¬â€ŒŒ", "🔗"],
+    ["ًںââ‚¬â€ŒŒ", "🔗"],
+    ["ںڑھ", "🚪"],
+    ["ًںڑھ", "🚪"],
+    ["ںââ‚¬â€Œک", "🔘"],
+    ["ًںââ‚¬â€Œک", "🔘"],
+    ["ںââ‚¬â€Œگ", "🔐"],
+    ["ًںââ‚¬â€Œگ", "🔐"],
+    ["â¬ââ‚¬،ï¸ڈ", "⬇️"],
+    ["â­گ", "⭐"],
+  ];
+  for (const [bad, good] of textFixes) output = output.split(bad).join(good);
+  return output;
+}
+
 function repairArabicEncoding(value) {
+  return repairArabicEncodingV2(value);
   if (value == null) return value;
   let text = String(value);
   // Count recognizable mojibake markers, including the shorter
