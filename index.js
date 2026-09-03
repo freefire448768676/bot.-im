@@ -748,8 +748,10 @@ function extractProductsPayload(payload) {
   if (Array.isArray(payload?.data?.products)) return payload.data.products;
   if (Array.isArray(payload?.data?.items)) return payload.data.items;
   if (Array.isArray(payload?.data?.results)) return payload.data.results;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
   if (Array.isArray(payload?.result)) return payload.result;
   if (Array.isArray(payload?.data?.result)) return payload.data.result;
+  if (Array.isArray(payload?.response?.products)) return payload.response.products;
   return [];
 }
 
@@ -2421,6 +2423,9 @@ async function startBot() {
 
   const bot = new Telegraf(token, { handlerTimeout: 90_000 });
   _botRef = bot;
+  // ط§ط®طھط¨ط§ط± ط§ظ„ط§طھطµط§ظ„ ط¨ط§ظ„طھظˆظƒظ† ظ…ط¨ظƒط±ط§ظ‹ ط­طھظ‰ ظٹط¸ظ‡ط± ط®ط·ط£ Telegram ظپظٹ ط³ط¬ظ„ Railway ط¨ظˆط¶ظˆط­.
+  const botInfo = await bot.telegram.getMe();
+  console.log(`âœ… طھظ… ط§ظ„ط§طھطµط§ظ„ ط¨طھظ„ظٹط¬ط±ط§ظ…: @${botInfo.username ?? botInfo.id}`);
   // ط·ع¾ط¸ث†ط·آ­ط¸ظ¹ط·آ¯ ط¸ئ’ط¸â€‍ ط·آ§ط¸â€‍ط¸â€ ط·آµط¸ث†ط·آµ ط·آ§ط¸â€‍ط·آ®ط·آ§ط·آ±ط·آ¬ط·آ© ط·آ¥ط¸â€‍ط¸â€° Telegram ط¸â€ڑط·آ¨ط¸â€‍ ط·آ§ط¸â€‍ط·آ¥ط·آ±ط·آ³ط·آ§ط¸â€‍ط·إ’ ط·آ¨ط¸â€¦ط·آ§ ط¸ظ¾ط¸ظ¹ط¸â€،ط·آ§ ط·آ§ط¸â€‍ط·آ£ط·آ²ط·آ±ط·آ§ط·آ±
   const originalCallApi = bot.telegram.callApi.bind(bot.telegram);
   bot.telegram.callApi = (method, payload, ...rest) => {
@@ -3690,7 +3695,11 @@ async function startBot() {
       void runPollingWithReconnect(bot, pollingConfig, shouldStopTelegram);
     }
   } else {
-    // ط¸â€‍ط·آ§ ط¸â€ ط·ع¾ط·آ±ط¸ئ’ ط·آ±ط¸ظ¾ط·آ¶ bot.launch ط¸ظ¹ط¸â€ ط¸â€،ط¸ظ¹ polling ط¸â€ ط¸â€،ط·آ§ط·آ¦ط¸ظ¹ط·آ§ط¸â€¹ ط·آ¨ط·آ¹ط·آ¯ timeout ط·آ£ط¸ث† ط·آ§ط¸â€ ط¸â€ڑط·آ·ط·آ§ط·آ¹ ط¸â€¦ط·آ¤ط¸â€ڑط·ع¾.
+    // ط£ط²ظ„ ط£ظٹ Webhook ظ‚ط¯ظٹظ… ظ‚ط¨ظ„ طھط´ط؛ظٹظ„ pollingط› ظˆط¬ظˆط¯ظ‡ ظٹظ…ظ†ط¹ Telegram ظ…ظ† طھط³ظ„ظٹظ… ط§ظ„طھط­ط¯ظٹط«ط§طھ.
+    await bot.telegram.deleteWebhook({ drop_pending_updates: false }).catch(err => {
+      console.error("deleteWebhook before polling failed:", err?.message ?? err);
+    });
+    // ظ„ط§ ظ†طھط±ظƒ ط±ظپط¶ bot.launch ظٹظ†ظ‡ظٹ polling ظ†ظ‡ط§ط¦ظٹط§ظ‹ ط¨ط¹ط¯ timeout ط£ظˆ ط§ظ†ظ‚ط·ط§ط¹ ظ…ط¤ظ‚طھ.
     void runPollingWithReconnect(bot, pollingConfig, shouldStopTelegram);
   }
 
