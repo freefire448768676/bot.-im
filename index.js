@@ -20,7 +20,10 @@ process.exit(1);
 
 // ── DB pool محسّن ──────────────────────────────────────────────────────
 const _dbUrl = process.env.DATABASE_URL;
-const _needSSL = _dbUrl.includes("railway")  _dbUrl.includes("neon")  _dbUrl.includes("supabase");
+const _needSSL =
+  _dbUrl.includes("railway") ||
+  _dbUrl.includes("neon") ||
+  _dbUrl.includes("supabase");
 const pool = new Pool({
 connectionString: _dbUrl,
 ssl: _needSSL ? { rejectUnauthorized: false } : false,
