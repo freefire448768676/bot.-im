@@ -42,7 +42,7 @@ finally { client.release(); }
 
 // ── Create tables if not exist ─────────────────────────────────────────
 async function ensureTables() {
-await q(
+await q(`
 CREATE TABLE IF NOT EXISTS users (
 id BIGINT PRIMARY KEY,
 username TEXT,
