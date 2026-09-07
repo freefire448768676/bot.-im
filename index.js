@@ -1,8 +1,4 @@
-// ============================================================
-// ظ…طھط¬ط± ط§ظ„ظ…ط±ظˆ ط§ظ† â€” ط¨ظˆ طھ طھظٹظ„ظٹط¬ط±ط§ظ… v2.3 (ط¥ط¬ظ‹ط§ط ط´ط§ظ…ظ„)
-// ط¥طμظ‹ط§ط§طھ: ط§ظ‹ط £ط¯ط§ط،طŒ طھط¯ظپظ‚ ط§ظ‹ط¥ظٹط¯ط§ط¹طŒ ط¥ط²ط§ظ‹ط© ط £ط±ظ‚ط§ظ… ط§ظ‹ط·ظ‹ط¨ط§طھ
-// ============================================================
-"استخدام صارم"؛
+"use strict";
 
 const { Telegraf, Markup } = require("telegraf");
 const { Pool } = require("pg");
@@ -11,223 +7,222 @@ const express = require("express");
 const http = require("http");
 const https = require("https");
 const crypto = require("crypto");
-const { TextDecoder } = require("util");
 
-// أ ™ ™ ™ â ¬ A . ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ
-إذا لم يكن عنوان URL لقاعدة البيانات موجودًا في متغير البيئة (process.env.DATABASE_URL)،
-  console.error("• عنوان URL لقاعدة البيانات مطلوب");
+//
+if (!process.env.DATABASE_URL) {
+  console.error("â‌Œ DATABASE_URL is required");
   process.exit(1);
 }
 
-// أ ™أ ™â€ڑآ¬أ ‚¬إ'أ ™أ ™ ¬ع'آ¬أ ™أ ™ â€ڑآ¬أ ™ ‚¬إ'أ ™ â€¬ع'آ¬ تجمع قاعدة البيانات ظ…طط³ظ'ظ† ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ¬ع'آ¬أ¢أ¢a‚¬آ¬أ‚¬إ'أ¢a‚¬ع'آ¬أ¢أ¢a‚¬آ¬أ‚¬إ'أ¢a‚¬ع'آ¬أما ™أ€ڑآ¬أ¬إ' 'أ''أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ‚¬إ ™ أ ‚¬ع'آ ¬أ ™ â ™ â ¬إ ™ â ™ ع'آ ¬أ ™ â€ڑآ¬أ ™ â ™ €أ'أ'أ'أ'آ¬أƒأ¢a‚¬آ¬أ‚آ¬أ¬ع'آ¬أ‌أ¢a‚¬إم¬أ'آ¬أ ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ع'آ¬أ¢أ¢a‚¬آ¬أ‚آ‚¬أ¬أ¬ع'آ¬أ¬إ'أ¢أ‚¬ع'آ¬أ¢أ¢a‚¬آ¬أ¬إ'أ ‚¬ع'آ¬أ¢أأ¢a‚¬آ¬أ¢a‚¬أ¬أ¬ع'آ¬أ‌أ¢a€ڑآ¬أ‚¬إ'أ¢أ¢a‚¬ع'آ¬أأ¢a‚¬آ¬أ ™ ¬أ ™ ™ ع ™ آ ¬ أ واحدة ڑآ¬أ‚¬إ’أ¢أ‚¬ع'آ¬أ¢أ¢a‚¬آ¬أ‚¬إ'أ¢a‚¬ع'آ¬أ™أ¢a‚¬آ¬أ‚¬إ'أ¢a‚¬ع'آ¬أ¢أ ™ ™ ẫ 'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ‹‹‹‹‹ ¬إ ™ ™ â ¬ â ™ â â ¬ â ¬ â ™ â â ¬ع'آ¬أ ™ ™ â ¬إ ™ ™ â ¬ع'آ ¬أ ™ أ ™ ¬ ¬أ'أ'أ'''أ''أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ â€ڑآ¬أ‚¬إ’أ¢a‚¬ع'آ¬أƒأ¢a‚¬آ¬أ¬إ'أ¢a‚¬ع'آ¬أ¢a¢a€ڑآ¬أ¬إ'أƑآ¬ع'آ¬
+//
 const _dbUrl = process.env.DATABASE_URL;
 const _needSSL = _dbUrl.includes("railway") || _dbUrl.includes("neon") || _dbUrl.includes("supabase");
 const pool = new Pool({
-  سلسلة الاتصال: _dbUrl،
+  connectionString: _dbUrl,
   ssl: _needSSL ? { rejectUnauthorized: false } : false,
-  الحد الأقصى: 10
-  الحد الأدنى: 2
+  max: 10,
+  min: 2,
   idleTimeoutMillis: 30_000,
-  مهلة الاتصال بالمللي ثانية: 5000
-  مهلة الاستعلام: 8000،
+  connectionTimeoutMillis: 5_000,
+  query_timeout: 8_000,
   statement_timeout: 8_000,
-  // ط¥ط¬ط¨ط§ط± PostgreSQL ط¹ظ„ظ‰ ط§ط³طھط®ط¯ط§ظ… UTF-8 ظپظٹ ظƒظ„ ط§طھطط§ظ„
-  الخيارات: "-c client_encoding=UTF8",
+  // ط¥ط¬ط¨ط§ط± PostgreSQL ط¹ظ„ظ‰ ط§ط³طھط®ط¯ط§ظ… UTF-8 ظپظٹ ظƒظ„ ط§طھطµط§ظ„
+  options: "-c client_encoding=UTF8",
 });
-pool.on("error", err => console.error("خطأ في تجمع PostgreSQL:", err?.message ?? err));
+pool.on("error", err => console.error("PostgreSQL pool error:", err?.message ?? err));
 
 async function q(text, params = []) {
   const client = await pool.connect();
-  حاول { أعد await client.query(text, params); }
-  وأخيرًا { client.release(); }
+  try { return await client.query(text, params); }
+  finally { client.release(); }
 }
 
-// ™أ™â€ڑآ¬أ¢â€¬إ'أ¢أ¢a‚¬ع'آ¬أ¢أˈâ€ڑآ¬أ¢â€¬إ'أ¢أ¢â€¬ع'آ¬ قم بإنشاء الجداول إذا لم تكن موجودة ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹ ‹‹‹‹‹‹‹‹ ‹‹‹
+//
 async function ensureTables() {
-  انتظر q(`
-    إنشاء جدول المستخدمين إذا لم يكن موجودًا (
-      مفتاح أساسي كبير من نوع BIGINT،
-      اسم المستخدم نص،
-      الاسم الأول (نص)،
-      اسم العائلة (نص)،
+  await q(`
+    CREATE TABLE IF NOT EXISTS users (
+      id BIGINT PRIMARY KEY,
+      username TEXT,
+      first_name TEXT,
+      last_name TEXT,
       balance NUMERIC(14,4) NOT NULL DEFAULT 0,
-      الحالة نص غير فارغ، القيمة الافتراضية هي 'نشط'،
+      status TEXT NOT NULL DEFAULT 'active',
       is_admin BOOLEAN NOT NULL DEFAULT false,
       is_super_admin BOOLEAN NOT NULL DEFAULT false,
       admin_authed_at TIMESTAMPTZ,
       custom_markup_percent NUMERIC(6,2),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء جدول bot_settings إذا لم يكن موجودًا (
-      مفتاح النص الأساسي،
-      قيمة النص غير فارغة،
+    CREATE TABLE IF NOT EXISTS bot_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء جدول إذا لم يكن موجودًا deposit_methods (
-      مفتاح id التسلسلي الأساسي،
-      الاسم نص غير فارغ،
-      المعرف TEXT NOT NULL،
-      التعليمات: النص غير فارغ،
+    CREATE TABLE IF NOT EXISTS deposit_methods (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      identifier TEXT NOT NULL,
+      instructions TEXT NOT NULL,
       image_file_id TEXT,
-      نشط، قيمة منطقية، غير فارغ، القيمة الافتراضية: صحيح.
+      active BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء جدول إذا لم يكن موجودًا deposit_requests (
-      مفتاح id التسلسلي الأساسي،
+    CREATE TABLE IF NOT EXISTS deposit_requests (
+      id SERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL,
-      method_id عدد صحيح غير فارغ،
+      method_id INTEGER NOT NULL,
       method_name TEXT NOT NULL,
-      رقم_الدافع نصي،
+      payer_number TEXT,
       screenshot_file_id TEXT NOT NULL,
-      المبلغ رقمي (14،4)،
-      الحالة نص غير فارغ، القيمة الافتراضية هي 'معلق'،
-      تمت معالجته بواسطة BIGINT،
-      تمت المعالجة في TIMESTAMPTZ،
+      amount NUMERIC(14,4),
+      status TEXT NOT NULL DEFAULT 'pending',
+      processed_by BIGINT,
+      processed_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء جدول إذا لم يكن موجودًا (
-      مفتاح id التسلسلي الأساسي،
+    CREATE TABLE IF NOT EXISTS orders (
+      id SERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL,
-      product_id عدد صحيح غير فارغ،
-      اسم المنتج نص غير فارغ،
-      الكمية عددية (14،4) غير فارغة،
+      product_id INTEGER NOT NULL,
+      product_name TEXT NOT NULL,
+      qty NUMERIC(14,4) NOT NULL,
       params JSONB NOT NULL DEFAULT '{}',
       price_usd NUMERIC(14,4) NOT NULL,
       oranos_order_id TEXT,
       oranos_uuid TEXT NOT NULL UNIQUE,
-      الحالة نص غير فارغ، القيمة الافتراضية هي 'معلق'،
+      status TEXT NOT NULL DEFAULT 'pending',
       api_response JSONB,
-      تم تسليم_الرمز نصياً،
+      delivered_code TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء جدول إذا لم يكن موجودًا product_overrides (
+    CREATE TABLE IF NOT EXISTS product_overrides (
       product_id INTEGER PRIMARY KEY,
-      اسم المنتج (نص)،
+      product_name TEXT,
       custom_name TEXT,
-      custom_category_id عدد صحيح،
+      custom_category_id INTEGER,
       custom_markup_percent NUMERIC(6,2),
       custom_price_usd NUMERIC(14,4),
-      قيمة منطقية مخفية غير فارغة، القيمة الافتراضية خطأ.
-      تم حذف القيمة المنطقية NOT NULL DEFAULT false،
-      نص التعليمات،
+      hidden BOOLEAN NOT NULL DEFAULT false,
+      deleted BOOLEAN NOT NULL DEFAULT false,
+      instructions TEXT,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء جدول إذا لم يكن موجودًا category_overrides (
+    CREATE TABLE IF NOT EXISTS category_overrides (
       category_id INTEGER PRIMARY KEY,
       custom_name TEXT,
-      قيمة منطقية مخفية غير فارغة، القيمة الافتراضية خطأ.
+      hidden BOOLEAN NOT NULL DEFAULT false,
       custom_markup_percent NUMERIC(6,2),
-      sort_order عدد صحيح،
-      custom_parent_id عدد صحيح،
+      sort_order INTEGER,
+      custom_parent_id INTEGER,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء جدول إذا لم يكن موجودًا باسم broadcasts (
-      مفتاح id التسلسلي الأساسي،
-      نص الرسالة غير فارغ،
+    CREATE TABLE IF NOT EXISTS broadcasts (
+      id SERIAL PRIMARY KEY,
+      message TEXT NOT NULL,
       sent_by BIGINT NOT NULL,
-      sent_count عدد صحيح غير فارغ القيمة الافتراضية 0،
+      sent_count INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء جدول admin_messages إذا لم يكن موجودًا (
-      مفتاح id التسلسلي الأساسي،
+    CREATE TABLE IF NOT EXISTS admin_messages (
+      id SERIAL PRIMARY KEY,
       admin_id BIGINT NOT NULL,
       user_id BIGINT NOT NULL,
-      نص الرسالة غير فارغ،
+      message TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء جدول contact_links إذا لم يكن موجودًا (
-      مفتاح id التسلسلي الأساسي،
-      الاسم نص غير فارغ،
-      رابط نص غير فارغ،
-      نشط، قيمة منطقية، غير فارغ، القيمة الافتراضية: صحيح.
+    CREATE TABLE IF NOT EXISTS contact_links (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      link TEXT NOT NULL,
+      active BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء جدول virtual_categories إذا لم يكن موجودًا (
-      مفتاح id التسلسلي الأساسي،
-      الاسم نص غير فارغ،
-      parent_id عدد صحيح غير فارغ القيمة الافتراضية 0،
+    CREATE TABLE IF NOT EXISTS virtual_categories (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      parent_id INTEGER NOT NULL DEFAULT 0,
       position INTEGER NOT NULL DEFAULT 0,
-      نشط، قيمة منطقية، غير فارغ، القيمة الافتراضية: صحيح.
+      active BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء جدول manual_categories إذا لم يكن موجودًا (
-      مفتاح id التسلسلي الأساسي،
-      الاسم نص غير فارغ،
-      parent_id عدد صحيح غير فارغ القيمة الافتراضية 0،
+    CREATE TABLE IF NOT EXISTS manual_categories (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      parent_id INTEGER NOT NULL DEFAULT 0,
       position INTEGER NOT NULL DEFAULT 0,
-      نشط، قيمة منطقية، غير فارغ، القيمة الافتراضية: صحيح.
+      active BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء فهرس إذا لم يكن موجودًا manual_categories_parent_idx على manual_categories(parent_id)؛
-    إنشاء جدول manual_products إذا لم يكن موجودًا (
-      مفتاح id التسلسلي الأساسي،
-      الاسم نص غير فارغ،
-      category_id عدد صحيح غير فارغ القيمة الافتراضية 0،
+    CREATE INDEX IF NOT EXISTS manual_categories_parent_idx ON manual_categories(parent_id);
+    CREATE TABLE IF NOT EXISTS manual_products (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      category_id INTEGER NOT NULL DEFAULT 0,
       category_is_virtual BOOLEAN NOT NULL DEFAULT false,
       price_usd NUMERIC(14,4) NOT NULL DEFAULT 0,
-      api_product_id عدد صحيح،
-      نص التعليمات،
-      نشط، قيمة منطقية، غير فارغ، القيمة الافتراضية: صحيح.
+      api_product_id INTEGER,
+      instructions TEXT,
+      active BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء جدول إذا لم يكن موجودًا manual_orders (
-      مفتاح id التسلسلي الأساسي،
+    CREATE TABLE IF NOT EXISTS manual_orders (
+      id SERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL,
-      product_id عدد صحيح غير فارغ،
-      اسم المنتج نص غير فارغ،
+      product_id INTEGER NOT NULL,
+      product_name TEXT NOT NULL,
       price_usd NUMERIC(14,4) NOT NULL,
-      ملاحظة نصية،
-      الحالة نص غير فارغ، القيمة الافتراضية هي 'معلق'،
-      ملاحظة إدارية نصية،
+      note TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      admin_note TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء جدول api_sources إذا لم يكن موجودًا (
-      مفتاح id التسلسلي الأساسي،
-      الاسم نص غير فارغ،
-      base_url نص غير فارغ،
-      token_encrypted TEXt,
-      نشط، قيمة منطقية، غير فارغ، القيمة الافتراضية: صحيح.
+    CREATE TABLE IF NOT EXISTS api_sources (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      base_url TEXT NOT NULL,
+      token_encrypted TEXT,
+      active BOOLEAN NOT NULL DEFAULT true,
       is_primary BOOLEAN NOT NULL DEFAULT false,
       last_sync_at TIMESTAMPTZ,
       last_sync_error TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    إنشاء جدول cached_categories إذا لم يكن موجودًا (
-      مفتاح أساسي كبير من نوع BIGINT،
-      source_id عدد صحيح غير فارغ،
-      external_id نص غير فارغ،
-      الاسم نص غير فارغ،
+    CREATE TABLE IF NOT EXISTS cached_categories (
+      id BIGINT PRIMARY KEY,
+      source_id INTEGER NOT NULL,
+      external_id TEXT NOT NULL,
+      name TEXT NOT NULL,
       parent_id BIGINT NOT NULL DEFAULT 0,
       raw JSONB NOT NULL DEFAULT '{}',
-      نشط، قيمة منطقية، غير فارغ، القيمة الافتراضية: صحيح.
+      active BOOLEAN NOT NULL DEFAULT true,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE(source_id, external_id)
     );
-    إنشاء جدول cached_products إذا لم يكن موجودًا (
-      مفتاح أساسي كبير من نوع BIGINT،
-      source_id عدد صحيح غير فارغ،
-      external_id نص غير فارغ،
-      الاسم نص غير فارغ،
+    CREATE TABLE IF NOT EXISTS cached_products (
+      id BIGINT PRIMARY KEY,
+      source_id INTEGER NOT NULL,
+      external_id TEXT NOT NULL,
+      name TEXT NOT NULL,
       parent_id BIGINT NOT NULL DEFAULT 0,
-      اسم_الفئة نص،
-      السعر (رقمي (14،6))
-      متاح BOOLEAN غير فارغ DEFAULT صحيح،
-      qty_values ​​JSONB,
+      category_name TEXT,
+      price NUMERIC(14,6),
+      available BOOLEAN NOT NULL DEFAULT true,
+      qty_values JSONB,
       params JSONB,
       raw JSONB NOT NULL DEFAULT '{}',
-      تم حذف القيمة المنطقية NOT NULL DEFAULT false،
+      deleted BOOLEAN NOT NULL DEFAULT false,
       last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE(source_id, external_id)
     );
-    إنشاء فهرس إذا لم يكن موجودًا cached_products_parent_idx على cached_products(parent_id)؛
-    إنشاء فهرس إذا لم يكن موجودًا cached_products_source_idx على cached_products(source_id)؛
+    CREATE INDEX IF NOT EXISTS cached_products_parent_idx ON cached_products(parent_id);
+    CREATE INDEX IF NOT EXISTS cached_products_source_idx ON cached_products(source_id);
   `);
 
   await q(`ALTER TABLE category_overrides ADD COLUMN IF NOT EXISTS custom_parent_id INTEGER`).catch(() => {});
@@ -242,52 +237,52 @@ async function ensureTables() {
 }
 
 // ============================================================
-// إعدادات
+//  SETTINGS
 // ============================================================
 const settingsCache = new Map();
 let _settingsCacheExpiry = 0;
 let _settingsInFlight = null;
-const SETTINGS_TTL = 2 * 60_000؛ // 2 ط¯ظ‚ظٹظ‚ط©
+const SETTINGS_TTL = 2 * 60_000; // 2 ط¯ظ‚ظٹظ‚ط©
 
 const DEFAULTS = {
-  نسبة الزيادة في السعر: "3"،
-  سعر الصرف: "132"
+  markup_percent: "3",
+  exchange_rate: "132",
   bot_status: "on",
-  currency_label: "ظ.ط³",
-  معرّفات الفئات المستبعدة: "6,81,561"،
-  Excluded_product_keywords: "ط³ظٹط±طھظ„ ظƒط§ط´,ط³ظٹط±ظٹطھظ„ ظƒط§ط´,syriatel Cash,mtn ظƒط§ط´,mtn Cash,ط§ظ… طھظٹ ط§ط¸أ¢â‚¬ ظƒط§ط´,
-  نسبة الربح الاجتماعي: "3"،
+  currency_label: "ظ„.ط³",
+  excluded_category_ids: "6,81,561",
+  excluded_product_keywords: "ط³ظٹط±طھظ„ ظƒط§ط´,ط³ظٹط±ظٹطھظ„ ظƒط§ط´,syriatel cash,mtn ظƒط§ط´,mtn cash,ط§ظ… طھظٹ ط§ظ† ظƒط§ط´",
+  social_markup_percent: "3",
   social_min_qty: "500",
   social_max_qty: "10000",
-  social_keywords: "ط³ظˆط´ظ„,اجتماعي,طھظˆط§طظ„ ط§ط¬طھظ…ط§ط¹ظٹ,ط§ط¬طھظ…ط§ط¹ظٹ,ط§ط¸أ¢â‚¬ ط³طھط;ط±ط§ظ…,instagram,طھظٹظƒ طھظˆظƒ,tiktok,ظپظٹط³ط¨ظˆظƒ,facebook,طھظˆظٹطھط±,twitter,ظٹظˆطھظٹظˆط¨,youtube,طھظ„ط;ط±ط§ظ…,telegram,ط³ط¸أ¢â‚¬ ط§ط¨,snap",
-  ai_keywords: "ط°ظƒط§ط، ط§طμط·ط¸أ¢â‚¬ ط§ط¹ظٹ,chatgpt,gpt,openai,كلود,gemini,midjourney,perplexity,ai ",
-  كلمة مرور المسؤول: "0941408061@0941408061aM"،
-  admin_login_command: "عبد الملك مرعي 1122334455"،
-  auto_ping_enabled: "إيقاف"
+  social_keywords: "ط³ظˆط´ظ„,social,طھظˆط§طµظ„ ط§ط¬طھظ…ط§ط¹ظٹ,ط§ط¬طھظ…ط§ط¹ظٹ,ط§ظ†ط³طھط؛ط±ط§ظ…,instagram,طھظٹظƒ طھظˆظƒ,tiktok,ظپظٹط³ط¨ظˆظƒ,facebook,طھظˆظٹطھط±,twitter,ظٹظˆطھظٹظˆط¨,youtube,طھظ„ط؛ط±ط§ظ…,telegram,ط³ظ†ط§ط¨,snap",
+  ai_keywords: "ط°ظƒط§ط، ط§طµط·ظ†ط§ط¹ظٹ,chatgpt,gpt,openai,claude,gemini,midjourney,perplexity,ai ",
+  admin_password: "0941408061@0941408061aM",
+  admin_login_command: "Abdulmalik Marai 1122334455",
+  auto_ping_enabled: "off",
   auto_ping_interval_min: "5",
   auto_ping_target_user_id: "",
   auto_ping_last_sent: "0",
   btn_back_label: "â¬…ï¸ڈ ط±ط¬ظˆط¹",
-  btn_home_label: ""ںڈ ط§ظ"ط±ط¦ظٹط³ظٹط©",
-  btn_prev_label: "â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚,
-  btn_next_label: "ط§ظ„طھط§ظ„ظٹ ‍،ï¸ڈ",
+  btn_home_label: "ًںڈ   ط§ظ„ط±ط¦ظٹط³ظٹط©",
+  btn_prev_label: "â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚",
+  btn_next_label: "ط§ظ„طھط§ظ„ظٹ â‍،ï¸ڈ",
 };
 
-// القيم الافتراضية القياسية لترميز UTF-8. هذه القيم تتجاوز القيم الحرفية القديمة المُعدّلة أعلاه.
-// قبل إدخال القيم الافتراضية في قاعدة البيانات أو إصلاحها فيها.
+// Canonical UTF-8 defaults. These override legacy mojibake literals above
+// before defaults are inserted into or repaired in the database.
 Object.assign(DEFAULTS, {
-  currency_label: "ظ.ط³",
-  Excluded_product_keywords: "ط³ظٹط±ظٹطھظ„ ظƒط§ط´,ط³ظٹط±ظٹطھظ„ ظƒط§ط´,syriatel Cash,mtn ظƒط§ط´,mtn Cash,ط§ظ… طھظٹ ط§ظ† ظƒط§ط´,
-  social_keywords: "ط³ظˆط´ط§ظ„,اجتماعي,طھظˆط§طظ„ ط§ط¹ظٹ,ط§ط¬طھظ…ط§ط¹ظٹ,ط§ظ†ط³طھط;ط±ط§ظ…,instagram,طھظٹظƒ طھظˆظƒ,tiktok,ظپظٹط³ط¨ظˆظƒ,facebook,طھظˆظٹطھط±,twitter,ظٹظˆطھظٹظˆط¨,youtube,طھظ„ط;ط±ط§ظ…,telegram,ط³ظ†ط§ط¨,snap",
-  ai_keywords: "ط°ظƒط§ط، ط§طμط·ظ†ط§ط¹ظٹ,chatgpt,gpt,openai,كلود,الجوزاء,رحلة منتصف الليل,الحيرة,ai ",
+  currency_label: "ظ„.ط³",
+  excluded_product_keywords: "ط³ظٹط±ظٹطھظ„ ظƒط§ط´,ط³ظٹط±ظٹطھظ„ ظƒط§ط´,syriatel cash,mtn ظƒط§ط´,mtn cash,ط§ظ… طھظٹ ط§ظ† ظƒط§ط´",
+  social_keywords: "ط³ظˆط´ط§ظ„,social,طھظˆط§طµظ„ ط§ط¬طھظ…ط§ط¹ظٹ,ط§ط¬طھظ…ط§ط¹ظٹ,ط§ظ†ط³طھط؛ط±ط§ظ…,instagram,طھظٹظƒ طھظˆظƒ,tiktok,ظپظٹط³ط¨ظˆظƒ,facebook,طھظˆظٹطھط±,twitter,ظٹظˆطھظٹظˆط¨,youtube,طھظ„ط؛ط±ط§ظ…,telegram,ط³ظ†ط§ط¨,snap",
+  ai_keywords: "ط°ظƒط§ط، ط§طµط·ظ†ط§ط¹ظٹ,chatgpt,gpt,openai,claude,gemini,midjourney,perplexity,ai ",
   btn_back_label: "â¬…ï¸ڈ ط±ط¬ظˆط¹",
-  btn_home_label: ""ںڈ ط§ظ"ط±ط¦ظٹط³ظٹط©",
-  btn_prev_label: "â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚,
-  btn_next_label: "ط§ظ„طھط§ظ„ظٹ ‍،ï¸ڈ",
+  btn_home_label: "ًںڈ   ط§ظ„ط±ط¦ظٹط³ظٹط©",
+  btn_prev_label: "â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚",
+  btn_next_label: "ط§ظ„طھط§ظ„ظٹ â‍،ï¸ڈ",
 });
 
 async function loadAllSettings() {
-  إذا كانت (_settingsInFlight) تُرجع _settingsInFlight؛
+  if (_settingsInFlight) return _settingsInFlight;
   _settingsInFlight = (async () => {
   const res = await q("SELECT key, value FROM bot_settings");
   settingsCache.clear();
@@ -297,24 +292,24 @@ async function loadAllSettings() {
 }
 
 async function ensureDefaults() {
-  انتظر تحميل جميع الإعدادات();
+  await loadAllSettings();
   for (const [k, v] of Object.entries(DEFAULTS)) {
-    إذا لم يكن (!settingsCache.has(k)) {
+    if (!settingsCache.has(k)) {
       await q("INSERT INTO bot_settings(key,value) VALUES($1,$2) ON CONFLICT DO NOTHING", [k, v]);
       settingsCache.set(k, v);
     }
   }
-  // إصلاح إعدادات العرض/الفلتر المعروفة فقط من إصدارات mojibake القديمة.
-  // لا تتم إعادة كتابة الأسرار وأوامر تسجيل الدخول والقيم التي يدخلها المستخدم هنا أبدًا.
+  // Repair only known display/filter settings from older mojibake versions.
+  // Secrets, login commands, and user-entered values are never rewritten here.
   const repairableKeys = new Set([
     "currency_label", "excluded_product_keywords", "social_keywords",
-    "الكلمات المفتاحية للذكاء الاصطناعي"، "ملصق الزر الخلفي"، "ملصق الزر الرئيسي"، "ملصق الزر السابق"،
+    "ai_keywords", "btn_back_label", "btn_home_label", "btn_prev_label",
     "btn_next_label",
   ]);
   for (const key of repairableKeys) {
     const current = settingsCache.get(key);
     const repaired = repairArabicEncoding(current);
-    إذا كان (الحالي != فارغ && تم إصلاحه !== الحالي) {
+    if (current != null && repaired !== current) {
       await q("UPDATE bot_settings SET value=$1,updated_at=NOW() WHERE key=$2", [repaired, key]);
       settingsCache.set(key, repaired);
     }
@@ -322,16 +317,16 @@ async function ensureDefaults() {
 }
 
 async function getSetting(key) {
-  إذا لم يكن المفتاح موجودًا في ذاكرة التخزين المؤقت للإعدادات أو كان تاريخ اليوم أكبر من تاريخ انتهاء صلاحية ذاكرة التخزين المؤقت للإعدادات،
-    انتظر تحميل جميع الإعدادات();
+  if (!settingsCache.has(key) || Date.now() > _settingsCacheExpiry) {
+    await loadAllSettings();
     _settingsCacheExpiry = Date.now() + SETTINGS_TTL;
   }
   return settingsCache.get(key) ?? DEFAULTS[key] ?? "";
 }
 
-دالة غير متزامنة setSetting(key, value) {
+async function setSetting(key, value) {
   settingsCache.set(key, value);
-  _settingsCacheExpiry = Date.now() + SETTINGS_TTL; // طھظ…ط¯ظٹط¯ ط§ظ„ظƒط§ط´ ط¨ط¹ط¯ ط £ظٹ طھطط¯ظٹط«
+  _settingsCacheExpiry = Date.now() + SETTINGS_TTL; // طھظ…ط¯ظٹط¯ ط§ظ„ظƒط§ط´ ط¨ط¹ط¯ ط£ظٹ طھط­ط¯ظٹط«
   await q("INSERT INTO bot_settings(key,value,updated_at) VALUES($1,$2,NOW()) ON CONFLICT(key) DO UPDATE SET value=$2, updated_at=NOW()", [key, value]);
 }
 
@@ -350,64 +345,64 @@ async function getBtnHomeLabel() { return repairArabicEncoding(await getSetting(
 async function getBtnPrevLabel() { return repairArabicEncoding(await getSetting("btn_prev_label")); }
 async function getBtnNextLabel() { return repairArabicEncoding(await getSetting("btn_next_label")); }
 
-دالة isSocialProduct(name, catName, kws) {
+function isSocialProduct(name, catName, kws) {
   const n = ((name ?? "") + " " + (catName ?? "")).toLowerCase();
   return kws.some(k => k && n.includes(k));
 }
 
 // ============================================================
-// ذاكرة التخزين المؤقت للمستخدم
+//  USER CACHE
 // ============================================================
 const userCache = new Map();
-const USER_CACHE_TTL = 60_000؛ // 60 ط«ط§ظ† ظٹط©
-دالة userCacheGet(id) { const hit = userCache.get(id); if (hit && hit.exp > Date.now()) return hit.u; return undefined; }
-دالة userCacheSet(id, u) { userCache.set(id, { u, exp: Date.now() + USER_CACHE_TTL }); }
+const USER_CACHE_TTL = 60_000; // 60 ط«ط§ظ† ظٹط©
+function userCacheGet(id) { const hit = userCache.get(id); if (hit && hit.exp > Date.now()) return hit.u; return undefined; }
+function userCacheSet(id, u) { userCache.set(id, { u, exp: Date.now() + USER_CACHE_TTL }); }
 function invalidateUserCache(id) { userCache.delete(id); }
 
 async function upsertUser(u) {
   const res = await q(
     `INSERT INTO users(id,username,first_name,last_name)
-     القيم ($1، $2، $3، $4)
+     VALUES($1,$2,$3,$4)
      ON CONFLICT(id) DO UPDATE SET
-       اسم المستخدم = COALESCE($2,users.username),
+       username=COALESCE($2,users.username),
        first_name=COALESCE($3,users.first_name),
        last_name=COALESCE($4,users.last_name)
-     إرجاع *`,
+     RETURNING *`,
     [u.id, u.username ?? null, u.first_name ?? null, u.last_name ?? null]
   );
   const row = res.rows[0];
   userCacheSet(u.id, row);
-  أعد الصف؛
+  return row;
 }
 
-دالة غير متزامنة getUser(id) {
+async function getUser(id) {
   const cached = userCacheGet(id);
-  إذا كان (cached !== undefined) فقم بإرجاع cached؛
+  if (cached !== undefined) return cached;
   const res = await q("SELECT * FROM users WHERE id=$1", [id]);
   const u = res.rows[0] ?? null;
   userCacheSet(id, u);
-  أعد u؛
+  return u;
 }
 
-دالة غير متزامنة لضبط الرصيد (id، deltaUsd) {
+async function adjustBalance(id, deltaUsd) {
   invalidateUserCache(id);
   const res = await q("UPDATE users SET balance=balance+$1 WHERE id=$2 RETURNING *", [deltaUsd, id]);
   const u = res.rows[0] ?? null;
-  إذا كان (u) userCacheSet(id, u);
-  أعد u؛
+  if (u) userCacheSet(id, u);
+  return u;
 }
 
-دالة غير متزامنة debitBalance(id, amountUsd) {
+async function debitBalance(id, amountUsd) {
   const amount = Number(amountUsd);
-  إذا لم يكن الرقم منتهيًا (القيمة) أو كانت القيمة أقل من أو تساوي صفرًا، فسيتم إرجاع قيمة فارغة (null).
+  if (!Number.isFinite(amount) || amount <= 0) return null;
   invalidateUserCache(id);
   const res = await q(
-    "تحديث المستخدمين SET balance=balance-$1 WHERE id=$2 AND balance >= $1 RETURNING *",
-    [المبلغ، المعرف]
+    "UPDATE users SET balance=balance-$1 WHERE id=$2 AND balance >= $1 RETURNING *",
+    [amount, id]
   );
   const u = res.rows[0] ?? null;
-  إذا كان (u) userCacheSet(id, u);
-  أعد u؛
+  if (u) userCacheSet(id, u);
+  return u;
 }
 
 async function setStatus(id, status) {
@@ -415,11 +410,11 @@ async function setStatus(id, status) {
   await q("UPDATE users SET status=$1 WHERE id=$2", [status, id]);
 }
 
-وظيفة غير متزامنة setAdmin(id, isAdmin, isSuperAdmin) {
+async function setAdmin(id, isAdmin, isSuperAdmin) {
   invalidateUserCache(id);
-  إذا (isSuperAdmin !== غير محدد) {
+  if (isSuperAdmin !== undefined) {
     await q("UPDATE users SET is_admin=$1, is_super_admin=$2 WHERE id=$3", [isAdmin, isSuperAdmin, id]);
-  } آخر {
+  } else {
     await q("UPDATE users SET is_admin=$1 WHERE id=$2", [isAdmin, id]);
   }
 }
@@ -439,9 +434,9 @@ async function isAdminSessionActive(id) {
   return !!u?.admin_session_active && !!u?.is_admin;
 }
 
-دالة غير متزامنة listUsers(offset = 0, limit = 20) {
+async function listUsers(offset = 0, limit = 20) {
   const res = await q("SELECT * FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2", [limit, offset]);
-  أعد عدد الصفوف في res.
+  return res.rows;
 }
 
 async function countUsers() {
@@ -456,12 +451,12 @@ async function searchUser(query) {
     `SELECT * FROM users WHERE id=$1 OR username ILIKE $2 OR first_name ILIKE $2 LIMIT 20`,
     [Number.isFinite(idNum) && idNum > 0 ? idNum : 0, `%${u}%`]
   );
-  أعد عدد الصفوف في res.
+  return res.rows;
 }
 
 async function listAdmins() {
   const res = await q("SELECT * FROM users WHERE is_admin=true");
-  أعد عدد الصفوف في res.
+  return res.rows;
 }
 
 async function setUserMarkup(id, markupPercent) {
@@ -475,11 +470,11 @@ async function getSuperAdmin() {
 }
 
 // ============================================================
-// أدوات المساعدة في التنسيق
+//  FORMAT HELPERS
 // ============================================================
 async function loadOverrideMap(productIds) {
   const map = new Map();
-  إذا لم يكن عدد معرّفات المنتجات يساوي صفرًا، فسيتم إرجاع الخريطة.
+  if (!productIds.length) return map;
   const res = await q(`SELECT * FROM product_overrides WHERE product_id = ANY($1)`, [productIds]);
   for (const r of res.rows) {
     map.set(r.product_id, {
@@ -487,12 +482,12 @@ async function loadOverrideMap(productIds) {
       customMarkupPercent: r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null,
       customName: r.custom_name,
       customCategoryId: r.custom_category_id,
-      مخفي: r.hidden،
-      تم الحذف: r.deleted،
-      التعليمات: r.instructions،
+      hidden: r.hidden,
+      deleted: r.deleted,
+      instructions: r.instructions,
     });
   }
-  أعد الخريطة؛
+  return map;
 }
 
 async function loadAllOverrides() {
@@ -504,295 +499,59 @@ async function loadAllOverrides() {
       customMarkupPercent: r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null,
       customName: r.custom_name,
       customCategoryId: r.custom_category_id,
-      مخفي: r.hidden،
-      تم الحذف: r.deleted،
-      التعليمات: r.instructions،
+      hidden: r.hidden,
+      deleted: r.deleted,
+      instructions: r.instructions,
     });
   }
-  أعد الخريطة؛
+  return map;
 }
 
-دالة تنسيق الرصيد (دولار أمريكي، سعر الصرف) {
+function formatBalance(usd, rate) {
   return `${usd.toFixed(2)}$ | ${Math.round(usd * rate).toLocaleString("en-US")} ظ„.ط³`;
 }
 
-// أ ™أ ™â€ڑآ¬أ ™ ‚¬إ'أ ™أ ™ ‚¬ع'آ¬أ ™أ ™أ ™ ‚¬إ'أ ™ â‚¬ع'آ¬ ط¥ط ميكروظ„ط§ط ط§ظ„ظ† طμ ط§ظ„ط¹ط±ط¨ظٹ ط§ظط°ظٹ“ ظٹطμظ‹ ط £طظٹط§ظ† ط§ظ‹ ط¨طھط±ظ…ظٹط² Windows/UTF-8 ط®ط§ط·ط¦ ‹‹‹‹‹‹‹‹ ‹‹‹
-let cp1256Reverse = null;
-let windows1252Reverse = null;
-يحاول {
-  cp1256Reverse = new Map();
-  const decoder = new TextDecoder("windows-1256");
-  for (let byte = 0; byte <= 255; byte++) {
-    const decoded = decoder.decode(Uint8Array.of(byte));
-    إذا كان طول (decoded.length === 1) cp1256Reverse.set(decoded, byte);
-  }
-  windows1252Reverse = new Map();
-  const latinDecoder = new TextDecoder("windows-1252");
-  for (let byte = 0; byte <= 255; byte++) {
-    const decoded = latinDecoder.decode(Uint8Array.of(byte));
-    إذا كان طول (decoded.length === 1) windows1252Reverse.set(decoded, byte);
-  }
-} يمسك {
-  cp1256Reverse = null;
-  windows1252Reverse = null;
+//
+function repairArabicEncoding(value) {
+  return value == null ? value : String(value);
 }
 
-دالة إصلاح ترميز اللغة العربية الإصدار الثاني (القيمة) {
-  إذا كانت القيمة فارغة (null)، فأرجع القيمة.
-  const state = repairArabicEncodingV2._state ?? (() => {
-    const cp1256 = new TextDecoder("windows-1256");
-    const utf8 = new TextEncoder();
-    const mangle = input => cp1256.decode(utf8.encode(input));
-    const displaySymbols = [
-      "ًں›'"، "ًں'°"، "ًں'³"، "ًں"¦"، "ًں"‍"، "ًں""، "ًںڈ "، "â‌Œ"، "âœ…"، "âڑ ï¸ڈ"، "ًں"‹، "ًں"¥"،
-      "إلىں'¤، "إلىں'µ، "∳، "إلىں"'، "إلىں§¾، "إلىں"¢، "إلىں"، "إلىں"ˆ، "إلىں'±، "إلىں"‌، "إلىں™ˆ، "إلىں'پ،
-      "ًں› ï¸ڈ"، "ًںڑ€"، "ًں" £"، "ًں'¥"، "âڑ™ï¸ڈ"، "ًں–¼"، "ًں"'"، "ًں""، "ًں"¨"، "ًں'¬"، "ڈï¸ڈ"،
-      "â†©ï¸ڈ"، "â¬…ï¸ڈ"، "â‍،ï¸ڈ"، "ًں"پ"، "ًں"چ"، "ًں—'ï¸ڈ"، "â‍•"، "â‍–"، "ًں"ٹ"، "ًں"،"، "ًں§¹"،
-      "ًں§ "، "ًں¤–"، "ًںژ¯"، "ً"§"، "ًں›چï¸ڈ"، "ًں""، "ًں"—"، "ًں''"، "ًںŒں"، "ًں"‚، "ًں"پ"،
-      "ًںں"، "ًں"´، "â›" ، "ًںڑڑ"، "ًںڑ«، "âڈ±"، "ًں™ڈ"، "ًں'‡"، "أ—"، "â€¢"، "â†"، "â†'"،
-    ];
-    const sourceChars = [];
-    for (let code = 0x20; code <= 0x06ff; code++) sourceChars.push(String.fromCodePoint(code));
-    sourceChars.push(...displaySymbols);
-
-    const decodeMap = new Map();
-    const truncated = [];
-    for (let passes = 1; passages <= 3; passages++) {
-      for (const sourceChar of sourceChars) {
-        let corrupted = sourceChar;
-        for (let pass = 0; pass < passs; pass++) corrupted = mangle(corrupted);
-        إذا كان (corrupted !== sourceChar && corrupted.length > 1) decodeMap.set(corrupted, sourceChar);
-        إذا كانت (النتائج === 3 && الرموز المعروضة تتضمن (الحرف المصدر) && الكلمة التالفة تنتهي بـ "\u00a0")) {
-          truncated.push([corrupted.slice(0, -1), sourceChar]);
-          إذا كانت نهاية الكلمة التالفة هي "ط¢ط¢\u00a0"، فسيتم إضافة الحرف المصدر إلى الكلمة التالفة.
-        }
-      }
-    }
-    // فقدت النسخة الملصقة من المصدر البايتات الأخيرة لهذه الأحرف العربية الشائعة.
-    truncated.push(["ظ†", "ظ†"]);
-    truncated.push(["ظˆ", "ظˆ"]);
-
-    const keys = [...decodeMap.keys()].sort((a, b) => b.length - a.length);
-    const truncatedKeys = [...new Map(truncated).entries()]
-      .sort((a, b) => b[0].length - a[0].length);
-    const escapeRegex = input => input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return { decodeMap, keys, truncatedKeys, escapeRegex };
-  })();
-  repairArabicEncodingV2._state = state;
-
-  let text = String(value);
-  const marker = char => `\uE000${char}\uE001`;
-  for (const [prefix, char] of state.truncatedKeys) {
-    const escaped = state.escapeRegex(prefix);
-    text = text.replace(new RegExp(`${escaped} `, "g"), marker(char) + " ");
-    text = text.replace(
-      new RegExp(`${escaped} (?=ط·|ط¸|ط £|ظ‹|[.,:;!?طŒط›)\\]}"'$])`, "g"),
-      marker(char),
-    );
-    text = text.replace(new RegExp(`${escaped}(?=ط·|ط¸|ط£|ظ‹)`, "g"), marker(char));
-    text = text.replace(
-      new RegExp(`${escaped}(?=$|[.,:;!?طŒط›)\\]}"'$])`, "g"),
-      شار،
-    );
-  }
-
-  let output = "";
-  for (let index = 0; index < text.length;) {
-    let found;
-    for (const key of state.keys) {
-      إذا كان النص يبدأ بالمفتاح المحدد في الفهرس {
-        تم العثور على = المفتاح؛
-        استراحة؛
-      }
-    }
-    إذا (تم العثور عليه) {
-      output += state.decodeMap.get(found);
-      index += found.length;
-    } آخر {
-      output += text[index];
-      index += 1;
-    }
-  }
-  output = output.replace(/\uE000([\s\S]*?)\uE001/g, "$1");
-  const textFixes = [
-    ["âڑ ¸ڈ"، "âڑ ¸ڈ"]،
-    ["ظ‡ط°ط§"، "ظ‡ط°ط§"]،
-    ["ط¥ط¸ظ‡ط§ط±", "ط¥ط¸ظ‡ط§ط±"],
-    ["ط§ظ„ظ…ظ†طھط¬", "ط§ظ„ظ…ظ†طھط¬"],
-    ["ظ†ظ‡ط§ط¦ظٹط§ظ‹"، "ظ†ظ‡ط§ط¦ظٹط§ظ‹"],
-    ["ظƒط§ظپظچ"، "ظƒط§ظپظچ"]،
-    ["ط§ظ"ظ…ط³طھط®ط¯ظ…ظˆط¸أ¢أ¢â€ڑآ¬", "ط§ظ„ظ…ط³طھط®ط¯ظ…ظˆظ†"],
-    ["ظ…ط²ط§ظ…ظ†طھظ†ط§ط§", "ظ…ط²ط§ظ…ظ†طھظ‡ط§"],
-    ["ط¥ط¶ط§ظپطھظ‡ط§", "ط¥ط¶ط§ظپطھظ‡ط§"],
-    ["ط¥ط¶ط§ظپط© ظ…ظ†طھط¬ ظ†طŒظ†ط§", "ط¥ط¶ط§ظپط© ظ…ظ†طھط¬ ظ‡ظ†ط§"],
-    ["ط§ط®طھظٹط§ط± ظ†طŒط°ظ†طŒ ط§ظ„ط·ط±ظٹظ‚ط©, "ط§ط®طھظٹط§ط± ظ‡ط°ظ‡ ط§ظ„ط·ط±ظٹظ‚ط©"],
-    ["ط¬ط¹ظ„ظ‡ ط¥ط¯ط§ط±ظٹ", "ط¬ط¹ظ„ظ‡ ط¥ط¯ط§ط±ظٹ"],
-    ["ط¬ط¹ظ„ظ‡ ظ…ط¯ظٹط±ط§ظ‹ ط £ط¹ظ„ظ‰, “ط¬ط¹ظ„ظ‡ ظ…ط¯ظٹط±ط§ظ‹ ط £ط¹ظ„ظ‰”],
-    ["طھط¹ظٹظٹظ†ظ†طŒ"، "طھط¹ظٹظٹظ†ظ‡"]،
-    ["ط§ظ†طھظ†طŒطھ", "ط§ظ†طھظ‡طھ"],
-    ["ط·ظ"ط¨ط§طھظ‡", "ط·ظ"ط¨ط§طھظ‡"],
-    ["ظ…ظ†طھط¬ط§طھظ†طŒ", "ظ…ظ†طھط¬ط§طھظ‡"],
-    ["ظ‚ط³ظ…ظ†طŒ", "ظ‚ط³ظ…ظ‡"],
-    ["ط®ط§ط±ط¬ظ†طŒ", "ط®ط§ط±ط¬ظ‡"],
-    ["ظ…ط¹ط§ظ„ط¬طھظ†طŒ", “ظ…ط¹ط§ظ„ط¬طھظ‡”],
-    ["ط³طھط¸ظ†طŒط±", "ط³طھط¸ظ‡ط±"],
-    ["طھطظˆظٹظظ†طŒ"، "طھطظˆظٹظظ‡"]،
-    ["ظپظ†طŒظ…"، "ظپظ‡ظ…"],
-    ["ط £ط±ط³ظ"ظ†طŒ"، "ط £ط±ط³ظ"ظ‡"]،
-    ["ط¥ظ†ظ†طŒط§ط،"، "ط¥ظ†ظ‡ط§ط،"],
-    ["ط§ظ"ظ…ط³طھظ‡ط¯ظپ", "ط§ظ"ظ…ط³طھظ‡ط¯ظپ"],
-    ["ط§ظ"ظ…ط³طھظ‡ط¯ظپ", "ط§ظ"ظ…ط³طھظ‡ط¯ظپ"],
-    ["ط§ظ"ط ™ط¸أ ˈâ€ڑآ¬"، "ط§ظ"ط ™ظ†"]،
-    ["ظ…ط²ط§ظ…ظ†طھظ†ط§ط§", "ظ…ط²ط§ظ…ظ†طھظ‡ط§"],
-    ["ظ…ط²ط§ظ…ط¸أ¢أ¢â€ڑآ¬ طھظ‡ط§”، “ظ…ط²ط§ظ…ظ†طھظ‡ط§”],
-    ["ط§ظ"ط¨ظٹط§ط¸أ¢أ¢â€ڑآ¬ ط§طھ", "ط§ظ"ط¨ظٹط§ظ†ط§طھ"],
-    ["ط¨ط¯ط¸ط«أ¢â‚¬ ظ†", "ط¨ط¯ظˆظ†"],
-    ["ظٹظƒط¸ط«أˈ¬ ظ†", "ظٹظ…ظƒظ†"],
-    ["ظٹظ…ظƒط¸أ¢â‚¬ ط £ط¸أ¢â‚¬ ظٹظƒظˆط¸أ¢â‚¬ ظپط§ط±ط؛ط§ظ‹”، “ظٹظ…ظƒظ† ط £ظ† ظٹظƒظˆظ† ظپط§ط±ط؛ط§ظ‹”],
-    ["ظٹظ…ظƒظ† ط £ظ† ظٹظ…ظƒظ† ظپط§ط±ط؛ط§ظ‹”، "ظٹظ…ظƒظ† ط £ظ† ظٹظƒظˆظ† ظپط§ط±ط؛ط§ظ‹"],
-    ["ط¸ط«أ¢â‚¬ رمز واجهة برمجة التطبيقات"، "ط £ظˆ رمز واجهة برمجة التطبيقات"]،
-    ["ظ…ط¸أ¢â‚¬ ط§ظ„ظƒطھط§ظ„ظˆط¬”، “ظ…ظ† ط§ظ„ظƒطھط§ظ„ظˆط¬”],
-    ["طھط £ظƒظٹط¯طŒ ط§طط°ظپ"، "طھط £ظƒظٹد، ط§طط°ظپ"],
-    ["ط¸ط«أ¢â‚¬ ظ†ظ‚ظ„, “ط¯ظˆظ† ظ†ظ‚ظ„”],
-    ["ع؛أ¢أ¢â€ڑآ¬ط› أ¯آ¸عˆ", "ًں› ï¸ڈ"],
-    ["ًں¤–", "وں› ï¸ڈ"],
-    ["ع؛أ ™ â€ڑآ ‚¬إ'إ'"، "ًں" —"]،
-    ["بئں"—", "بئں"—"],
-    ["ع؛ع'ع¾", "بںڑھ"],
-    ["ٺڑھ", "ٺڑھ"],
-    ["ع؛أ ™ â€ڑآ ‚¬إ'ع ©"، "ًں"ک"]،
-    ["ٺ"ک", "ٺ"ک"],
-    ["ع؛أ ™ â€ڑآ ‚¬إ'ع¯"، "ًں"گ"]،
-    ["ٺ"گ", "ٺ"گ"],
-    ["â¬‡ï¸ڈ", "â¬‡ï¸ڈ"],
-    ["âگ", "âگ"],
-  ];
-  for (const [bad, good] of textFixes) output = output.split(bad).join(good);
-  const commonTextFixes = [["ظ‹ع؛عˆ"،ًںڈ "],["أˈأ' أ¯آ¸عˆ"،"âڑ ï¸ڈ"],["ظ‹ع؛أˈأˈ¬â€ژط«أâ‚¬ "ً"ًں™ˆ"],["ظ‹ع؛آ§ط›"،"ًں›چï¸ڈ"],["ظ‹ع;أ¢أ¢â€ڬآ¬إ“ط«أâ‚¬ ""ًں"ˆ"],["ظ‹ع;أأ¢â€ڑآ¬إ“آ¤"،ًًں“¸"],["ظ‹ع;أ¢أ¢â€ڑآ¬إ“آ©"،" ں'¬"],["ظ‹ع;أ¢أ¢â€ڑآ¬ع©أ¢أ¢â€ڑآ¬آ¹"،ًںڑھ"],["ظ‹ع؛أ¢أ¢â€ڑآ¬ط› أ¯آ¸عˆ″ًًں¤–”],[”ظ‹ع;أ¢أ¢a‚¬آ¬أ¢â‚¬إ'إ'″ًًں”—”],[”ظ‹ع;أأ¢â€ڑآ¬أ¢â‚¬إ 'ط¹أ¢â‚¬″иًں”چ”],[”ظ‹ع;أˈâ€ڑآ¬أ¢â‚¬إ'ع©”,ًں”ک”],[”ظ‹ع;أ¢أ¢a‚¬آ¬أ‚â‚ ¬إ'ع¯"،ًں”گ"],["ظ‹ع؛ع'ع¾"،ًںڑھ"],["أآ¬أ¢أâ€ڑآ¬طŒأ¯آ¸عˆ"،â¬‡ï¸ڈ"],[ "أآع¯"،âگ"],["ظ‹ع؛أˈâ€ڑآ¬ط›"،ًں¤–"],["ظ†طŒط°ط§"،ظ‡ط°ط§"],["ظ†طŒظ† ط§"،"ظ‡ظ†ط§"],["ط¥ط¸ظ†طŒط§ط±"،ط¥ط¸ظ‡ط§ط±"],["ط§ظ„ظ…ط¸أ¢â‚¬ طھط¬”,ط§ظ„ظ…ظ†طھط¬”],[”ط¸أ¢â‚¬ ظ‡ط§ط¦ظٹط§ظ‹”،،ظ†ظ‡ط§ط¦ظٹط§ظ‹”],[”ط¸أ¢â‚¬ ط¹ظ…طŒ ط§طط°ظپ”،،طھط £ظƒظٹط¯طŒ ط§طط°ظپ"],["ط§ظ„ظ…ظ† طھط¬ط§طھ"،ط§ظ„ظ…ظ†طھط¬ط§طھ"],["ط§ظ„ظ…ظ† طھط¬"،ط§ظ„ظ…ظ†طھط¬"],["ظ…ظ† طھط¬ط§طھ"،ظ…ظ†طھط¬ط§طھ"],["ظ…ظ† طھط¬"،ظ…ظ†طھط¬"],["ط§ظط¯ط®ظˆ ظ"،"ط§ظ„ط¯ط®ظˆظ"],["ظظˆظˆ طط©"، "ظ"ظ"ظˆطط©"],["ظˆ ط³ط§ط¦ظ""،"ظˆط³ط§ط¦ظ""],["ط§ظ"طھظˆ ط§طط©""،"ط§ظ"طھظˆط§طμظ"],["طھظˆ ط¬ط¯"،طھظˆط¬ط¯"],["ظٹظˆ ط¬ط¯"،"،ظٹظˆط¬ط¯"],["ظ…ظˆ ط§ظپظ‚ط©"،ظ…ظˆط§ظپظ‚ط©"],["ظ…ظˆ ط¬ظˆ ط¯"،ظ…ظˆط¬ظˆط¯"],["ط±ط¬ظˆ ط¹"،ط±ط¬ظˆط¹"],["ظ† ظˆط¯"],["ظٹط¯ظˆ ظٹط©"،ظٹط¯ظˆظٹط©"],["ظٹط¯ظˆ ظٹ"،"،ظٹط¯ظˆظٹ"],["ظ† ط³ط¨ط©"،ظ†ط³ط¨ط©"],["ظˆ ظ‚طھ"،ظˆظ‚طھ"],["طھظ† ظپظٹط°"،"طھظ†ظپظٹط°"],["ط§ظ"طھظ† ظپظٹط°"،"ط§ظ"طھظ†ظپظٹط°"],["طھظ… ط¥ظ† ط´ط§ط،"،"،طھظ… ط¥ظ†ط´ط§ط،"],["ظ‚ط¨ظˆ ظ"،ظ‚ط¨ظˆظ„"],["ط¬ط¹ظظ†طŒ"،ط¬ط¹ظظ‡"],["ط·ظ„ط¨ط§طھظ†طŒ"،ط·ظط¨ط§طھظ‡"],["ط¥ط¶ط§ظپطھظ†طŒ"،ط¥ط¶ط §ظپطھظ‡"],["ط§ظ"ظ…ط³طھظ†طŒط¯ظپ"،"ط§ظ„ظ…ط³طھظ‡ط¯ظپ"],["ط§ظظ†طŒط¯ظپ"،ط§ظ„ظ…ط³طھظ‡ط¯ظپ"],["ط§ظ„ظ…ط±ظˆ ط±"،ط§ظˆ طھ"،"ط§ظ„ط¨ظˆطھ"],["ط§ظظ…ط³طھط®ط¯ظ…ظˆ ظ†"،"،ط§ظ„ظ…ط³طھط®ط¯ظ…ظˆظ†"],["ظ…طھظˆ ظ‚ظپ"،ظ…طھظˆظ‚ظپ"],["ط®ط±ظˆ ط¬"،"ط®ط±ظˆط¬"],["ط§ظ"طμظˆ ط±ط©"،"ط§ظططظˆط±ط©"],["ظˆ ط¶ط¹"، "ظˆط¶ط¹"],["ط§ظ"ط¥ظ† ظ†طŒط§ط،"،"،ط§ظ"ط¥ظ†ظ‡ط§ط،"],["ط¥ظظٹظ†طŒ"،ط¥ظظٹظ‡"],["ط´طظ† ط±طμظٹط¯"،ط´طظ† ط±طظٹط¯"],["ط £ظ‚ط±ط¨ ظˆ ظ‚طھ"،ط £ظ‚ط±ط¨ ظˆظ‚طھ"],["ط§طط·ظ† ط§ط¹ظٹ"،"ط§طط·ظ†ط§ط¹ظٹ"],["ط§ظ"ط§طط·ظ† ط§ط¹ظٹ"،"ط§ظ"ط§طط·ظ†ط§ط¹ظٹ"],["ط¨ظٹط§ظ† ط§طھ"،"ط¨ظٹط§ظ†ط§طھ"],["ط§ظ"طھظˆ ط«ظٹظ‚"،"ط§ظ"طھظˆط"ظٹظ‚"],["ظƒط§ظپط¸ط¹أ¢â‚¬"،ظƒط§ظپظچ"]];
-  for (const [bad, good] of commonTextFixes) output = output.split(bad).join(good);
-  أعد الناتج؛
-}
-
-دالة إصلاح ترميز اللغة العربية (القيمة) {
-  أعد إصلاح ترميز اللغة العربية الإصدار الثاني (القيمة)؛
-  إذا كانت القيمة فارغة (null)، فأرجع القيمة.
-  let text = String(value);
-  // عدّ علامات الموجبيك القابلة للتمييز، بما في ذلك الأقصر
-  // تم إنتاج نموذج "ط§ظ" بواسطة خطأ واحد في Windows-1256/UTF-8.
-  const mojibakeScore = s => {
-    const text = String(s);
-    يعود (
-      (text.match(/(?:ط·[آ·آ¸][^ \n]{0,3}|ط·[\u0600-\u06ff]|ط§|[ط £ط¥][آ¢ئ'آ¯]|[أ¢أ°أ¯][^\s]{1,3}|ظ‹ع؛|ظ‹ع؛)/g) || []).length
-    );
-  };
-  const decodeRuns = (input, reverse) => {
-    إذا لم يكن (reverse) فأرجع المدخلات؛
-    let output = "";
-    let run = "";
-    const flush = () => {
-      إذا لم يتم تشغيل البرنامج، فقم بالخروج.
-      const bytes = [];
-      for (const char of Array.from(run)) {
-        إذا كان (char.codePointAt(0) <= 127) bytes.push(char.codePointAt(0));
-        وإلا إذا كان (reverse.has(char)) bytes.push(reverse.get(char));
-        وإلا { output += run; run = ""; return; }
-      }
-      يحاول {
-        const decoded = new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes));
-        output += decoded && mojibakeScore(decoded) < mojibakeScore(run) ? decoded : run;
-      } catch { output += run; }
-      تشغيل = "";
-    };
-    for (const char of Array.from(input)) {
-      إذا كان (char.codePointAt(0) <= 127 || reverse.has(char)) run += char;
-      وإلا { flush(); output += char; }
-    }
-    flush();
-    أعد الناتج؛
-  };
-
-  // ط¥طμظ‹ط§ط ط§ظ‹ط¸أ¢â‚¬ طμظˆطμ ط§ظ‹ظ‚ط¯ظٹظ…ط© ط§ظ„ظ…طظپظˆط¸ط© ط¨ط¹ط¯ ظپظƒ UTF-8 ط¨طھط±ظ…ظٹط² Windows-1256/1252.
-  for (let i = 0; i < 3; i++) {
-    const before = mojibakeScore(text);
-    let next = decodeRuns(text, cp1256Reverse);
-    next = decodeRuns(next, windows1252Reverse);
-    إذا كانت نتيجة mojibakeScore(next) أكبر من أو تساوي نتيجة before، فاخرج من الحلقة.
-    النص = التالي؛
-  }
-
-  // ط¨ط¹ط¶ ط§ظ„ط±ظ…ظˆط² ط§ظ„ظ‚ط¯ظٹظ…ط© طھط¶ط±ط±طھ ظ…ط¹ ظ…طط¯ط¯ طھط¸أ¢â‚¬ ط³ظٹظ‚ emojiit› ط§ط³طھط¨ط¯ط§ظ„ظ‡ط§ ظ„ط§ ظٹط¤ط«ط± ط¹ظ‹ظ‰ ط§ظ‹ط¸أ¢â‚¬ طμ ط§ظ„ط¹ط±ط¨ظٹ ط§ظ„طμطظٹط.
-  const emojiFixes = {
-    "بںڈ ": "بںڈ ", "بں›'": "بں›'", "بں'°": "بں'°", "بں'³": "بں'³", "بں“¦": "بں“¦",
-    "ًں"‚": "ًں"‚, "ًں"‹": "ًں"‹, "ًں"'": "ًں"', "ًں"„": "ًں"„, "ًں"—": "ظ‹ع؛أ‚¬â€Œإ'",
-    "ًں"¥": "ًں"¥", "ًں" £": "ًں" £, "ًں"‍": "ظ‹ع;أ¢â‚¬ ع©", "ًں"": "ًں"", "ًں"§": "ًں"§",
-    "ًں”´": "ًں"´", "ًںڢ": "ًںں", "ظ‹ع;â€”أ¢أ¢â€ڑآ¬ع©": "ًں—'ï¸ڈ", "ظ‹ع;أ¢أ¢â€ڑآ¬أâ‚¬إ'ط«أâ‚¬ ": "ظ‹ع؛أ‚¬â€Œth†", "ًں"‌": "ًں"‌",
-    "ًں'μ": "ًں'μ", "ظ‹ع;أ¢أ¢â€ڑآ¬أ¢â€‍آآ¸": "ظ‹ع;أâ‚¬â℈آ¸", "ًں§¾": "ًں§¾", "ًں"": "ًں", "ًںŒں": "ًںŒں",
-    "ًں'¤": "ًں'¤", "ًں'¥": "ًں'¥", "ًں'‡": "ًں'‡", "ًںڑھ": "ظ‹ع;أ©¬ع©Â‚¬آ¹", "ًں”گ": "ظ‹ع؛أ‚¬â€Œع¯", "ًں"گ": "
-    "ًں“": "ًں", "ًں"ˆ": "ًں"ˆ, "ًں"‌": "ًں"‌", "ًں"پ": "ظ‹ع;أâ‚¬إ"إ'", "ًںژ¯": "ًںژ¯",
-    "ًں¤–": "ًں¤–", "ظ‹ع؛أ¢أ¢â€ڑآ¬أâ‚¬إ'أˈâ€ڑآ¬إ'": "ًں"'", "ظ‹ع;إ،": "ًںڑ«", "ظ‹ع;ع'": "ظ‹ع;ع'€"", "ظ‹ع;إ'": "ظ‹ع;إ'ع¯",
-  };
-  for (const [bad, good] of Object.entries(emojiFixes)) text = text.split(bad).join(good);
-  for (let i = 0; i < 2; i++) {
-    const next = decodeRuns(decodeRuns(text, cp1256Reverse), windows1252Reverse);
-    إذا كانت نتيجة تحويل النص التالي إلى صيغة mojibakeScore أكبر من أو تساوي نتيجة تحويل النص إلى صيغة mojibakeScore، فاخرج من الحلقة.
-    النص = التالي؛
-  }
-  أعد النص؛
-}
-
-دالة normalizeTelegramPayload(value, key = "") {
-  إذا كان نوع القيمة هو "سلسلة نصية" {
-    const protectedKeys = new Set([
-      "callback_data", "url", "file_id", "parse_mode", "chat_id", "message_id",
-      "inline_message_id", "callback_query_id", "media", "token", "method",
-    ]);
-    return protectedKeys.has(key) ? value : repairArabicEncoding(value);
-  }
-  إذا كانت القيمة عبارة عن مصفوفة، فسيتم إرجاع القيمة بعد تطبيق دالة map عليها، ثم يتم تحويلها إلى مصفوفة باستخدام دالة normalizeTelegramPayload.
-  إذا لم تكن القيمة موجودة، أو كان نوعها ليس كائنًا، أو كانت القيمة مخزنة مؤقتًا، فسيتم إرجاع القيمة.
-  const out = {};
-  for (const [childKey, childValue] of Object.entries(value)) {
-    out[childKey] = normalizeTelegramPayload(childValue, childKey);
-  }
-  العودة للخارج؛
-}
-
-// أ ™أ ™ €ڑآ¬أ ™ ‚¬إ'أ ™أ ™ ‚¬ع'آ¬أ ™أ ™ â€ڑآ¬أ ™ ‚¬إ'أ ™أ ™ ¬ع'آ¬ ط§ط³طھط®ط±ط§ط¬ ط§ظ„ظ…ط¨ظ„ط; ظ…ظ† ظ† طμ ط¨طμظٹط؛ ظ…ط®طھظ„ظپط© ™أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ™ ™ ™ €أ¬أ'أ'أ'أ'ع'آ¬أبحث عن ¬أ'أ'أ'â¬ع'آ¬أ¢أ¢a‚¬آ¬أ¬إ'أ¢a‚¬ع'آ¬أ¢أأ¬آ¬أ ™إ'أ¢أ¢a‚¬آ'آ¬أ‌أƑآ¬أ ’أ‘أ‘‘آ¬أ‘أƑآ¬أ‘‘‘‘‘‘‘‘‘‘‘‘‘‘‘‘‘‘‘ 'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ'أ ‹‹‹‹‹‹‹›› ع'آ¬أ¢أ¢a‚¬آ¬أ‚آ‚¬أ¬أ¬ع'آ¬أ¬إ'أ¢أ‚¬ع'آ¬أ™أ¢أ€ڑآ¬أ¬إ'أ¢a‚¬ع'آ¬
-دالة استخراج المبلغ من النص (txt، سعر الصرف) {
-  إذا لم يكن النص موجودًا، فأرجع قيمة فارغة.
+//
+function extractAmountFromText(txt, exchangeRate) {
+  if (!txt) return null;
   const clean = repairArabicEncoding(txt.replace(/,/g, "")).trim();
 
-  // ظ†طŒظ„ ظ†طŒظˆ ط¨ط§ظ„ظ„ظٹط±ط© ط§ظ„ط³ظˆ ط±ظٹط©طں
+  // ظ†طŒظ„ ظ†طŒظˆ  ط¨ط§ظ„ظ„ظٹط±ط© ط§ظ„ط³ظˆ ط±ظٹط©طں
   const isSYP = /ظ„\.ط³|ظ„ظٹط±ط© ط³ظˆط±ظٹط©|ظ„ظٹط±ط©|ط³ظˆط±ظٹ|syp/i.test(clean);
-  // ظ†طŒظ„ ظ†ط§ظˆ ط¨ط§ظ„ط¯ظˆ ظ„ط§ط±طں
+  // ظ†طŒظ„ ظ†طŒظˆ  ط¨ط§ظ„ط¯ظˆ ظ„ط§ط±طں
   const isUSD = /\$|usd|ط¯ظˆظ„ط§ط±/i.test(clean);
 
-  // ط§ط³طھط®ط±ط¬ ط £ظˆ ظ ط±ظ‚ظ… (طط³طھط®ط±ط¬ ط¹ط´ط±ظٹ)
+  // ط§ط³طھط®ط±ط¬ ط£ظˆ ظ„ ط±ظ‚ظ… (طµط­ظٹط­ ط£ظˆ  ط¹ط´ط±ظٹ)
   const numMatch = clean.match(/(\d+\.?\d*)/);
-  إذا لم يكن الرقم مطابقًا، فأرجع قيمة فارغة.
+  if (!numMatch) return null;
 
   const num = parseFloat(numMatch[1]);
-  إذا لم يكن العدد منتهيًا أو كان أقل من أو يساوي صفرًا، فسيتم إرجاع قيمة فارغة.
+  if (!Number.isFinite(num) || num <= 0) return null;
 
-  إذا (كانت SYP) {
-    // طظˆ ظ’ظ„ ظ…ظ† ظ„ظٹط±ط© ط¥ظ„ظ‰ ط¯ظˆ ظ„ط§ط±
+  if (isSYP) {
+    // ط­ظˆ ظ‘ظ„ ظ…ظ†  ظ„ظٹط±ط© ط¥ظ„ظ‰ ط¯ظˆ ظ„ط§ط±
     const rate = Number(exchangeRate) || 132;
-    إرجاع العدد / المعدل؛
+    return num / rate;
   }
-  // ط§ظپطھط±ط§ط¶ظٹط§ظ‹ ط¯ظˆ ظ‹ط§ط±
-  أعد الرقم؛
+//
+  return num;
 }
 
 // ============================================================
-// واجهة برمجة تطبيقات أورانوس
+//  ORANOS API
 // ============================================================
 const ORANOS_BASE = process.env.ORANOS_API_BASE ?? "https://api.oranosmarket.com";
 const ORANOS_TOKEN = process.env.ORANOS_API_TOKEN ?? "";
 const API_ROOT_CATEGORY = 900_000_000;
 
-دالة normalizeApiBase(value) {
+function normalizeApiBase(value) {
   return String(value ?? "")
-    .تقليم()
+    .trim()
     .replace(/\/+$/, "")
     .replace(/\/api\/v2\/(?:products|content|order|check|balance|profile)$/i, "")
     .replace(/\/api\/v2$/i, "")
@@ -800,42 +559,42 @@ const API_ROOT_CATEGORY = 900_000_000;
     .replace(/\/client\/api$/i, "");
 }
 
-دالة getApiEncryptionKey() {
+function getApiEncryptionKey() {
   return crypto.createHash("sha256")
     .update(String(process.env.API_CONFIG_ENCRYPTION_KEY || process.env.BOT_TOKEN || process.env.DATABASE_URL || "marwan-api-config"))
-    .هضم()؛
+    .digest();
 }
 
-دالة encryptApiToken(token) {
-  إذا لم يكن الرمز المميز موجودًا، فأرجع قيمة فارغة.
+function encryptApiToken(token) {
+  if (!token) return null;
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv("aes-256-gcm", getApiEncryptionKey(), iv);
   const encrypted = Buffer.concat([cipher.update(String(token), "utf8"), cipher.final()]);
   return `${iv.toString("base64")}.${cipher.getAuthTag().toString("base64")}.${encrypted.toString("base64")}`;
 }
 
-دالة فك تشفير رمز API (القيمة) {
-  إذا لم تكن القيمة موجودة، فأرجع "";
-  يحاول {
+function decryptApiToken(value) {
+  if (!value) return "";
+  try {
     const [iv64, tag64, data64] = String(value).split(".");
     const decipher = crypto.createDecipheriv("aes-256-gcm", getApiEncryptionKey(), Buffer.from(iv64, "base64"));
     decipher.setAuthTag(Buffer.from(tag64, "base64"));
     return Buffer.concat([decipher.update(Buffer.from(data64, "base64")), decipher.final()]).toString("utf8");
-  } يمسك {
-    يعود ""؛
+  } catch {
+    return "";
   }
 }
 
 async function ensurePrimaryApiSource() {
   const existing = await q("SELECT id,name,base_url FROM api_sources WHERE is_primary=true LIMIT 1");
-  إذا كان عدد الصفوف الموجودة {
-    انتظر q(
+  if (existing.rows.length) {
+    await q(
       "UPDATE api_sources SET name=$1,base_url=COALESCE($2,base_url), token_encrypted=COALESCE($3,token_encrypted), active=true, updated_at=NOW() WHERE id=$4",
       [
-        RepairArabicEncoding(existing.rows[0].name) || "API ط§ظ"ط £ط³ط§ط³ظٹ"،
+        repairArabicEncoding(existing.rows[0].name) || "API ط§ظ„ط£ط³ط§ط³ظٹ",
         process.env.ORANOS_API_BASE || /api\.example\.com/i.test(existing.rows[0].base_url || "")
           ? normalizeApiBase(ORANOS_BASE)
-          : باطل،
+          : null,
         ORANOS_TOKEN ? encryptApiToken(ORANOS_TOKEN) : null,
         existing.rows[0].id,
       ]
@@ -845,9 +604,9 @@ async function ensurePrimaryApiSource() {
   const inserted = await q(
     `INSERT INTO api_sources(name,base_url,token_encrypted,active,is_primary)
      VALUES($1,$2,$3,true,true) RETURNING id`,
-    ["API ط§ظ„ط £ط³ط§ط³ظٹ", NormalizeApiBase(ORANOS_BASE), encryptApiToken(ORANOS_TOKEN)]
+    ["API ط§ظ„ط£ط³ط§ط³ظٹ", normalizeApiBase(ORANOS_BASE), encryptApiToken(ORANOS_TOKEN)]
   );
-  أعد معرف الصف الأول في العنصر المُدرج.
+  return inserted.rows[0].id;
 }
 
 async function listApiSources(includeInactive = true) {
@@ -855,10 +614,10 @@ async function listApiSources(includeInactive = true) {
     `SELECT id,name,base_url,active,is_primary,last_sync_at,last_sync_error,created_at
      FROM api_sources ${includeInactive ? "" : "WHERE active=true"} ORDER BY is_primary DESC, id`
   );
-  أعد عدد الصفوف في res.
+  return res.rows;
 }
 
-دالة غير متزامنة getApiSource(id) {
+async function getApiSource(id) {
   const res = await q("SELECT * FROM api_sources WHERE id=$1", [id]);
   return res.rows[0] ?? null;
 }
@@ -868,95 +627,95 @@ async function getPrimaryApiSource() {
   return res.rows[0] ?? null;
 }
 
-دالة apiClientFor(source) {
+function apiClientFor(source) {
   const token = decryptApiToken(source.token_encrypted);
   return axios.create({
     baseURL: normalizeApiBase(source.base_url),
-    مهلة الانتظار: 8000
-    الرؤوس: {
-      "api-token": رمز مميز،
-      "x-api-token": رمز مميز،
-      المصادقة: رمز مميز؟ `Bearer ${token}` : غير مُعرّف،
-      مقبول: "application/json"،
+    timeout: 8_000,
+    headers: {
+      "api-token": token,
+      "x-api-token": token,
+      Authorization: token ? `Bearer ${token}` : undefined,
+      Accept: "application/json",
     },
     httpAgent: new http.Agent({ keepAlive: true, maxSockets: 20 }),
     httpsAgent: new https.Agent({ keepAlive: true, maxSockets: 20 }),
   });
 }
 
-دالة stableProductId(source, externalId) {
+function stableProductId(source, externalId) {
   const sourceId = Number(source.id);
   const numeric = Number(externalId);
-  إذا كان (source.is_primary && Number.isSafeInteger(numeric) && numeric > 0) أرجع numeric؛
+  if (source.is_primary && Number.isSafeInteger(numeric) && numeric > 0) return numeric;
   const hash = crypto.createHash("sha1").update(`${sourceId}:${externalId}`).digest();
   const value = hash.readUInt32BE(0) % 800_000_000;
   return API_ROOT_CATEGORY + (sourceId * 100_000_000) + value;
 }
 
-دالة sourceRootCategoryId(sourceId) {
-  أعد API_ROOT_CATEGORY + Number(sourceId)؛
+function sourceRootCategoryId(sourceId) {
+  return API_ROOT_CATEGORY + Number(sourceId);
 }
 
-دالة apiProductForDb(row) {
+function apiProductForDb(row) {
   const raw = row.raw && typeof row.raw === "object" ? row.raw : {};
-  يعود {
-    ...خام،
-    المعرّف: رقم (row.id)،
+  return {
+    ...raw,
+    id: Number(row.id),
     source_id: Number(row.source_id),
     source_product_id: row.external_id,
     parent_id: Number(row.parent_id || 0),
-    اسم_الفئة: إصلاح_ترميز_العربية(اسم_الفئة_في_الصف || اسم_الفئة_في_الصف || ""),
-    الاسم: إصلاح ترميز اللغة العربية (اسم الصف)،
-    السعر: إذا كان سعر الصف غير فارغ، يتم تعيينه كرقم، وإلا يتم تعيينه كسعر الصف.
-    متاح: row.available && !row.deleted,
-    qty_values: row.qty_values ​​?? raw.qty_values,
-    المعاملات: row.params ?? raw.params,
+    category_name: repairArabicEncoding(row.category_name || raw.category_name || ""),
+    name: repairArabicEncoding(row.name),
+    price: row.price != null ? Number(row.price) : raw.price,
+    available: row.available && !row.deleted,
+    qty_values: row.qty_values ?? raw.qty_values,
+    params: row.params ?? raw.params,
   };
 }
 
-دالة categoryForDb(row) {
+function categoryForDb(row) {
   return { id: Number(row.id), name: repairArabicEncoding(row.name), parent_id: Number(row.parent_id || 0) };
 }
 
-// طھط®طھظ„ظپ ط§ط³طھط¬ط§ط¨ط© ط¨ط¹ط¶ ظ† ط³ط® API ط¨ظٹظ† ظ…ط¨ظپظˆ ظپط© ظ…ط¨ط§ط´ط±ط© ظˆ {المنتجات} ظˆ {بيانات}.
-// طھظˆ طظٹط¯ظ†طŒط§ ظ‡ظ†ط§ ظٹظ…ظ† ط¹ ط¥ط¶ط§ظپط© ظ…طط¯ط± ظ† ط§ط¬ط ط¸ط§ظ†طŒط±ظٹط§ظ‹ ظ„ظظ† ظ†طŒ ظٹط¸ظ†طŒط± ظپط§ط±ط؛ط§ظ‹ ظ„ظ„ظ…ط³طھط®ط¯ظ….
-دالة استخراج حمولة المنتجات (الحمولة) {
-  إذا كانت الحمولة عبارة عن مصفوفة، فسيتم إرجاع الحمولة.
-  إذا كانت (Array.isArray(payload?.products)) تُرجع payload.products؛
-  إذا كانت (Array.isArray(payload?.items)) تُرجع payload.items؛
-  إذا كانت (Array.isArray(payload?.results)) إرجاع payload.results؛
-  إذا كانت البيانات عبارة عن مصفوفة، فسيتم إرجاع البيانات الموجودة في الحمولة.
-  إذا كانت البيانات عبارة عن مصفوفة، فسيتم إرجاع البيانات الموجودة في البيانات.
-  إذا كانت البيانات عبارة عن مصفوفة، فسيتم إرجاع البيانات الموجودة في البيانات.
-  إذا كانت (Array.isArray(payload?.data?.results)) إرجاع payload.data.results؛
-  إذا كانت البيانات في الحمولة عبارة عن مصفوفة، فسيتم إرجاع البيانات الموجودة في الحمولة.
-  إذا كانت نتيجة الحمولة عبارة عن مصفوفة، فسيتم إرجاع نتيجة الحمولة.
-  إذا كانت نتيجة البيانات في الحمولة عبارة عن مصفوفة، فسيتم إرجاع نتيجة البيانات في الحمولة.
-  إذا كانت (Array.isArray(payload?.response?.products)) إرجاع payload.response.products؛
-  يعود []؛
+// طھط®طھظ„ظپ ط§ط³طھط¬ط§ط¨ط© ط¨ط¹ط¶ ظ† ط³ط® API ط¨ظٹظ†  ظ…طµظپظˆ ظپط© ظ…ط¨ط§ط´ط±ط© ظˆ  {products} ظˆ  {data}.
+//
+function extractProductsPayload(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.products)) return payload.products;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.results)) return payload.results;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.products)) return payload.data.products;
+  if (Array.isArray(payload?.data?.items)) return payload.data.items;
+  if (Array.isArray(payload?.data?.results)) return payload.data.results;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  if (Array.isArray(payload?.result)) return payload.result;
+  if (Array.isArray(payload?.data?.result)) return payload.data.result;
+  if (Array.isArray(payload?.response?.products)) return payload.response.products;
+  return [];
 }
 
-دالة externalProductId(raw) {
-  إرجاع raw?.id ?? raw?.product_id ?? raw?.productId ?? raw?.service_id ?? raw?.service ?? raw?.sku ?? raw?.code;
+function externalProductId(raw) {
+  return raw?.id ?? raw?.product_id ?? raw?.productId ?? raw?.service_id ?? raw?.service ?? raw?.sku ?? raw?.code;
 }
 
-دالة externalProductName(raw, externalId) {
+function externalProductName(raw, externalId) {
   return raw?.name ?? raw?.title ?? raw?.product_name ?? raw?.productName ?? `ظ…ظ†طھط¬ ${externalId}`;
 }
 
-دالة externalCategoryName(raw) {
+function externalCategoryName(raw) {
   const category = raw?.category_name ?? raw?.categoryName ?? raw?.category ?? raw?.category_title ?? "";
-  إذا كانت الفئة موجودة ونوعها "كائن"، فسيتم إرجاع اسم الفئة أو عنوانها أو لا شيء.
-  إرجاع الفئة؛
+  if (category && typeof category === "object") return category.name ?? category.title ?? "";
+  return category;
 }
 
-دالة externalQtyValues(raw) {
-  const explicit = raw?.qty_values ​​?? raw?.quantity_values ​​?? raw?.quantities;
-  إذا كان (explicit != null) فأرجع explicit؛
+function externalQtyValues(raw) {
+  const explicit = raw?.qty_values ?? raw?.quantity_values ?? raw?.quantities;
+  if (explicit != null) return explicit;
   const min = raw?.min_quantity ?? raw?.minQuantity ?? raw?.min_qty ?? raw?.min;
   const max = raw?.max_quantity ?? raw?.maxQuantity ?? raw?.max_qty ?? raw?.max;
-  إذا كان (min != null || max != null) أرجع { min, max };
-  أعد الكمية الخام؟ أو الكمية الخام؟ أو لا شيء؛
+  if (min != null || max != null) return { min, max };
+  return raw?.quantity ?? raw?.qty ?? null;
 }
 
 async function fetchProductsFromApi(source) {
@@ -964,36 +723,36 @@ async function fetchProductsFromApi(source) {
   const endpoints = ["/api/v2/products", "/client/api/products", "/api/products", "/products"];
   let lastError = null;
   for (const endpoint of endpoints) {
-    يحاول {
+    try {
       const response = await wrapRequest(() => client.get(endpoint));
       const products = extractProductsPayload(response.data);
-      إذا كان طول قائمة المنتجات (products.length) يتم إرجاع المنتجات؛
-      lastError = new Error(`لم تُرجع واجهة برمجة التطبيقات أي منتجات من ${endpoint}`);
+      if (products.length) return products;
+      lastError = new Error(`API returned no products from ${endpoint}`);
     } catch (err) {
       lastError = err;
       const status = err?.response?.status;
-      إذا (كانت الحالة && الحالة !== 404 && الحالة !== 405) ارمِ خطأً؛
+      if (status && status !== 404 && status !== 405) throw err;
     }
   }
-  يحاول {
+  try {
     const content = await fetchContent(0, source.id);
-    إذا كان (content.products.length) أعد content.products؛
+    if (content.products.length) return content.products;
   } catch (contentError) {
     lastError = contentError;
   }
-  throw lastError ?? new Error("لم تُرجع واجهة برمجة التطبيقات أي منتجات");
+  throw lastError ?? new Error("API returned no products");
 }
 
 async function fetchApiProfile(source) {
   const client = apiClientFor(source);
   const res = await wrapRequest(() => client.get("/api/v2/profile"));
-  أعد res.data؛
+  return res.data;
 }
 
 async function fetchApiBalance(source) {
   const client = apiClientFor(source);
   const res = await wrapRequest(() => client.get("/api/v2/balance"));
-  أعد res.data؛
+  return res.data;
 }
 
 async function syncApiSource(source, prefetchedProducts = null) {
@@ -1001,26 +760,26 @@ async function syncApiSource(source, prefetchedProducts = null) {
   const seen = [];
   for (const raw of products) {
     const externalId = String(externalProductId(raw) ?? "");
-    إذا لم يكن المعرف الخارجي موجودًا، فتابع؛
-    const botId = StableProductId(source, ExternalId);
+    if (!externalId) continue;
+    const botId = stableProductId(source, externalId);
     const rawCategory = raw.category && typeof raw.category === "object" ? raw.category : null;
     const parentId = source.is_primary
-      ؟ رقم(raw.parent_id ?? raw.parentId ?? raw.category_id ?? raw.categoryId ?? rawCategory?.id ?? 0)
+      ? Number(raw.parent_id ?? raw.parentId ?? raw.category_id ?? raw.categoryId ?? rawCategory?.id ?? 0)
       : sourceRootCategoryId(source.id);
     const rawPrice = Number(raw.price) || Number(raw.base_price) || Number(raw.price_usd) || Number(raw.cost) || Number(raw.amount) || 0;
-    انتظر q(
+    await q(
       `INSERT INTO cached_products
        (id,source_id,external_id,name,parent_id,category_name,price,available,qty_values,params,raw,deleted,last_seen_at,updated_at)
-       القيم (1 دولار، 2 دولار، 3 دولار، 4 دولار، 5 دولار، 6 دولار، 7 دولار، 8 دولار، 9 دولار، 10 دولار، 11 دولار،
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
               COALESCE((SELECT deleted FROM product_overrides WHERE product_id=$1),false),
-              الآن()، الآن())
+              NOW(),NOW())
        ON CONFLICT(source_id,external_id) DO UPDATE SET
          id=$1,name=$4,parent_id=$5,category_name=$6,price=$7,available=$8,
           qty_values=$9,params=$10,raw=$11,
-          تم الحذف = COALESCE((SELECT deleted FROM product_overrides WHERE product_id=$1),false),
-          last_seen_at=NOW(),updated_at=NOW(),
+          deleted=COALESCE((SELECT deleted FROM product_overrides WHERE product_id=$1),false),
+          last_seen_at=NOW(),updated_at=NOW()`,
       [
-        botId، source.id، externalId، repairArabicEncoding(String(externalProductName(raw, externalId)))، parentId،
+        botId, source.id, externalId, repairArabicEncoding(String(externalProductName(raw, externalId))), parentId,
         repairArabicEncoding(externalCategoryName(raw)) || null, rawPrice,
         raw.available !== false && raw.active !== false && raw.status !== "inactive",
         externalQtyValues(raw),
@@ -1029,16 +788,16 @@ async function syncApiSource(source, prefetchedProducts = null) {
     );
     seen.push(externalId);
   }
-  إذا كان عدد المشاهدات {
-    انتظر q(
-      "تحديث cached_products SET deleted=true,available=false,updated_at=NOW() WHERE source_id=$1 AND external_id <> ALL($2)",
+  if (seen.length) {
+    await q(
+      "UPDATE cached_products SET deleted=true,available=false,updated_at=NOW() WHERE source_id=$1 AND external_id <> ALL($2)",
       [source.id, seen]
     );
-  } آخر {
+  } else {
     await q("UPDATE cached_products SET deleted=true,available=false,updated_at=NOW() WHERE source_id=$1", [source.id]);
   }
   await q("UPDATE api_sources SET last_sync_at=NOW(),last_sync_error=NULL,updated_at=NOW() WHERE id=$1", [source.id]);
-  أعد طول العنصر المرئي.
+  return seen.length;
 }
 
 let _syncAllInFlight = null;
@@ -1125,58 +884,58 @@ async function fetchContent(parentId, sourceId = null) {
   }
   const payload = res.data ?? {};
   const data = payload?.data && typeof payload.data === "object" && !Array.isArray(payload.data)
-    بيانات الحمولة؟
-    الحمولة؛
+    ? payload.data
+    : payload;
   _maintenanceMode = false;
-  يعود {
-    المنتجات: (Array.isArray(data.products) ? data.products : extractProductsPayload(payload)).map(p => ({
-      ...ص،
-      الاسم: إصلاح الترميز العربي (اسم الملف)،
-      اسم_الفئة: إصلاح_الترميز_العربي(p.category_name ?? p.categoryName ?? ""),
+  return {
+    products: (Array.isArray(data.products) ? data.products : extractProductsPayload(payload)).map(p => ({
+      ...p,
+      name: repairArabicEncoding(p.name),
+      category_name: repairArabicEncoding(p.category_name ?? p.categoryName ?? ""),
     })),
-    الفئات: Array.isArray(data.categories)؟ data.categories.map(c => ({
-      ...ج،
-      الاسم: إصلاح ترميز اللغة العربية (c.name)،
+    categories: Array.isArray(data.categories) ? data.categories.map(c => ({
+      ...c,
+      name: repairArabicEncoding(c.name),
     })) : [],
   };
 }
 
-دالة غير متزامنة fetchAllProducts(sourceId = null) {
+async function fetchAllProducts(sourceId = null) {
   const source = sourceId != null
-    انتظر حتى يتم استدعاء دالة getApiSource(Number(sourceId)).catch(() => null)
-    انتظر حتى يتم استدعاء getPrimaryApiSource().catch(() => null);
+    ? await getApiSource(Number(sourceId)).catch(() => null)
+    : await getPrimaryApiSource().catch(() => null);
   const client = source ? apiClientFor(source) : oranosClient;
   let res;
-  يحاول {
+  try {
     res = await wrapRequest(() => client.get("/api/v2/products"));
   } catch (err) {
     const status = err?.response?.status;
-    إذا كانت حالة الخطأ لا تساوي 404 ولا تساوي 405، فقم برمي الخطأ.
+    if (status !== 404 && status !== 405) throw err;
     res = await wrapRequest(() => client.get("/client/api/products"));
   }
   const products = extractProductsPayload(res.data);
-  إذا لم يكن هناك مصدر، فأرجع المنتجات؛
+  if (!source) return products;
   return products.map(raw => {
     const externalId = String(externalProductId(raw) ?? "");
-    يعود {
-      ...خام،
+    return {
+      ...raw,
       id: stableProductId(source, externalId),
       source_id: Number(source.id),
       source_product_id: externalId,
       parent_id: source.is_primary ? Number(raw.parent_id || 0) : sourceRootCategoryId(source.id),
-      اسم_الفئة: إصلاح_ترميز_العربية(اسم_الفئة_الخارجية(الخام)),
-      الاسم: إصلاح ترميز اللغة العربية (سلسلة (اسم المنتج الخارجي (الخام، المعرف الخارجي)))،
+      category_name: repairArabicEncoding(externalCategoryName(raw)),
+      name: repairArabicEncoding(String(externalProductName(raw, externalId))),
     };
   }).filter(p => p.source_product_id);
 }
 
 async function placeOrderRequest(client, productId, params, orderUuid) {
   const body = { product_id: productId, ...params, order_uuid: orderUuid };
-  يحاول {
+  try {
     return (await wrapRequest(() => client.post("/api/v2/order", body))).data;
   } catch (err) {
     const status = err?.response?.status;
-    إذا كانت حالة الخطأ لا تساوي 404 ولا تساوي 405، فقم برمي الخطأ.
+    if (status !== 404 && status !== 405) throw err;
     const search = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) search.set(k, String(v));
     search.set("order_uuid", orderUuid);
@@ -1185,90 +944,90 @@ async function placeOrderRequest(client, productId, params, orderUuid) {
 }
 
 async function placeOrder(productId, params, orderUuid) {
-  يحاول {
+  try {
     const source = await getPrimaryApiSource().catch(() => null);
     const client = source ? apiClientFor(source) : oranosClient;
-    العودة في انتظار placeOrderRequest(client, ProductId, params, orderUuid);
+    return await placeOrderRequest(client, productId, params, orderUuid);
   } catch (err) {
-    إذا كان (err?.response?.data) فقم بإرجاع err.response.data؛
-    return { status: "ERR", message: "خطأ في الشبكة" };
+    if (err?.response?.data) return err.response.data;
+    return { status: "ERR", message: "Network error" };
   }
 }
 
 async function placeOrderForProduct(product, params, orderUuid) {
-  إذا لم يكن (product?.source_id) {
-    قم بإرجاع عملية الطلب باستخدام (معرف المنتج، المعلمات، معرف الطلب الفريد).
+  if (!product?.source_id) {
+    return placeOrder(product.id, params, orderUuid);
   }
   const source = await getApiSource(Number(product.source_id));
-  if (!source || !source.active) return { الحالة: "ERR"، الرسالة: "ظ…طط¯ط± ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…طھط§ط” };
-  إذا كان (source.is_primary) فقم بإرجاع placeOrder(product.source_product_id ?? product.id, params, orderUuid);
-  يحاول {
+  if (!source || !source.active) return { status: "ERR", message: "ظ…طµط¯ط± ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…طھط§ط­" };
+  if (source.is_primary) return placeOrder(product.source_product_id ?? product.id, params, orderUuid);
+  try {
     return await placeOrderRequest(apiClientFor(source), product.source_product_id, params, orderUuid);
   } catch (err) {
-    إذا كان (err?.response?.data) فقم بإرجاع err.response.data؛
-    return { status: "ERR", message: "خطأ في الشبكة" };
+    if (err?.response?.data) return err.response.data;
+    return { status: "ERR", message: "Network error" };
   }
 }
 
-دالة غير متزامنة تتحقق من الطلب (معرف الطلب، بواسطة المعرف الفريد = خطأ) {
+async function checkOrder(orderId, byUuid = false) {
   const search = new URLSearchParams();
   search.set("orders", `[${orderId}]`);
-  إذا كان (byUuid) search.set("uuid", "1");
+  if (byUuid) search.set("uuid", "1");
   const source = await getPrimaryApiSource().catch(() => null);
   const client = source ? apiClientFor(source) : oranosClient;
-  يحاول {
+  try {
     const res = await wrapRequest(() => client.get(`/api/v2/check?${search.toString()}`));
-    أعد res.data؛
+    return res.data;
   } catch (err) {
     const status = err?.response?.status;
-    إذا كانت حالة الخطأ لا تساوي 404 ولا تساوي 405، فقم برمي الخطأ.
+    if (status !== 404 && status !== 405) throw err;
     const res = await wrapRequest(() => client.get(`/client/api/check?${search.toString()}`));
-    أعد res.data؛
+    return res.data;
   }
 }
 
 async function checkOrderForSource(orderId, sourceId, byUuid = false) {
-  إذا لم يكن (sourceId) صحيحًا، فقم بإرجاع checkOrder(orderId, byUuid)؛
+  if (!sourceId) return checkOrder(orderId, byUuid);
   const source = await getApiSource(Number(sourceId));
-  إذا لم يكن المصدر نشطًا أو لم يكن نشطًا، فسيتم إرجاع قيمة فارغة.
-  إذا كان (source.is_primary) فقم بإرجاع checkOrder(orderId, byUuid);
+  if (!source || !source.active) return null;
+  if (source.is_primary) return checkOrder(orderId, byUuid);
   const search = new URLSearchParams({ orders: `[${orderId}]` });
-  إذا كان (byUuid) search.set("uuid", "1");
+  if (byUuid) search.set("uuid", "1");
   const client = apiClientFor(source);
-  يحاول {
+  try {
     const res = await wrapRequest(() => client.get(`/api/v2/check?${search.toString()}`));
-    أعد res.data؛
+    return res.data;
   } catch (err) {
     const status = err?.response?.status;
-    إذا كانت حالة الخطأ لا تساوي 404 ولا تساوي 405، فقم برمي الخطأ.
+    if (status !== 404 && status !== 405) throw err;
     const res = await wrapRequest(() => client.get(`/client/api/check?${search.toString()}`));
-    أعد res.data؛
+    return res.data;
   }
 }
 
-دالة استخراج رمز التسليم (الاستجابة) {
+function extractDeliveredCode(resp) {
   const rawD = resp?.data;
-  const d = Array.isArray(rawD) ؟ الخام[0] : الخام؛
-  إذا لم يكن (d && !resp?.replay_api) فأرجع قيمة فارغة (null)؛
+  const d = Array.isArray(rawD) ? rawD[0] : rawD;
+  if (!d && !resp?.replay_api) return null;
   const candidates = [];
-  إذا كان (d?.data) candidates.push(d.data);
-  إذا كان (d?.replay_api) candidates.push(d.replay_api);
-  إذا كان (resp?.replay_api) candidates.push(resp.replay_api);
-  إذا كان (d?.response) candidates.push(d.response);
-  إذا كان (d?.result) candidates.push(d.result);
-  إذا كان (d?.note) candidates.push(d.note);
-  إذا كان (d?.notes) candidates.push(d.notes);
+  if (d?.data) candidates.push(d.data);
+  if (d?.replay_api) candidates.push(d.replay_api);
+  if (resp?.replay_api) candidates.push(resp.replay_api);
+  if (d?.response) candidates.push(d.response);
+  if (d?.result) candidates.push(d.result);
+  if (d?.note) candidates.push(d.note);
+  if (d?.notes) candidates.push(d.notes);
   const lines = [];
   const visit = v => {
-    إذا كان (v == null) فارجع؛
-    إذا كان نوع المتغير v هو "سلسلة نصية" وكان المتغير v قابلاً للحذف، فسيتم إضافة المتغير v بعد حذفه إلى الأسطر.
-    وإلا إذا كان نوع v هو "رقم"، فسيتم إضافة السلسلة النصية (v) إلى الأسطر.
-    وإلا إذا كانت (Array.isArray(v)) v.forEach(visit);
-    وإلا إذا كان نوع v هو "كائن" {
+    if (v == null) return;
+    if (typeof v === "string" && v.trim()) lines.push(v.trim());
+    else if (typeof v === "number") lines.push(String(v));
+    else if (Array.isArray(v)) v.forEach(visit);
+    else if (typeof v === "object") {
       for (const [k, val] of Object.entries(v)) {
-        إذا كانت القيمة فارغة، فتابع.
-        إذا كان نوع القيمة هو "كائن"، فقم بزيارة (القيمة)؛
-        وإلا، أضف السطر التالي: `${k}: ${val}`);
+        if (val == null) continue;
+        if (typeof val === "object") visit(val);
+        else lines.push(`${k}: ${val}`);
       }
     }
   };
@@ -1277,7 +1036,7 @@ async function checkOrderForSource(orderId, sourceId, byUuid = false) {
   return out ? repairArabicEncoding(out) : null;
 }
 
-دالة getProductApiNotes(p) {
+function getProductApiNotes(p) {
   const v = repairArabicEncoding((p.notes ?? p.description ?? p.details ?? "")).trim();
   return v || null;
 }
@@ -1288,9 +1047,9 @@ async function checkOrderForSource(orderId, sourceId, byUuid = false) {
 const convHistory = new Map();
 
 // ظ„ط§ ظ† ط°ظƒط± ط§ط³ظ… ط§ظ„ظ…ظˆ ظ‚ط¹ ط£ظˆ  ط£ظٹ ط±ط§ط¨ط· ط®ط§ط±ط¬ظٹ ظپظٹ ط§ظ„ط¨ط±ظˆ ظ…ط¨طھ
-const AI_SYSTEM_PROMPT = `ط£ظ† طھ ظ…ط³ط§ط¹ط¯ ط°ظƒط§ط، ط§طµط·ظ†ط§ط¹ظٹ ظ…طھط®طµطµ ظپظٹ ط¥ط¯ط§ط±ط© ظ…طھط¬ط± "ظ…طھط¬ط± ط§ظ„ظ…ط±ظˆ ط§ظ† " ط¹ظ„ظ‰ طھظٹظ„ظٹط¬ط±ط§ظ….
+const AI_SYSTEM_PROMPT = `ط£ظ†طھ ظ…ط³ط§ط¹ط¯ ط°ظƒط§ط، ط§طµط·ظ†ط§ط¹ظٹ ظ…طھط®طµطµ ظپظٹ ط¥ط¯ط§ط±ط© ظ…طھط¬ط± "ظ…طھط¬ط± ظ…ط±ظˆط§ظ† " ط¹ظ„ظ‰ طھظٹظ„ظٹط¬ط±ط§ظ….
 ط§ظ„ط¨ظˆطھ ظٹط¨ظٹط¹ ظ…ظ†طھط¬ط§طھ ط±ظ‚ظ…ظٹط© ط¨ط´ظƒظ„ ط¢ظ„ظٹ.
-ط£ط¬ط¨ ط¯ط§ط¦ظ…ط§ظ‹ ط¨ط§ظ„ط¹ط±ط¨ظٹط©. ظƒظ†  ط¯ظ‚ظٹظ‚ط§ظ‹ ظˆ ط¹ظ…ظ„ظٹط§ظ‹. ظ„ط§ طھط°ظƒط± ط£ط³ظ…ط§ط، ظ…ظˆ ط§ظ‚ط¹ ط£ظˆ  ط±ظˆ ط§ط¨ط· ط®ط§ط±ط¬ظٹط©.`;
+ط£ط¬ط¨ ط¯ط§ط¦ظ…ط§ظ‹ ط¨ط§ظ„ط¹ط±ط¨ظٹط©. ظƒظ†  ط¯ظ‚ظٹظ‚ط§ظ‹ ظˆ ط¹ظ…ظ„ظٹط§ظ‹. ظ„ط§ طھط°ظƒط± ط£ط³ظ…ط§ط، ظ…ظˆط§ظ‚ط¹ ط£ظˆ  ط±ظˆط§ط¨ط· ط®ط§ط±ط¬ظٹط©.`;
 
 async function callAiSupport(userId, userMessage) {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -1317,39 +1076,24 @@ async function callAiSupport(userId, userMessage) {
 function clearAiHistory(userId) { convHistory.delete(userId); }
 function hasAiKey() { return !!process.env.OPENAI_API_KEY; }
 
+// Smart FAQ implementation with clean UTF-8 text and matching
+// against repaired user input.
 function buildSmartFaq(msg) {
   const m = repairArabicEncoding(msg).toLowerCase();
-  if (m.includes("ط±طµظٹط¯")) return "ًں’° ظ„ظ…ط¹ط±ظپط© ط±طµظٹط¯ظƒ ط§ط³طھط®ط¯ظ… ط²ط± *ط±طµظٹط¯ظٹ* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
-  if (m.includes("ط¥ظٹط¯ط§ط¹") || m.includes("ط´ط­ط¸أ¢â‚¬ ")) return "ًں’³ ظ„ط´ط­ط¸أ¢â‚¬  ط±طµظٹط¯ظƒ ط§ط¶ط؛ط· ط²ط± *ط¥ظٹط¯ط§ط¹* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
-  if (m.includes("ط·ظ„ط¨")) return "ًں“¦ ظ„ظ…طھط§ط¨ط¹ط© ط·ظ„ط¨ط§طھظƒ ط§ط¶ط؛ط· ط²ط± *ط·ظ„ط¨ط§طھظٹ* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
-  if (m.includes("ط³ط¹ط±")) return "ًں’± ظ„طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طµط±ظپ: ط§ط°ظ‡ط¨ ط¥ظ„ظ‰ ط§ظ„ط¥ط¯ط§ط±ط© أ¢أ¢â‚¬ ع¯ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ أ¢أ¢â‚¬ ع¯ طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طµط±ظپ.";
-  if (m.includes("ط±ط¨ط­")) return "ًں“ˆ ظ„طھط¹ط¯ظٹظ„ ط¸أ¢â‚¬ ط³ط¨ط© ط§ظ„ط±ط¨ط­: ط§ط°ظ‡ط¨ ط¥ظ„ظ‰ ط§ظ„ط¥ط¯ط§ط±ط© أ¢أ¢â‚¬ ع¯ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ أ¢أ¢â‚¬ ع¯ طھط¹ط¯ظٹظ„ ط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ….";
-  if (m.includes("ط±طμظٹط¯") || m.includes("balance")) return "ًں'° ظ„ظ…ط¹ط±ظپط© ط±طμظٹط¯ظƒ ط§ط³طھط®ط¯ظ… ط²ط± *ط±طμظٹط¯ظٹ* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.”;
-  إذا (m.includes("ط¥ظٹط¯ط§ط¹") || m.includes("ط´طظ† ") || m.includes("deposit")) return "ًں'³ ظ„ط´طظ† ط±طظٹط¯ظƒ ط§ط¶ط;ط· ط²ط± *ط¥ظٹط¯ط§ط¹* ظپظٹ ط§ظ‹ظ‚ط§ط¦ظ…ط© ط§ظ‹ط±ط¦ظٹط³ظٹط©.”;
-  إذا (m.includes("ط·ظ„ط¨") || m.includes("order")) return "ًں"¦ ظظ…طھط§ط¨ط¹ط© ط·ظ„ط¨ط§طھظƒ ط§ط¶ط;ط· ط²ط± *ط·ظ„ط¨ط§طھظٹ* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.”;
-  if (m.includes("ط³ط¹ط±") || m.includes("price")) return "ًں'± *طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طμط±ظپ:*\nط§ظ„ط¥ط¯ط§ط±ط© أ¢أ¢أ¢â€ڑآ¬ ™أ¢a‚¬آ¯ظٹظ„ ط³ط¹ط± ط§ظ„طوطط±ظپ”;
-  إذا (m.includes("ط±ط¨ط") || m.includes("markup")) return "ًں"ˆ *ظ†ط³ط¨ط© ط§ظ„ط±ط¨ط:*\nط§ظ„ط¥ط¯ط§ط±ط© أ¢أ¢أ¢â€ڑآ¬ أ¢أ¢â€ڑآ¬أ¢â€‍آ âڑ™ï¸ڈ ط§ظ‹ط¥ط¹ط¯ط§ط¯ط§طھ ™أ¢a¯ظٹظ‹ ط§ظ‹ط±ط¨ط ط§ظ‹ط¹ط§ظ…”;
-  return "ًں“‍ ظ„ظ…ط³ط§ط¹ط¯ط© طھظˆ ط§طμظ„ ظ…ط¹ ط§ظ„ط¯ط¹ظ… ط¹ط¨ط± ط²ط± *ط§ظ„ط¯ط¹ظ…* ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط©..";
-}
-
-// استبدل تطبيق الأسئلة الشائعة القديم بنص UTF-8 نظيف ومطابق
-// ضد مدخلات المستخدم التي تم إصلاحها.
-دالة بناء الأسئلة الشائعة الذكية (الرسالة) {
-  const m = repairArabicEncoding(msg).toLowerCase();
-  if (m.includes("ط±طμظٹط¯") || m.includes("balance")) return "ًں'° ظ„ظ…ط¹ط±ظپط© ط±طμظٹط¯ظƒ ط§ط³طھط®ط¯ظ… ط²ط± آ«ط±طμظٹط¯ظٹآ» ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.”;
-  إذا (m.includes("ط¥ظٹط¯ط§ط¹") || m.includes("ط´طظ†") || m.includes("deposit")) return "ًں'³ ظ„ط´طظ† ط±طظٹط¯ظƒ ط§ط¶ط;ط· ط²ط± آ«ط¥ظٹط¯ط§ع» ظپظٹ ط§ظ‹ظ‚ط§ط¦ظ…ط© ط§ظ‹ط±ط¦ظٹط³ظٹط©.”;
-  if (m.includes("ط·ظ„ط¨") || m.includes("order")) return "ًں"¦ ظظ…طھط§ط¨ط¹ط© ط·ظ„ط¨ط§طھظƒ ط§ط¶ط;ط· ط²ط± ط¨ط§طھظٹآ» ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.”;
-  إذا (m.includes("ط³ط¹ط±") || m.includes("price")) return "ظ‹ع؛’آ² ظ„طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طμط±ظپ ط§ط°ظ‡ط¨ ط¥ظ„ظ‰ ط§ظ„ط¥ط¯ط§ط±ط© أ¢â€ ع¯ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ أâ€ ع¯ طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طμط±ظپ..";
-  إذا (m.includes("ط±ط¨ط") || m.includes("markup")) return "ًں"ˆ ظ„طھط¹ط¯ظٹظ„ ظ†ط³ط¨ط© ط§ظ„ط±ط¨ط ط§ط°ظ‡ط¨ ط¥ظ„ظ‰ ط§ظ„ط¥ط¯ط§ط±ط© أ¢â€ ع¯ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ أâ€ ع¯ طھط¹ط¯ظٹظ‹ ط§ظ‹ط±ط¨ط ط§ظ‹ط¹ط§ظ….”;
-  return "ًں'¬ ظظ… ط £ط¬ط¯ ط¥ط¬ط§ط¨ط© ظ…طط¯ط¯ط©. طھظˆط§طμظ„ ظ…ط¹ ط§ظ„ط¥ط¯ط§ط±ط© ط¹ط¨ط± ط²ط± د«ط§ظ„ط¯ط¹ظ…آ» ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط©.”;
+  if (m.includes("ط±طµظٹط¯") || m.includes("balance")) return "ًں’° ظ„ظ…ط¹ط±ظپط© ط±طµظٹط¯ظƒ ط§ط³طھط®ط¯ظ… ط²ط± آ«ط±طµظٹط¯ظٹآ» ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
+  if (m.includes("ط¥ظٹط¯ط§ط¹") || m.includes("ط´ط­ظ†") || m.includes("deposit")) return "ًں’³ ظ„ط´ط­ظ† ط±طµظٹط¯ظƒ ط§ط¶ط؛ط· ط²ط± آ«ط¥ظٹط¯ط§ط¹ ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
+  if (m.includes("ط·ظ„ط¨") || m.includes("order")) return "ًں“¦ ظ„ظ…طھط§ط¨ط¹ط© ط·ظ„ط¨ط§طھظƒ ط§ط¶ط؛ط· ط²ط± آ«ط·ظ„ط¨ط§طھظٹآ» ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.";
+  if (m.includes("ط³ط¹ط±") || m.includes("price")) return "ًں’± ظ„طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طµط±ظپ ط§ط°ظ‡ط¨ ط¥ظ„ظ‰ ط§ظ„ط¥ط¯ط§ط±ط© â†’ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ â†’ طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طµط±ظپ.";
+  if (m.includes("ط±ط¨ط­") || m.includes("markup")) return "ًں“ˆ ظ„طھط¹ط¯ظٹظ„ ظ†ط³ط¨ط© ط§ظ„ط±ط¨ط­ ط§ط°ظ‡ط¨ ط¥ظ„ظ‰ ط§ظ„ط¥ط¯ط§ط±ط© â†’ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ â†’ طھط¹ط¯ظٹظ„ ط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ….";
+  return "ًں’¬ ظ„ظ… ط£ط¬ط¯ ط¥ط¬ط§ط¨ط© ظ…ط­ط¯ط¯ط©. طھظˆط§طµظ„ ظ…ط¹ ط§ظ„ط¥ط¯ط§ط±ط© ط¹ط¨ط± ط²ط± آ«ط§ظ„ط¯ط¹ظ…آ» ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط©.";
 }
 
 // ============================================================
-// ذاكرة التخزين المؤقت للمنتج
+//  PRODUCT CACHE
 // ============================================================
-المنتجات الثابتة_TTL = 2 * 60_000؛ // ط§ظ„ظƒط§ط´ ط³ط±ظٹط¹ ظ…ط¹ ط¨ظ‚ط§ط، ط§ظ„ط§ط³طھط¬ط§ط¨ط© ظپظˆ ط±ظٹط©
-const CONTENT_TTL = 2 * 60_000;
-const OVERRIDES_TTL = 10 * 60_000; // ظƒط§ط´ 10 ط¯ظ‚ط§ط¦ظ‚
+const PRODUCTS_TTL  = 2 * 60_000;    // ط§ظ„ظƒط§ط´ ط³ط±ظٹط¹ ظ…ط¹ ط¨ظ‚ط§ط، ط§ظ„ط§ط³طھط¬ط§ط¨ط© ظپظˆ ط±ظٹط©
+const CONTENT_TTL   = 2 * 60_000;
+const OVERRIDES_TTL = 10 * 60_000;   // ظƒط§ط´ 10 ط¯ظ‚ط§ط¦ظ‚
 const PAGE_SIZE = 8;
 
 let productsCache = null;
@@ -1397,7 +1141,7 @@ async function getCachedContent(parentId) {
         categories: [],
       };
     }
-    // ط¹ظ† ط¯ طھط¹ط·ظ„ API ظ† ط³طھط®ط¯ظ… ط¢ط®ط± ط¨ظٹط§ظ†ط§طھ ظ…ط­ظ„ظٹط© ط¨ط¯ظ„ط§ظ‹ ظ…ظ†  طھط¹ظ„ظٹظ‚ ظ„ظˆ ط­ط© ط§ظ„ظ…ط³طھط®ط¯ظ….
+//
     const content = await fetchContent(parentId).catch(() => cached?.content ?? buildFallbackContent(parentId));
     const sources = await listApiSources(false);
     const extraSources = sources.filter(s => !s.is_primary && parentId === 0);
@@ -1405,7 +1149,7 @@ async function getCachedContent(parentId) {
       const extraRootIds = new Set(extraSources.map(s => sourceRootCategoryId(s.id)));
       content.categories = [
         ...(content.categories || []).filter(c => !extraRootIds.has(Number(c.id))),
-        // ظƒظ„ API ط¥ط¶ط§ظپظٹ ظٹط¸ظ†طŒط± ط¨ط§ط³ظ…ظ†طŒ ط§ظ„ط°ظٹ ط­ط¯ط¯ظ†طŒ ط§ظ„ظ…ط¯ظٹط±طŒ ظˆ ظ„ظٹط³ ط¨ط§ط³ظ… طھظ‚ظ† ظٹ ظ…ط«ظ„ "ظ…ظ†طھط¬ط§طھ API".
+//
         ...extraSources.map(s => ({ id: sourceRootCategoryId(s.id), name: s.name, parent_id: 0 })),
       ];
     }
@@ -1445,7 +1189,7 @@ function startBackgroundRefresher() {
   if (refresherStarted) return;
   refresherStarted = true;
   setInterval(() => {
-    // ظ…ط²ط§ظ…ظ† ط© ظ‚ط§ط¹ط¯ط© ط§ظ„ظ…ظ†طھط¬ط§طھ ط¨ط§ظ„ط®ظ„ظپظٹط©طŒ ظˆ طھط¨ظ‚ظ‰ ط§ظ„ط§ط³طھط¬ط§ط¨ط© ظ…ظ†  ط§ظ„ظƒط§ط´/ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ ظپظˆ ط±ظٹط©
+    // ظ…ط²ط§ظ…ظ†ط© ظ‚ط§ط¹ط¯ط© ط§ظ„ظ…ظ†طھط¬ط§طھ ط¨ط§ظ„ط®ظ„ظپظٹط©طŒ ظˆ طھط¨ظ‚ظ‰ ط§ظ„ط§ط³طھط¬ط§ط¨ط© ظ…ظ†  ط§ظ„ظƒط§ط´/ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ ظپظˆ ط±ظٹط©
     Promise.all([
       syncAllApiSources(),
       loadAllOverrides().then(m => { allOverridesCache = { map: m, expiry: Date.now() + OVERRIDES_TTL }; }),
@@ -1476,7 +1220,7 @@ async function loadCategoryOverrides(ids) {
   return m;
 }
 
-// أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ط¨ظ† ط§ط، ظ…ط¬ظ…ظˆ ط¹ط© IDs ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„طھظٹ طھط­طھظˆ ظٹ ظ…ظ†طھط¬ط§طھ ط¸ط§ظ†طŒط±ط© أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
 async function buildVisibleCategoryIds(excludedCats, kws) {
   const all = await getCachedProducts();
   const direct = new Set();
@@ -1516,7 +1260,7 @@ async function effectivePriceUsd(p, override, defaultMarkup, socialMarkup, socia
   return Number((rawPrice * (1 + m / 100)).toFixed(6));
 }
 
-const BOT_MAINTENANCE_MSG = "ًں”§ ط§ظ„ط¨ظˆطھ ظ‚ظٹط¯ ط§ظ„طµظٹط§ظ† ط© ط­ط§ظ„ظٹط§ظ‹.\nط³ظٹط¹ظˆ ط¯ ظ„ظ„ط¹ظ…ظ„ ط¨ط£ظ‚ط±ط¨ ظˆظ‚طھ ظ…ظ…ظƒظ† . ظ† ط´ظƒط± طµط¨ط±ظƒظ…! ًں™ڈ";
+const BOT_MAINTENANCE_MSG = "ًں”§ ط§ظ„ط¨ظˆطھ ظ‚ظٹط¯ ط§ظ„طµظٹط§ظ†ط© ط­ط§ظ„ظٹط§ظ‹.\nط³ظٹط¹ظˆط¯ ظ„ظ„ط¹ظ…ظ„ ط¨ط£ظ‚ط±ط¨ ظˆظ‚طھ ظ…ظ…ظƒظ† . ظ†ط´ظƒط± طµط¨ط±ظƒظ…! ًں™ڈ";
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME ?? "admin").split(",")[0].trim();
 
 // ============================================================
@@ -1529,7 +1273,7 @@ function setStep(uid, s) { stepMap.set(uid, s); }
 let _botRef = null;
 const authedAdminIds = new Set();
 
-// أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ط­ط§ظ„ط© ط§ظ„طھظ†ظ‚ظ„: userId أ¢أ¢أ¢â€ڑآ¬ أ¢أ¢â€ڑآ¬أ¢â€‍آ¢ Map<catId, page> أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
 const navState = new Map();
 function saveNavPage(uid, catId, page) {
   if (!navState.has(uid)) navState.set(uid, new Map());
@@ -1537,7 +1281,7 @@ function saveNavPage(uid, catId, page) {
 }
 function getNavPage(uid, catId) { return navState.get(uid)?.get(catId) ?? 1; }
 
-// أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ط¥ط´ط¹ط§ط±ط§طھ ط§ظ„ط¥ظٹط¯ط§ط¹ أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
 const depositNotifications = new Map();
 async function clearDepositForOtherAdmins(processorId, depId, statusText) {
   const list = depositNotifications.get(depId) ?? [];
@@ -1546,7 +1290,7 @@ async function clearDepositForOtherAdmins(processorId, depId, statusText) {
     if (n.adminId === processorId) continue;
     try {
       await _botRef?.telegram.editMessageCaption(n.adminId, n.messageId, undefined,
-        `${statusText}\n(طھظ…طھ ط§ظ„ظ…ط¹ط§ظ„ط¬ط© ط¨ظˆ ط§ط³ط·ط© ظ…ط¯ظٹط± ط¢ط®ط±)`);
+        `${statusText}\n(طھظ…طھ ط§ظ„ظ…ط¹ط§ظ„ط¬ط© ط¨ظˆط§ط³ط·ط© ظ…ط¯ظٹط± ط¢ط®ط±)`);
     } catch { /* ignore */ }
   }
 }
@@ -1578,7 +1322,7 @@ async function ensureUser(ctx) {
   return upsertUser({ id: f.id, username: f.username, first_name: f.first_name, last_name: f.last_name });
 }
 
-// أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ظ„ظˆ ط­ط© ط§ظ„ط¥ط¯ط§ط±ط© ظ…ط®ظپظٹط© - ظ„ط§ طھط¸ظ†طŒط± ظپظٹ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط±ط¦ظٹط³ظٹط© أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
 function mainMenu() {
   return Markup.inlineKeyboard([
     [Markup.button.callback("ًں›’ ط§ظ„ظ…ظ†طھط¬ط§طھ", "cat:0:1:0"), Markup.button.callback("ًں’° ط±طµظٹط¯ظٹ", "balance")],
@@ -1607,10 +1351,10 @@ async function showMainMenu(ctx) {
     isAdminSessionActive(user.id),
   ]);
   if (status === "off" && !authedAdminIds.has(user.id) && !adminSessionActive) {
-    await sendOrEdit(ctx, "ًں”§ ط§ظ„ط¨ظˆطھ ظ‚ظٹط¯ ط§ظ„طµظٹط§ظ† ط©. ط³ظٹط¹ظˆ ط¯ ظ„ظ„ط¹ظ…ظ„ ط¨ط£ظ‚ط±ط¨ ظˆظ‚طھ ظ…ظ…ظƒظ† . ظ† ط´ظƒط± طµط¨ط±ظƒظ…! ًں™ڈ");
+    await sendOrEdit(ctx, "ًں”§ ط§ظ„ط¨ظˆطھ ظ‚ظٹط¯ ط§ظ„طµظٹط§ظ†ط©. ط³ظٹط¹ظˆط¯ ظ„ظ„ط¹ظ…ظ„ ط¨ط£ظ‚ط±ط¨ ظˆظ‚طھ ظ…ظ…ظƒظ† . ظ†ط´ظƒط± طµط¨ط±ظƒظ…! ًں™ڈ");
     return;
   }
-  const greeting = `ط£ظ†طŒظ„ط§ظ‹ ظپظٹظƒ ظپظٹ ظ…طھط¬ط± ط§ظ„ظ…ط±ظˆ ط§ظ†  ًںŒں\nط§ظ„ط§ط³ظ…: ${user.first_name ?? "â€”"}${user.username ? ` (@${user.username})` : ""}\nط§ظ„ط±ظ‚ظ…: ${user.id}\nط§ظ„ط±طµظٹط¯: ${formatBalance(Number(user.balance), rate)}\n\nط§ط®طھط± ظ…ظ†  ط§ظ„ظ‚ط§ط¦ظ…ط© ًں‘‡`;
+  const greeting = `ط£ظ‡ظ„ط§ظ‹ ظپظٹظƒ ظپظٹ ظ…طھط¬ط± ظ…ط±ظˆط§ظ†  ًںŒں\nط§ظ„ط§ط³ظ…: ${user.first_name ?? "â€”"}${user.username ? ` (@${user.username})` : ""}\nط§ظ„ط±ظ‚ظ…: ${user.id}\nط§ظ„ط±طµظٹط¯: ${formatBalance(Number(user.balance), rate)}\n\nط§ط®طھط± ظ…ظ† ط§ظ„ظ‚ط§ط¦ظ…ط© ًں‘‡`;
   if (authedAdminIds.has(user.id) && !adminSessionActive && !user.is_admin) {
     authedAdminIds.delete(user.id);
   }
@@ -1672,10 +1416,10 @@ async function showDepositMethod(ctx, methodId) {
   const res = await q("SELECT * FROM deposit_methods WHERE id=$1 AND active=true", [methodId]);
   const m = res.rows[0];
   if (!m) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ط·ط±ظٹظ‚ط© ط؛ظٹط± ظ…طھط§ط­ط©."); return; }
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ طھط¯ظپظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹: ظ† ط·ظ„ط¨ ط§ظ„ظ…ط¨ظ„ط؛ ط£ظˆ ظ„ط§ظ‹طŒ ط«ظ… ط§ظ„طµظˆط±ط© أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   setStep(ctx.from.id, { kind: "deposit:info", methodId: m.id, methodName: m.name, amount: null, photoFileId: null });
   const kb = Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "deposit"), Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "dep:cancel")]]);
-  const infoText = `ًں’³ ${m.name}\nًں”‘ ط§ظ„ط±ظ‚ظ…: \`${m.identifier}\`\n\nًں“‹ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ:\n${m.instructions}\n\nًں“¸ ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ظˆ طµظˆ ط±ط© ط¥ط´ط¹ط§ط± ط§ظ„طھط­ظˆ ظٹظ„ (ظٹظ…ظƒظ† ظƒ ط¥ط±ط³ط§ظ„ظ†طŒظ…ط§ ط¨ط£ظٹ طھط±طھظٹط¨).`;
+  const infoText = `ًں’³ ${m.name}\nًں”‘ ط§ظ„ط±ظ‚ظ…: \`${m.identifier}\`\n\nًں“‹ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ:\n${m.instructions}\n\nًں“¸ ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ظˆ طµظˆط±ط© ط¥ط´ط¹ط§ط± ط§ظ„طھط­ظˆظٹظ„ (ظٹظ…ظƒظ†ظƒ ط¥ط±ط³ط§ظ„ظ‡ظ…ط§ ط¨ط£ظٹ طھط±طھظٹط¨).`;
   if (m.image_file_id) {
     await ctx.replyWithPhoto(m.image_file_id, { caption: infoText, parse_mode: "Markdown", ...kb });
   } else {
@@ -1683,7 +1427,7 @@ async function showDepositMethod(ctx, methodId) {
   }
 }
 
-// أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ط¥ظƒظ…ط§ظ„ ط·ظ„ط¨ ط§ظ„ط¥ظٹط¯ط§ط¹ ط¨ط¹ط¯ ط§ط³طھظ„ط§ظ… ط§ظ„ظ…ط¨ظ„ط؛ ظˆ ط§ظ„طµظˆط±ط© أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
 async function completeDepositRequest(ctx, step) {
   const res = await q(
     "INSERT INTO deposit_requests(user_id,method_id,method_name,amount,screenshot_file_id) VALUES($1,$2,$3,$4,$5) RETURNING *",
@@ -1699,7 +1443,7 @@ async function completeDepositRequest(ctx, step) {
 async function notifyAdminsDeposit(ctx, depositRow) {
   const user = await getUser(ctx.from.id);
   const amountStr = depositRow.amount ? `${Number(depositRow.amount).toFixed(2)}$` : "â€”";
-  const text = `ًں“¥ ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹ ط¬ط¯ظٹط¯\nًں‘¤ ${user?.first_name ?? "â€”"}${user?.username ? " @" + user.username : ""} (${ctx.from.id})\nًں’³ ${depositRow.method_name}\nًں’µ ط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„ظ…ظڈط­ظˆ ظژظ‘ظ„: ${amountStr}`;
+  const text = `ًں“¥ ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹ ط¬ط¯ظٹط¯\nًں‘¤ ${user?.first_name ?? "â€”"}${user?.username ? " @" + user.username : ""} (${ctx.from.id})\nًں’³ ${depositRow.method_name}\nًں’µ ط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„ظ…ظڈط­ظˆظ‘ظژظ„: ${amountStr}`;
   const kb = Markup.inlineKeyboard([[Markup.button.callback("âœ… ظ…ظˆط§ظپظ‚ط©", `adm:dep:approve:${depositRow.id}`), Markup.button.callback("â‌Œ ط±ظپط¶", `adm:dep:reject:${depositRow.id}`)]]);
   const admins = await listAdmins();
   const notifications = [];
@@ -1720,7 +1464,7 @@ async function showCategory(ctx, parentId, page, backTo) {
   const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || _catSessActive);
   const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ طھط´ط؛ظٹظ„ ط¬ظ…ظٹط¹ ط§ظ„ط§ط³طھط¹ظ„ط§ظ…ط§طھ ط§ظ„ظ…ط³طھظ‚ظ„ط© ط¨ط§ظ„طھظˆ ط§ط²ظٹ أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   const [kws, excludedStr, content, socialKws, socialMarkup, markup, ovMap] = await Promise.all([
     getExcludedKeywords(),
     getSetting("excluded_category_ids"),
@@ -1733,7 +1477,7 @@ async function showCategory(ctx, parentId, page, backTo) {
   const excludedCats = new Set(excludedStr.split(",").map(s => Number(s.trim())).filter(Number.isFinite));
   const catOv = await loadCategoryOverrides([...content.categories.map(c => c.id), parentId]);
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ط¥طµظ„ط§ط­ ط§ظ„ط£ط¯ط§ط،: ط§ط³طھط®ط±ط¬ ظ…ط¬ظ…ظˆ ط¹ط© ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ط¸ط§ظ†طŒط±ط© ظ…ط±ط© ظˆ ط§ط­ط¯ط© ط®ط§ط±ط¬ ط§ظ„ط­ظ„ظ‚ط© أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   const visibleDirectSet = await buildVisibleCategoryIds(excludedCats, kws);
 
   const visibility = await Promise.all(
@@ -1809,7 +1553,7 @@ async function showCategory(ctx, parentId, page, backTo) {
     }),
   ];
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ طھط·ط¨ظٹظ‚ markup ط§ظ„ظ…ط³طھط®ط¯ظ… ط§ظ„ط®ط§طµ ظپظٹ ط£ط³ط¹ط§ط± ظ‚ط§ط¦ظ…ط© ط§ظ„ظ…ظ†طھط¬ط§طھ أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   const prodBtns = await Promise.all(visibleProds.map(async p => {
     const ov = ovMap.get(p.id);
     const usd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws, null, userMarkupPercent);
@@ -2047,7 +1791,7 @@ async function showVirtualCategory(ctx, vcId, page, backTo) {
   if (!visible.length && !subVcBtns.length && !manualBtnsVc.length && !isAdmin) { await sendOrEdit(ctx, "ًں“­ ظ‡ط°ط§ ط§ظ„ظ‚ط³ظ… ظپط§ط±ط؛ ط­ط§ظ„ظٹط§ظ‹.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
 
   const ovMap = await loadOverrideMap(visible.map(p => p.id));
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ طھط·ط¨ظٹظ‚ markup ط§ظ„ظ…ط³طھط®ط¯ظ… ط§ظ„ط®ط§طµ أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   const prodBtns = await Promise.all(visible.map(async p => {
     const ov = ovMap.get(p.id);
     const usd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws, null, userMarkupPercent);
@@ -2185,7 +1929,7 @@ async function startOrderFlow(ctx, productId, backTo) {
   if (!p) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
   if (!p.available) { await ctx.reply("âڑ ï¸ڈ ظ‡ط°ط§ ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…طھط§ط­ ط­ط§ظ„ظٹط§ظ‹."); return; }
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ طھظ†ظپظٹط° ظ…ظˆ ط§ط²ط¸ط¹أ¢â‚¬  ظ„طھط³ط±ظٹط¹ ط§ظ„ط§ط³طھط¬ط§ط¨ط© أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   const [ovMap, markup, socialKws, socialMarkup, user] = await Promise.all([
     loadOverrideMap([p.id]),
     getMarkupPercent(),
@@ -2251,7 +1995,7 @@ async function showOrderConfirmation(ctx, p, unitPriceUsd, qty, collected, backT
   setStep(ctx.from.id, { kind: "order:params", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, qty, paramKeys: Object.keys(collected), collected, idx: Object.keys(collected).length, backTo });
   const lowBalance = balance < totalUsd;
   const totalUsdStr = totalUsd < 0.005 ? totalUsd.toFixed(4) : totalUsd.toFixed(2);
-  const text = `ًں§¾ طھط£ظƒظٹط¯ ط§ظ„ط·ظ„ط¨\n\nًں›’ ط§ظ„ظ…ظ†طھط¬: ${p.name}\nًں”¢ ط§ظ„ظƒظ…ظٹط©: ${qty.toLocaleString("en-US")}\n${paramsLines ? paramsLines + "\n" : ""}ًں’° ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ: ${totalUsdStr}$ | ${totalSyp.toLocaleString("en-US")} ظ„.ط³\nًں’³ ط±طµظٹط¯ظƒ: ${formatBalance(balance, rate)}\n\n${lowBalance ? "â‌Œ ظ„ظٹط³ ظ„ط¯ظٹظƒ ط±طµظٹط¯ ظƒط§ظپظٹ. ظٹط±ط¬ظ‰ ط´ط­ظ† ط±طµظٹط¯ظƒ ط«ظ… ط§ظ„ظ…ط­ط§ظˆ ظ„ط© ظ…ط¬ط¯ط¯ط§ظ‹." : "ظ†طŒظ„ طھط±ظٹط¯ طھط£ظƒظٹط¯ ط§ظ„ط·ظ„ط¨طں"}`;
+  const text = `ًں§¾ طھط£ظƒظٹط¯ ط§ظ„ط·ظ„ط¨\n\nًں›’ ط§ظ„ظ…ظ†طھط¬: ${p.name}\nًں”¢ ط§ظ„ظƒظ…ظٹط©: ${qty.toLocaleString("en-US")}\n${paramsLines ? paramsLines + "\n" : ""}ًں’° ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ: ${totalUsdStr}$ | ${totalSyp.toLocaleString("en-US")} ظ„.ط³\nًں’³ ط±طµظٹط¯ظƒ: ${formatBalance(balance, rate)}\n\n${lowBalance ? "â‌Œ ظ„ظٹط³ ظ„ط¯ظٹظƒ ط±طµظٹط¯ ظƒط§ظپظٹ. ظٹط±ط¬ظ‰ ط´ط­ظ† ط±طµظٹط¯ظƒ ط«ظ… ط§ظ„ظ…ط­ط§ظˆظ„ط© ظ…ط¬ط¯ط¯ط§ظ‹." : "ظ‡ظ„ طھط±ظٹط¯ طھط£ظƒظٹط¯ ط§ظ„ط·ظ„ط¨طں"}`;
   const rows = lowBalance
     ? [[Markup.button.callback("ًں’³ ط´ط­ظ† ط±طµظٹط¯", "deposit")], [Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]]
     : [[Markup.button.callback("âœ… طھط£ظƒظٹط¯ ظˆ طھظ†ظپظٹط°", "ord:confirm"), Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]];
@@ -2303,7 +2047,7 @@ async function executeOrderInternal(ctx) {
   const debited = await debitBalance(ctx.from.id, totalUsd);
   if (!debited) {
     setStep(ctx.from.id, { kind: "idle" });
-    await ctx.reply("â‌Œ طھط؛ظٹظ‘ط± ط§ظ„ط±طµظٹط¯ ظ‚ط¨ظ„ طھظ†ظپظٹط° ط§ظ„ط·ظ„ط¨. ط­ط¯ظ‘ط« ط§ظ„ط±طµظٹط¯ ظˆ ط­ط§ظˆ ظ„ ظ…ط¬ط¯ط¯ط§ظ‹.", Markup.inlineKeyboard([[Markup.button.callback("ًںڈ   ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
+    await ctx.reply("â‌Œ طھط؛ظٹظ‘ط± ط§ظ„ط±طµظٹط¯ ظ‚ط¨ظ„ طھظ†ظپظٹط° ط§ظ„ط·ظ„ط¨. ط­ط¯ظ‘ط« ط§ظ„ط±طµظٹط¯ ظˆ ط­ط§ظˆظ„ ظ…ط¬ط¯ط¯ط§ظ‹.", Markup.inlineKeyboard([[Markup.button.callback("ًںڈ   ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
     return;
   }
   const execRate = await getExchangeRate();
@@ -2328,8 +2072,8 @@ async function executeOrderInternal(ctx) {
     if (ACCEPT_STATUSES.has(initialStatus) || REJECT_STATUSES.has(initialStatus)) {
       finalApiStatus = initialStatus;
     } else {
-      // ظ„ط§ ظ† ظ† طھط¸ط± ظ† طھظٹط¬ط© API ط¯ط§ط®ظ„ ظ…ط¹ط§ظ„ط¬ ط¶ط؛ط·ط© ط§ظ„ظ…ط³طھط®ط¯ظ…ط› ط³ظٹظƒظ…ظ„ظ†طŒط§ ط§ظ„ظ€poller ط¨ط§ظ„ط®ظ„ظپظٹط©.
-      // ط§ظ„ط§ظ† طھط¸ط§ط± ط§ظ„ط³ط§ط¨ظ‚ ظƒط§ظ†  ظٹط¨ظ‚ظٹ ظ…ط¹ط§ظ„ط¬ ط§ظ„ط·ظ„ط¨ ظ…ظپطھظˆ ط­ط§ظ‹ ط­طھظ‰ 150 ط«ط§ظ† ظٹط©.
+//
+//
       finalApiStatus = "pending";
     }
   } catch {
@@ -2349,7 +2093,7 @@ async function executeOrderInternal(ctx) {
     setStep(ctx.from.id, { kind: "idle" });
     const rejectReason = extractDeliveredCode(detailedResp) ||
       (detailedResp?.message && detailedResp.message !== "Network error" ? detailedResp.message : null);
-    // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ظ„ط§ ظ† ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
     await ctx.reply(
       `â‌Œ طھظ… ط±ظپط¶ ط§ظ„ط·ظ„ط¨.\n` +
       (rejectReason ? `ًں“‹ ط§ظ„ط³ط¨ط¨: ${rejectReason}\n` : "") +
@@ -2362,9 +2106,9 @@ async function executeOrderInternal(ctx) {
   if (isPending) {
     await q("UPDATE orders SET status='pending', api_response=$1 WHERE id=$2", [JSON.stringify(resp), order.id]);
     setStep(ctx.from.id, { kind: "idle" });
-    // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ظ„ط§ ظ† ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
     await ctx.reply(
-      `âڈ³ ط·ظ„ط¨ظƒ ظ‚ظٹط¯ ط§ظ„ظ…ط¹ط§ظ„ط¬ط©.\nًں›’ ${p.name} أ— ${step.qty}\nًں’° ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ظ„.ط³\n\nط³ط£ظڈط¹ظ„ظ…ظƒ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ط¹ظ† ط¯ ط§ظƒطھظ…ط§ظ„ظ†طŒ.`,
+      `âڈ³ ط·ظ„ط¨ظƒ ظ‚ظٹط¯ ط§ظ„ظ…ط¹ط§ظ„ط¬ط©.\nًں›’ ${p.name} أ— ${step.qty}\nًں’° ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ظ„.ط³\n\nط³ط£ظڈط¹ظ„ظ…ظƒ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ط¹ظ† ط¯ ط§ظƒطھظ…ط§ظ„ظ‡.`,
       Markup.inlineKeyboard([
         [Markup.button.callback("ًں”„ طھط­ط¯ظٹط« ط§ظ„ط­ط§ظ„ط©", `ord:check:${order.id}`)],
         [Markup.button.callback("ًںڈ   ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]
@@ -2379,7 +2123,7 @@ async function executeOrderInternal(ctx) {
   await q("UPDATE orders SET status='accept', oranos_order_id=$1, external_order_id=$2, api_response=$3, delivered_code=$4 WHERE id=$5",
     [externalOrderId, externalOrderId, JSON.stringify(resp), deliveredCode ?? null, order.id]);
   setStep(ctx.from.id, { kind: "idle" });
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ظ„ط§ ظ† ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   await ctx.reply(`âœ… طھظ… طھظ†ظپظٹط° ط·ظ„ط¨ظƒ ط¨ظ†ط¬ط§ط­!\nًں›’ ${p.name} أ— ${step.qty}\nًں’° ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ظ„.ط³`);
   if (deliveredCode) {
     await ctx.reply(`ًں”‘ طھظپط§طµظٹظ„ ط§ظ„ط·ظ„ط¨:\n\`\`\`\n${deliveredCode}\n\`\`\``,
@@ -2394,7 +2138,7 @@ async function showMyOrders(ctx, page) {
   const res = await q("SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3", [ctx.from.id, limit + 1, offset]);
   const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
   if (!slice.length) { await sendOrEdit(ctx, "ًں“­ ظ„ط§ ظٹظˆط¬ط¯ ظ„ط¯ظٹظƒ ط£ظٹ ط·ظ„ط¨ط§طھ ط¨ط¹ط¯.", Markup.inlineKeyboard([[Markup.button.callback("ًںڈ   ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])); return; }
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ظ„ط§ ظ† ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظپظٹ ظ‚ط§ط¦ظ…ط© ط§ظ„ط·ظ„ط¨ط§طھ أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   const lines = slice.map(r => `ًں›’ ${r.product_name} أ—${r.qty} â€¢ ${Number(r.price_usd).toFixed(2)}$ â€¢ ${statusLabel(r.status)}`);
   const navRow = [];
   if (page > 1) navRow.push(Markup.button.callback("â¬…ï¸ڈ ط§ظ„ط³ط§ط¨ظ‚", `myorders:${page - 1}`));
@@ -2421,7 +2165,7 @@ async function checkOrderStatus(ctx, orderId) {
         code ? [finalStatus, JSON.stringify(resp), code, row.id] : [finalStatus, JSON.stringify(resp), row.id]);
       if (isRejected && !REJECT_STATUSES.has(row.status)) await adjustBalance(ctx.from.id, Number(row.price_usd));
       const cleanText = formatApiResponseClean(resp);
-      // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ظ„ط§ ظ† ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
       if (code && !row.delivered_code) await ctx.reply(`ًں”‘ طھظپط§طµظٹظ„ ط§ظ„ط·ظ„ط¨:\n\n${code}`);
       else if (cleanText) await ctx.reply(`ًں“‹ طھط­ط¯ظٹط« ط·ظ„ط¨ظƒ:\n\n${cleanText}`);
     }
@@ -2461,7 +2205,7 @@ async function pollOneOrder(bot, order) {
     if (!prevRejected) await adjustBalance(order.user_id, priceUsd);
     const refundSyp = Math.round(priceUsd * rate);
     const rejectReply = code || cleanText || null;
-    // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ظ„ط§ ظ† ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
     const msgLines = [
       `â‌Œ طھظ… ط±ظپط¶ ط£ط­ط¯ ط·ظ„ط¨ط§طھظƒ`,
       `ًں›’ ط§ظ„ظ…ظ†طھط¬: ${order.product_name}`,
@@ -2472,7 +2216,7 @@ async function pollOneOrder(bot, order) {
       Markup.inlineKeyboard([[Markup.button.callback("ًںڈ   ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])).catch(() => {});
   } else if (isAccepted) {
     const priceSyp = Math.round(priceUsd * rate);
-    // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ظ„ط§ ظ† ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
     const msgLines = [
       `âœ… طھظ… طھظ†ظپظٹط° ط£ط­ط¯ ط·ظ„ط¨ط§طھظƒ ط¨ظ†ط¬ط§ط­!`,
       `ًں›’ ط§ظ„ظ…ظ†طھط¬: ${order.product_name}`,
@@ -2529,13 +2273,13 @@ async function requireAdmin(ctx) {
   }
   if (!sessionActive && !authedAdminIds.has(ctx.from.id)) {
     setStep(ctx.from.id, { kind: "admin:login" });
-    await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ظ„ظ„ط¯ط®ظˆ ظ„ ط¥ظ„ظ‰ ظ„ظˆ ط­ط© ط§ظ„ط¥ط¯ط§ط±ط©:");
+    await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ظ„ظ„ط¯ط®ظˆ ظ„ ط¥ظ„ظ‰ ظ„ظˆط­ط© ط§ظ„ط¥ط¯ط§ط±ط©:");
     return false;
   }
   if (!sessionActive && authedAdminIds.has(ctx.from.id)) {
     authedAdminIds.delete(ctx.from.id);
     setStep(ctx.from.id, { kind: "admin:login" });
-    await ctx.reply("ًں”‘ ط§ظ† طھظ†طŒطھ ط¬ظ„ط³ط© ط§ظ„ط¥ط¯ط§ط±ط©. ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ظ„ظ„ط¯ط®ظˆ ظ„ ظ…ط¬ط¯ط¯ط§ظ‹:");
+    await ctx.reply("ًں”‘ ط§ظ†طھظ‡طھ ط¬ظ„ط³ط© ط§ظ„ط¥ط¯ط§ط±ط©. ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ظ„ظ„ط¯ط®ظˆ ظ„ ظ…ط¬ط¯ط¯ط§ظ‹:");
     return false;
   }
   return true;
@@ -2566,7 +2310,7 @@ async function showAdminMenu(ctx) {
     [Markup.button.callback(status === "on" ? "ًںں¢ ط§ظ„ط¨ظˆطھ: ط´ط؛ط§ظ„" : "ًں”´ ط§ظ„ط¨ظˆطھ: ظ…طھظˆظ‚ظپ", "adm:toggleStatus")],
     [Markup.button.callback("ًںڑھ طھط³ط¬ظٹظ„ ط®ط±ظˆط¬", "adm:logout"), Markup.button.callback("ًںڈ   ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")],
   ];
-  await sendOrEdit(ctx, `ًں‘‘ ظ„ظˆ ط­ط© ط§ظ„ط¥ط¯ط§ط±ط©${isSA ? " (ظ…ط¯ظٹط± ط£ط¹ظ„ظ‰)" : ""}`, Markup.inlineKeyboard(rows));
+  await sendOrEdit(ctx, `ًں‘‘ ظ„ظˆط­ط© ط§ظ„ط¥ط¯ط§ط±ط©${isSA ? " (ظ…ط¯ظٹط± ط£ط¹ظ„ظ‰)" : ""}`, Markup.inlineKeyboard(rows));
 }
 
 async function showSettingsMenu(ctx) {
@@ -2577,7 +2321,7 @@ async function showSettingsMenu(ctx) {
   const isSA = !!u?.is_super_admin;
   const rows = [
     [Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ…", "adm:setMarkup")],
-    [Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط±ط¨ط­ ط§ظ„ط³ظˆ ط´ظ„", "adm:setSocialMarkup")],
+    [Markup.button.callback("âœڈï¸ڈ طھط¹ط¯ظٹظ„ ط±ط¨ط­ ط§ظ„ط³ظˆط´ط§ظ„", "adm:setSocialMarkup")],
     [Markup.button.callback("ًں’± طھط¹ط¯ظٹظ„ ط³ط¹ط± ط§ظ„طµط±ظپ", "adm:setRate")],
     [Markup.button.callback("ًں”‘ طھط؛ظٹظٹط± ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±", "adm:newPass")],
     [Markup.button.callback("ًں”ک طھط¹ط¯ظٹظ„ ط£ط²ط±ط§ط± ط§ظ„طھظ†ظ‚ظ„", "adm:btnLabels")],
@@ -2586,7 +2330,7 @@ async function showSettingsMenu(ctx) {
     rows.push([Markup.button.callback("ًں”گ طھط؛ظٹظٹط± ط£ظ…ط± ط§ظ„ط¯ط®ظˆظ„ ط§ظ„ط³ط±ظٹ", "adm:changeLoginCmd")]);
   }
   rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
-  await sendOrEdit(ctx, `âڑ™ï¸ڈ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ\n\nط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ…: ${m}%\nط±ط¨ط­ ط§ظ„ط³ظˆ ط´ظ„: ${sm}%\nط³ط¹ط± ط§ظ„طµط±ظپ: ${r} ظ„.ط³/$\nط£ظ…ط± ط§ظ„ط¯ط®ظˆظ„: \`${loginCmd}\``,
+  await sendOrEdit(ctx, `âڑ™ï¸ڈ ط§ظ„ط¥ط¹ط¯ط§ط¯ط§طھ\n\nط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ…: ${m}%\nط±ط¨ط­ ط§ظ„ط³ظˆط´ط§ظ„: ${sm}%\nط³ط¹ط± ط§ظ„طµط±ظپ: ${r} ظ„.ط³/$\nط£ظ…ط± ط§ظ„ط¯ط®ظˆظ„: \`${loginCmd}\``,
     Markup.inlineKeyboard(rows));
 }
 
@@ -2597,9 +2341,9 @@ async function showApiSources(ctx) {
     Markup.button.callback(`${s.active ? "ًںں¢" : "ًں”´"} ${s.name}${s.is_primary ? " â­گ" : ""}`.slice(0, 60), `adm:api:${s.id}`)
   ]);
   rows.push([Markup.button.callback("â‍• ط¥ط¶ط§ظپط© API ظ…ظ†طھط¬ط§طھ", "adm:apiAdd")]);
-  rows.push([Markup.button.callback("ًں”„ ظ…ط²ط§ظ…ظ† ط© ظƒظ„ ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ط¢ظ† ", "adm:apiSyncAll")]);
+  rows.push([Markup.button.callback("ًں”„ ظ…ط²ط§ظ…ظ†ط© ظƒظ„ ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ط¢ظ† ", "adm:apiSyncAll")]);
   rows.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]);
-  await sendOrEdit(ctx, "ًں”— APIs ط§ظ„ظ…ظ†طھط¬ط§طھ\n\nظٹطھظ… ط­ظپط¸ ط§ظ„ظ…ظ†طھط¬ط§طھ ظپظٹ ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ ظˆ ظ…ط²ط§ظ…ظ† طھظ†طŒط§ طھظ„ظ‚ط§ط¦ظٹط§ظ‹.", Markup.inlineKeyboard(rows));
+  await sendOrEdit(ctx, "ًں”— APIs ط§ظ„ظ…ظ†طھط¬ط§طھ\n\nظٹطھظ… ط­ظپط¸ ط§ظ„ظ…ظ†طھط¬ط§طھ ظپظٹ ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ ظˆ ظ…ط²ط§ظ…ظ†طھظ‡ط§ طھظ„ظ‚ط§ط¦ظٹط§ظ‹.", Markup.inlineKeyboard(rows));
 }
 
 async function showDepList(ctx, page) {
@@ -2622,7 +2366,7 @@ async function showDepDetails(ctx, depId) {
   const res = await q("SELECT * FROM deposit_requests WHERE id=$1", [depId]);
   const d = res.rows[0]; if (!d) { await ctx.reply("âڑ ï¸ڈ ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
   const u = await getUser(d.user_id);
-  const text = `ًں“¥ ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹\nط§ظ„ط­ط§ظ„ط©: ${d.status}\nط§ظ„ط·ط±ظٹظ‚ط©: ${d.method_name}\nط§ظ„ظ…ط³طھط®ط¯ظ…: ${u?.first_name ?? ""} ${u?.username ? "@" + u.username : ""} (${d.user_id})\nط±طµظٹط¯ ط§ظ„ظ…ط³طھط®ط¯ظ…: ${u ? Number(u.balance).toFixed(2) : "0.00"}$\nط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„ظ…ظڈط­ظˆ ظژظ‘ظ„: ${d.amount ? Number(d.amount).toFixed(2) + "$" : "â€”"}`;
+  const text = `ًں“¥ ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹\nط§ظ„ط­ط§ظ„ط©: ${d.status}\nط§ظ„ط·ط±ظٹظ‚ط©: ${d.method_name}\nط§ظ„ظ…ط³طھط®ط¯ظ…: ${u?.first_name ?? ""} ${u?.username ? "@" + u.username : ""} (${d.user_id})\nط±طµظٹط¯ ط§ظ„ظ…ط³طھط®ط¯ظ…: ${u ? Number(u.balance).toFixed(2) : "0.00"}$\nط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„ظ…ظڈط­ظˆظ‘ظژظ„: ${d.amount ? Number(d.amount).toFixed(2) + "$" : "â€”"}`;
   const balanceRow = [Markup.button.callback("â‍• ط´ط­ظ† ط±طµظٹط¯", `adm:userAdd:${d.user_id}`), Markup.button.callback("â‍– ط®طµظ… ط±طµظٹط¯", `adm:userSub:${d.user_id}`)];
   const kb = d.status === "pending"
     ? Markup.inlineKeyboard([[Markup.button.callback("âœ… ظ…ظˆط§ظپظ‚ط©", `adm:dep:approve:${d.id}`), Markup.button.callback("â‌Œ ط±ظپط¶", `adm:dep:reject:${d.id}`)], balanceRow, [Markup.button.callback("ًں‘¤ ظ…ظ„ظپ ط§ظ„ظ…ط³طھط®ط¯ظ…", `adm:user:${d.user_id}`)], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:depList:1")]])
@@ -2640,11 +2384,11 @@ async function approveDeposit(ctx, depId) {
 async function rejectDeposit(ctx, depId) {
   if (!(await requireAdmin(ctx))) return;
   const res = await q("UPDATE deposit_requests SET status='rejected', processed_by=$1, processed_at=NOW() WHERE id=$2 AND status='pending' RETURNING *", [ctx.from.id, depId]);
-  if (!res.rows.length) { await ctx.reply("âڑ ï¸ڈ طھظ…طھ ظ…ط¹ط§ظ„ط¬ط© ظ‡ط°ط§ ط§ظ„ط·ظ„ط¨ ظ…ط³ط¨ظ‚ط§ظ‹ ط¨ظˆ ط§ط³ط·ط© ظ…ط¯ظٹط± ط¢ط®ط±."); return; }
+  if (!res.rows.length) { await ctx.reply("âڑ ï¸ڈ طھظ…طھ ظ…ط¹ط§ظ„ط¬ط© ظ‡ط°ط§ ط§ظ„ط·ظ„ط¨ ظ…ط³ط¨ظ‚ط§ظ‹ ط¨ظˆط§ط³ط·ط© ظ…ط¯ظٹط± ط¢ط®ط±."); return; }
   const d = res.rows[0];
   await clearDepositForOtherAdmins(ctx.from.id, depId, `â‌Œ ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹ â€” طھظ… ط§ظ„ط±ظپط¶`);
   await ctx.reply(`â‌Œ طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„ط¥ظٹط¯ط§ط¹.`);
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ظ„ط§ ظ† ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   if (d) { try { await ctx.telegram.sendMessage(d.user_id, `â‌Œ طھظ… ط±ظپط¶ ط·ظ„ط¨ ط§ظ„ط¥ظٹط¯ط§ط¹. ظ„ظ„ط§ط³طھظپط³ط§ط± ط±ط§ط³ظ„ @${ADMIN_USERNAME}.`); } catch { /* ignore */ } }
 }
 
@@ -2706,15 +2450,15 @@ async function runPollingWithReconnect(bot, launchConfig, shouldStop) {
       if (shouldStop()) break;
       const livedMs = Date.now() - startedAt;
       attempt = livedMs >= 60_000 ? 0 : attempt + 1;
-      console.error("âڑ ï¸ڈ ط§ظ† طھظ†طŒظ‰ ط§طھطµط§ظ„ Telegram pollingطŒ ط³طھطھظ… ط¥ط¹ط§ط¯ط© ط§ظ„ظ…ط­ط§ظˆ ظ„ط©.");
+      console.error("âڑ ï¸ڈ ط§ظ†طھظ‡ظ‰ ط§طھطµط§ظ„ Telegram pollingطŒ ط³طھطھظ… ط¥ط¹ط§ط¯ط© ط§ظ„ظ…ط­ط§ظˆظ„ط©.");
     } catch (err) {
       if (shouldStop()) break;
       attempt += 1;
-      console.error(`âڑ ï¸ڈ طھط¹ط°ط± ط§طھطµط§ظ„ Telegram polling (ظ…ط­ط§ظˆ ظ„ط© ${attempt}):`, err?.message ?? err);
+      console.error(`âڑ ï¸ڈ طھط¹ط°ط± ط§طھطµط§ظ„ Telegram polling (ظ…ط­ط§ظˆظ„ط© ${attempt}):`, err?.message ?? err);
     }
     if (shouldStop()) break;
     const delay = Math.min(POLLING_RETRY_MAX_MS, POLLING_RETRY_BASE_MS * (2 ** Math.min(attempt - 1, 4)));
-    console.log(`âڈ³ ط¥ط¹ط§ط¯ط© ط§طھطµط§ظ„ Telegram ط¨ط¹ط¯ ${Math.ceil(delay / 1000)} ط«ظˆ ط§ظ† ط¸ط¹أ¢â‚¬ ...`);
+    console.log(`âڈ³ ط¥ط¹ط§ط¯ط© ط§طھطµط§ظ„ Telegram ط¨ط¹ط¯ ${Math.ceil(delay / 1000)} ط«ظˆط§ظ†ظچ ...`);
     await waitMs(delay);
   }
 }
@@ -2730,23 +2474,22 @@ async function startBot() {
   await ensureDefaults();
   await ensureDefaultDepositMethods();
   await ensurePrimaryApiSource();
-  // ظ„ط§ ظ† ظ† طھط¸ط± ظ…ط²ط§ظ…ظ† ط© API ط§ظ„ط·ظˆ ظٹظ„ط© ظ‚ط¨ظ„ طھط´ط؛ظٹظ„ ظ…ط¹ط§ظ„ط¬ط§طھ Telegram.
+//
 
   const bot = new Telegraf(token, { handlerTimeout: 90_000 });
   _botRef = bot;
-  // ط§ط®طھط¨ط§ط± ط§ظ„ط§طھطµط§ظ„ ط¨ط§ظ„طھظˆظƒط¸أ¢â‚¬  ظ…ط¨ظƒط±ط§ظ‹ ط­طھظ‰ ظٹط¸ظ‡ط± ط®ط·ط£ Telegram ظپظٹ ط³ط¬ظ„ Railway ط¨ظˆط¶ظˆط­.
+//
   const botInfo = await bot.telegram.getMe();
   console.log(`âœ… طھظ… ط§ظ„ط§طھطµط§ظ„ ط¨طھظ„ظٹط¬ط±ط§ظ…: @${botInfo.username ?? botInfo.id}`);
-  // طھظˆ ط­ظٹط¯ ظƒظ„ ط§ظ„ظ† طµظˆ طµ ط§ظ„ط®ط§ط±ط¬ط© ط¥ظ„ظ‰ Telegram ظ‚ط¨ظ„ ط§ظ„ط¥ط±ط³ط§ظ„طŒ ط¨ظ…ط§ ظپظٹظ†طŒط§ ط§ظ„ط£ط²ط±ط§ط±
+ 
   const originalCallApi = bot.telegram.callApi.bind(bot.telegram);
   bot.telegram.callApi = (method, payload, ...rest) => {
     // Telegraf ظٹط±ط³ظ„ getUpdates ظƒظ€ long polling ط¨ظ…ظ†طŒظ„ط© 50 ط«ط§ظ† ظٹط©.
-    // ظ„ط§ ظ† ط¶ط¹ ط¹ظ„ظٹظ†طŒ Promise.race ط£ظˆ  AbortController ط®ط§ط±ط¬ظٹط§ظ‹طŒ ظ„ط£ظ†  ط£ظٹ ظ…ظ†طŒظ„ط©
+//
     // ط¥ط¶ط§ظپظٹط© ظ‡ظ†ط§ ظ‚ط¯ طھظ‚ط·ط¹ ط§ظ„ط·ظ„ط¨ ظ‚ط¨ظ„ ط£ظ†  طھظ† طھظ†طŒظٹ ظ…ظ†طŒظ„ط© Telegram ط§ظ„ط·ط¨ظٹط¹ظٹط©.
     if (method === "getUpdates") {
-      const normalizedPayload = normalizeTelegramPayload(payload);
       return originalCallApi(method, {
-        ...normalizedPayload,
+        ...payload,
         timeout: TELEGRAM_LONG_POLL_TIMEOUT_SECONDS,
       }, ...rest);
     }
@@ -2766,12 +2509,12 @@ async function startBot() {
     });
     const callOptions = { ...(rest[0] ?? {}), signal };
     return Promise.race([
-      originalCallApi(method, normalizeTelegramPayload(payload), callOptions, ...rest.slice(1)),
+      originalCallApi(method, payload, callOptions, ...rest.slice(1)),
       timeout,
     ]).finally(() => clearTimeout(timer));
   };
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Rate limiter + ط±ط¯ ظپظˆ ط±ظٹ ط¹ظ„ظ‰ callback أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   const _rateMap = new Map();
   setInterval(() => {
     const now = Date.now();
@@ -2782,7 +2525,7 @@ async function startBot() {
 
   bot.use((ctx, next) => {
     const uid = ctx.from?.id; if (!uid) return next();
-    // ط£ط²ط±ط§ط± Telegram ظ„ط§ طھظڈط­ط¬ط¨ ط¨ظ…ط­ط¯ط¯ ط§ظ„ط±ط³ط§ط¦ظ„ط› ط§ظ„ط¶ط؛ط· ط§ظ„ظ…طھطھط§ط¨ط¹ ظٹط¬ط¨ ط£ظ†  ظٹطµظ„ ظ„ظ„ظ…ط¹ط§ظ„ط¬.
+    // ط£ط²ط±ط§ط± Telegram ظ„ط§ طھظڈط­ط¬ط¨ ط¨ظ…ط­ط¯ط¯ ط§ظ„ط±ط³ط§ط¦ظ„; ط§ظ„ط¶ط؛ط· ط§ظ„ظ…طھطھط§ط¨ط¹ ظٹط¬ط¨ ط£ظ†  ظٹطµظ„ ظ„ظ„ظ…ط¹ط§ظ„ط¬.
     if (ctx.callbackQuery) {
       ctx.answerCbQuery().catch(() => {});
       return next();
@@ -2797,7 +2540,7 @@ async function startBot() {
     return next();
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Commands أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.start(async ctx => {
     const txt = ctx.message?.text ?? "";
     setStep(ctx.from.id, { kind: "idle" });
@@ -2833,7 +2576,7 @@ async function startBot() {
     await showAdminMenu(ctx);
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Callback Queries أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action("home", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
   bot.action("balance", async ctx => {
     const u = await ensureUser(ctx); if (!u) return;
@@ -2845,7 +2588,7 @@ async function startBot() {
   bot.action(/^myorders:(\d+)$/, async ctx => { await showMyOrders(ctx, Number(ctx.match[1])); });
   bot.action("noop", async ctx => { /* ظ† ظ‚ط±ط© ط¹ظ„ظ‰ ط±ظ‚ظ… ط§ظ„طµظپط­ط© */ });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin auth أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action("admin:menu", async ctx => { await showAdminMenu(ctx); });
   bot.action("admin:loginPrompt", async ctx => {
     setStep(ctx.from.id, { kind: "admin:login" });
@@ -2859,15 +2602,15 @@ async function startBot() {
     setStep(ctx.from.id, { kind: "idle" });
     const user = await getUser(ctx.from.id);
     const rate = await getExchangeRate();
-    const greeting = `ط£ظ†طŒظ„ط§ظ‹ ظپظٹظƒ ظپظٹ ظ…طھط¬ط± ط§ظ„ظ…ط±ظˆ ط§ظ†  ًںŒں\nط§ظ„ط§ط³ظ…: ${user?.first_name ?? "â€”"}${user?.username ? ` (@${user.username})` : ""}\nط§ظ„ط±ظ‚ظ…: ${ctx.from.id}\nط§ظ„ط±طµظٹط¯: ${formatBalance(Number(user?.balance ?? 0), rate)}\n\nطھظ… طھط³ط¬ظٹظ„ ط§ظ„ط®ط±ظˆط¬ ظ…ظ†  ظ„ظˆ ط­ط© ط§ظ„ط¥ط¯ط§ط±ط© ًںڑھ\nط§ط®طھط± ظ…ظ†  ط§ظ„ظ‚ط§ط¦ظ…ط© ًں‘‡`;
+    const greeting = `ط£ظ‡ظ„ط§ظ‹ ظپظٹظƒ ظپظٹ ظ…طھط¬ط± ظ…ط±ظˆط§ظ†  ًںŒں\nط§ظ„ط§ط³ظ…: ${user?.first_name ?? "â€”"}${user?.username ? ` (@${user.username})` : ""}\nط§ظ„ط±ظ‚ظ…: ${ctx.from.id}\nط§ظ„ط±طµظٹط¯: ${formatBalance(Number(user?.balance ?? 0), rate)}\n\nطھظ… طھط³ط¬ظٹظ„ ط§ظ„ط®ط±ظˆط¬ ظ…ظ†  ظ„ظˆط­ط© ط§ظ„ط¥ط¯ط§ط±ط© ًںڑھ\nط§ط®طھط± ظ…ظ† ط§ظ„ظ‚ط§ط¦ظ…ط© ًں‘‡`;
     await sendOrEdit(ctx, greeting, mainMenu());
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Deposit flow أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action(/^dep:method:(\d+)$/, async ctx => { await showDepositMethod(ctx, Number(ctx.match[1])); });
   bot.action("dep:cancel", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Category / Product navigation أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action(/^cat:(\d+):(\d+):(\d+)$/, async ctx => {
     await ensureUser(ctx);
     await showCategory(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3]));
@@ -2889,7 +2632,7 @@ async function startBot() {
     await showManualProduct(ctx, Number(ctx.match[1]), Number(ctx.match[2]));
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Buy flow أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action(/^buy:(\d+):(\d+)$/, async ctx => {
     await ensureUser(ctx);
     await startOrderFlow(ctx, Number(ctx.match[1]), Number(ctx.match[2]));
@@ -2907,7 +2650,7 @@ async function startBot() {
   bot.action("ord:cancel", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
   bot.action(/^ord:check:(\d+)$/, async ctx => { await checkOrderStatus(ctx, Number(ctx.match[1])); });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Manual product buy أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action(/^mbuy:(\d+)$/, async ctx => {
     const mid = Number(ctx.match[1]);
     const m = (await q("SELECT * FROM manual_products WHERE id=$1 AND active=true", [mid])).rows[0];
@@ -2919,13 +2662,13 @@ async function startBot() {
     await ctx.reply(`ًں“‌ ط£ط±ط³ظ„ ظ…ظ„ط§ط­ط¸ط© ظ„ظ„ط·ظ„ط¨ ط£ظˆ  ط§ظƒطھط¨ "skip":`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "ord:cancel")]]));
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: deposit management أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action(/^adm:depList:(\d+)$/, async ctx => { await showDepList(ctx, Number(ctx.match[1])); });
   bot.action(/^adm:depShow:(\d+)$/, async ctx => { await showDepDetails(ctx, Number(ctx.match[1])); });
   bot.action(/^adm:dep:approve:(\d+)$/, async ctx => { await approveDeposit(ctx, Number(ctx.match[1])); });
   bot.action(/^adm:dep:reject:(\d+)$/, async ctx => { await rejectDeposit(ctx, Number(ctx.match[1])); });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: users أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action(/^adm:users:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const page = Number(ctx.match[1]); const limit = 10; const offset = (page - 1) * limit;
@@ -2976,7 +2719,7 @@ async function startBot() {
       authedAdminIds.delete(uid);
       await setAdminSession(uid, false).catch(() => {});
     }
-    await ctx.reply(newSA ? "ًںŒں طھظ… طھط¹ظٹظٹظ† ظ†طŒ ظ…ط¯ظٹط±ط§ظ‹ ط£ط¹ظ„ظ‰." : "â¬‡ï¸ڈ طھظ… ط¥ظ„ط؛ط§ط، طµظ„ط§ط­ظٹط© ط§ظ„ظ…ط¯ظٹط± ط§ظ„ط£ط¹ظ„ظ‰.");
+    await ctx.reply(newSA ? "ًںŒں طھظ… طھط¹ظٹظٹظ† ظ‡ ظ…ط¯ظٹط±ط§ظ‹ ط£ط¹ظ„ظ‰." : "â¬‡ï¸ڈ طھظ… ط¥ظ„ط؛ط§ط، طµظ„ط§ط­ظٹط© ط§ظ„ظ…ط¯ظٹط± ط§ظ„ط£ط¹ظ„ظ‰.");
     await showUserCard(ctx, uid);
   });
   bot.action(/^adm:userAdd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "add" }); await ctx.reply("ًں’µ ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط¨ط§ظ„ط¯ظˆ ظ„ط§ط± ظ„ظ„ط¥ط¶ط§ظپط©:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "admin:menu")]])); });
@@ -2999,10 +2742,10 @@ async function startBot() {
     const uid = Number(ctx.match[1]); const u = await getUser(uid);
     if (!u) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ…ط³طھط®ط¯ظ… ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
     setStep(ctx.from.id, { kind: "admin:userMessage", userId: uid });
-    await ctx.reply(`ًں’¬ ط£ط±ط³ظ„ ط§ظ„ط±ط³ط§ظ„ط© ط§ظ„ط®ط§طµط© ط¥ظ„ظ‰ ${u.first_name ?? uid}:\nط³طھطµظ„ ط¥ظ„ظٹظ‡ ظ…ظ†  ط§ظ„ط¨ظˆطھ ظ…ط¨ط§ط´ط±ط©.`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `adm:user:${uid}`)]]));
+    await ctx.reply(`ًں’¬ ط£ط±ط³ظ„ ط§ظ„ط±ط³ط§ظ„ط© ط§ظ„ط®ط§طµط© ط¥ظ„ظ‰ ${u.first_name ?? uid}:\nط³طھطµظ„ ط¥ظ„ظٹظ‡ ظ…ظ† ط§ظ„ط¨ظˆطھ ظ…ط¨ط§ط´ط±ط©.`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `adm:user:${uid}`)]]));
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: orders أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action(/^adm:allOrders:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const page = Number(ctx.match[1]); const limit = 8; const offset = (page - 1) * limit;
@@ -3015,10 +2758,10 @@ async function startBot() {
     await sendOrEdit(ctx, `ًں“¦ ظƒظ„ ط§ظ„ط·ظ„ط¨ط§طھ\n\n${lines.join("\n\n")}`, Markup.inlineKeyboard(kb));
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: broadcast أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action("adm:broadcast", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:broadcast" }); await ctx.reply("ًں“£ ط£ط±ط³ظ„ ظ† طµ ط§ظ„ط±ط³ط§ظ„ط© ط§ظ„ط¬ظ…ط§ط¹ظٹط©:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "admin:menu")]])); });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: deposit methods أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action("adm:methods", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const res = await q("SELECT * FROM deposit_methods ORDER BY id"); const rows = res.rows;
@@ -3030,7 +2773,7 @@ async function startBot() {
   bot.action(/^adm:methodEdit:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const id = Number(ctx.match[1]); const res = await q("SELECT * FROM deposit_methods WHERE id=$1", [id]); const m = res.rows[0]; if (!m) return;
-    await sendOrEdit(ctx, `ًں’³ ${m.name}\nط§ظ„ظ…ط¹ط±ظپ: ${m.identifier}\nط§ظ„ط­ط§ظ„ط©: ${m.active ? "ظ…ظپط¹ظ‘ظ„" : "ظ…ظˆ ظ‚ظˆ ظپ"}\nًں–¼ طµظˆ ط±ط©: ${m.image_file_id ? "âœ… ظ…ظˆط¬ظˆط¯ط©" : "â‌Œ ظ„ط§ ظٹظˆط¬ط¯"}\n\n${m.instructions}`,
+    await sendOrEdit(ctx, `ًں’³ ${m.name}\nط§ظ„ظ…ط¹ط±ظپ: ${m.identifier}\nط§ظ„ط­ط§ظ„ط©: ${m.active ? "ظ…ظپط¹ظ‘ظ„" : "ظ…ظˆ ظ‚ظˆ ظپ"}\nًں–¼ طµظˆط±ط©: ${m.image_file_id ? "âœ… ظ…ظˆط¬ظˆط¯ط©" : "â‌Œ ظ„ط§ ظٹظˆط¬ط¯"}\n\n${m.instructions}`,
       Markup.inlineKeyboard([
         [Markup.button.callback(m.active ? "ًں”´ طھط¹ط·ظٹظ„" : "ًںں¢ طھظپط¹ظٹظ„", `adm:methodToggle:${id}`), Markup.button.callback("âœڈï¸ڈ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ", `adm:methodInstr:${id}`)],
         [Markup.button.callback("ًں–¼ ط±ظپط¹/طھط؛ظٹظٹط± ط§ظ„طµظˆط±ط©", `adm:methodImg:${id}`), Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ ط§ظ„طµظˆط±ط©", `adm:methodImgDel:${id}`)],
@@ -3052,7 +2795,7 @@ async function startBot() {
     await ctx.reply("âœ… طھظ… ط­ط°ظپ ط§ظ„طµظˆط±ط©.");
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: product management أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action(/^adm:editPrice:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await getCachedProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editPrice", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`âœڈï¸ڈ ط³ط¹ط±: ${p?.name ?? pid}\nط£ط±ط³ظ„: \`%5\` ط±ط¨ط­ ط£ظˆ  \`$2.5\` طھط«ط¨ظٹطھ ط£ظˆ  \`reset\``, { parse_mode: "Markdown" }); });
   bot.action(/^adm:editInstr:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await getCachedProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editProductInstructions", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`ًں“‹ ط£ط±ط³ظ„ طھط¹ظ„ظٹظ…ط§طھ ${p?.name ?? pid} ط£ظˆ  clear ظ„ظ„ظ…ط³ط­:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `prod:${pid}:0`)]])); });
   bot.action(/^adm:renameProd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await getCachedProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:renameProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`ًں“‌ ط§ظ„ط§ط³ظ… ط§ظ„ط¬ط¯ظٹط¯ ظ„ظ€ "${p?.name ?? pid}" ط£ظˆ  reset:`); });
@@ -3077,14 +2820,14 @@ async function startBot() {
     );
     await q("UPDATE cached_products SET deleted=true,available=false,updated_at=NOW() WHERE id=$1", [pid]);
     invalidateCaches();
-    await ctx.reply("âœ… طھظ… ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬ ظ†ظ‡ط§ط¦ظٹط§ظ‹ ظ…ط¸أ¢â‚¬  ط§ظ„ظƒطھط§ظ„ظˆط¬.");
+    await ctx.reply("âœ… طھظ… ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬ ظ†ظ‡ط§ط¦ظٹط§ظ‹ ظ…ظ† ط§ظ„ظƒطھط§ظ„ظˆط¬.");
     await showMainMenu(ctx);
   });
   bot.action(/^adm:deleteProdAsk:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const pid = Number(ctx.match[1]);
     await ctx.reply(
-      "âڑ ï¸ڈ ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬ ط¸أ¢â‚¬ ظ‡ط§ط¦ظٹ ظˆظ„ط§ ظٹط¹ظˆط¯ ط¹ط¸أ¢â‚¬ ط¯ ط§ظ„ظ…ط²ط§ظ…ط¸أ¢â‚¬ ط©. ظ‡ظ„ طھط±ظٹط¯ ط§ظ„ظ…طھط§ط¨ط¹ة؟",
+      "âڑ ï¸ڈ ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬ ظ†ظ‡ط§ط¦ظٹ ظˆظ„ط§ ظٹط¹ظˆط¯ ط¹ظ†ط¯ ط§ظ„ظ…ط²ط§ظ…ظ†ط©. ظ‡ظ„ طھط±ظٹط¯ ط§ظ„ظ…طھط§ط¨ط¹ط©",
       Markup.inlineKeyboard([[
         Markup.button.callback("âœ… طھط£ظƒظٹط¯طŒ ط§ط­ط°ظپ", `adm:deleteProd:${pid}`),
         Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `prod:${pid}:0`),
@@ -3104,7 +2847,7 @@ async function startBot() {
     if (!(await requireAdmin(ctx))) return;
     const id = Number(ctx.match[1]);
     await ctx.reply(
-      "âڑ ï¸ڈ ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬ ط§ظ„ظٹط¯ظˆظٹ ط¸أ¢â‚¬ ظ‡ط§ط¦ظٹ. ظ‡ظ„ طھط±ظٹط¯ ط§ظ„ظ…طھط§ط¨ط¹ة؟",
+      "âڑ ï¸ڈ ط­ط°ظپ ط§ظ„ظ…ظ†طھط¬ ط§ظ„ظٹط¯ظˆظٹ ظ†ظ‡ط§ط¦ظٹ. ظ‡ظ„ طھط±ظٹط¯ ط§ظ„ظ…طھط§ط¨ط¹ط©",
       Markup.inlineKeyboard([[
         Markup.button.callback("âœ… طھط£ظƒظٹط¯طŒ ط§ط­ط°ظپ", `adm:deleteManualProd:${id}`),
         Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `mprod:${id}:0`),
@@ -3112,7 +2855,7 @@ async function startBot() {
     );
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: category management أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action(/^adm:catEdit:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editCategoryName", categoryId: Number(ctx.match[1]) }); await ctx.reply("âœڈï¸ڈ ط£ط±ط³ظ„ ط§ظ„ط§ط³ظ… ط§ظ„ط¬ط¯ظٹط¯ ظ„ظ„ظ‚ط³ظ… (ط£ظˆ  reset):"); });
   bot.action(/^adm:catToggle:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
@@ -3131,10 +2874,10 @@ async function startBot() {
     await ctx.reply(`ًں“پ ظ†ظ‚ظ„ ط§ظ„ظ‚ط³ظ… ط¥ظ„ظ‰ ط¯ط§ط®ظ„ ظ‚ط³ظ… ط¢ط®ط±\nط£ط±ط³ظ„ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط§ظ„ظ…ط³طھظ‡ط¯ظپ ط£ظˆ  "0" ظ„ظ„ط±ط¬ظˆط¹ ظ„ظ„ط¬ط°ط± ط£ظˆ  "cancel" ظ„ظ„ط¥ظ„ط؛ط§ط،:`, Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `cat:${cid}:1:0`)]]));
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: settings أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action("adm:settings", async ctx => { await showSettingsMenu(ctx); });
   bot.action("adm:setMarkup", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setMarkup" }); await ctx.reply("âœڈï¸ڈ ط£ط±ط³ظ„ ظ†ط³ط¨ط© ط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ… (ظ…ط«ط§ظ„: 5):", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:settings")]])); });
-  bot.action("adm:setSocialMarkup", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setSocialMarkup" }); await ctx.reply("âœڈï¸ڈ ط£ط±ط³ظ„ ظ†ط³ط¨ط© ط±ط¨ط­ ط§ظ„ط³ظˆ ط´ظ„:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:settings")]])); });
+  bot.action("adm:setSocialMarkup", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setSocialMarkup" }); await ctx.reply("âœڈï¸ڈ ط£ط±ط³ظ„ ظ†ط³ط¨ط© ط±ط¨ط­ ط§ظ„ط³ظˆط´ط§ظ„:", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:settings")]])); });
   bot.action("adm:setRate", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setRate" }); await ctx.reply("ًں’± ط£ط±ط³ظ„ ط³ط¹ط± ط§ظ„طµط±ظپ (ظ„.ط³/$):", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:settings")]])); });
   bot.action("adm:newPass", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:newPassword" }); await ctx.reply("ًں”‘ ط£ط±ط³ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط§ظ„ط¬ط¯ظٹط¯ط© (4 ط£ط­ط±ظپ ط¹ظ„ظ‰ ط§ظ„ط£ظ‚ظ„):", Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:settings")]])); });
   bot.action("adm:changeLoginCmd", async ctx => {
@@ -3151,7 +2894,7 @@ async function startBot() {
     await showAdminMenu(ctx);
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: product API sources أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action("adm:apis", async ctx => { await showApiSources(ctx); });
   bot.action("adm:apiAdd", async ctx => {
     if (!(await requireAdmin(ctx))) return;
@@ -3169,7 +2912,7 @@ async function startBot() {
     if (!(await requireAdmin(ctx))) return;
     const source = await getApiSource(Number(ctx.match[1]));
     if (!source) { await ctx.reply("âڑ ï¸ڈ ظ…طµط¯ط± ط§ظ„ظ€API ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
-    const lastSync = source.last_sync_at ? new Date(source.last_sync_at).toLocaleString("ar") : "ظ„ظ… طھطھظ… ط§ظ„ظ…ط²ط§ظ…ظ† ط©";
+    const lastSync = source.last_sync_at ? new Date(source.last_sync_at).toLocaleString("ar") : "ظ„ظ… طھطھظ… ط§ظ„ظ…ط²ط§ظ…ظ†ط©";
     const error = source.last_sync_error ? `\nâڑ ï¸ڈ ط¢ط®ط± ط®ط·ط£: ${source.last_sync_error}` : "";
     const buttons = [];
     const me = await getUser(ctx.from.id);
@@ -3179,10 +2922,10 @@ async function startBot() {
     if (!source.is_primary) {
       buttons.push([Markup.button.callback(source.active ? "ًں”´ طھط¹ط·ظٹظ„" : "ًںں¢ طھظپط¹ظٹظ„", `adm:apiToggle:${source.id}`), Markup.button.callback("ًں—‘ï¸ڈ ط­ط°ظپ", `adm:apiDel:${source.id}`)]);
     }
-    buttons.push([Markup.button.callback("ًں”„ ظ…ط²ط§ظ…ظ† ط© ط§ظ„ط¢ظ† ", `adm:apiSync:${source.id}`)]);
+    buttons.push([Markup.button.callback("ًں”„ ظ…ط²ط§ظ…ظ†ط© ط§ظ„ط¢ظ† ", `adm:apiSync:${source.id}`)]);
     buttons.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:apis")]);
     await sendOrEdit(ctx,
-      `ًں”— ${source.name}${source.is_primary ? " â­گ (ط§ظ„ط£ط³ط§ط³ظٹ)" : ""}\nط§ظ„ط±ط§ط¨ط·: ${source.base_url}\nط§ظ„ط­ط§ظ„ط©: ${source.active ? "ظ…ظپط¹ظ‘ظ„" : "ظ…ظˆ ظ‚ظˆ ظپ"}\nط¢ط®ط± ظ…ط²ط§ظ…ظ† ط©: ${lastSync}${error}`,
+      `ًں”— ${source.name}${source.is_primary ? " â­گ (ط§ظ„ط£ط³ط§ط³ظٹ)" : ""}\nط§ظ„ط±ط§ط¨ط·: ${source.base_url}\nط§ظ„ط­ط§ظ„ط©: ${source.active ? "ظ…ظپط¹ظ‘ظ„" : "ظ…ظˆ ظ‚ظˆ ظپ"}\nط¢ط®ط± ظ…ط²ط§ظ…ظ†ط©: ${lastSync}${error}`,
       Markup.inlineKeyboard(buttons));
   });
   bot.action(/^adm:apiToggle:(\d+)$/, async ctx => {
@@ -3198,7 +2941,7 @@ async function startBot() {
     if (!source || source.is_primary) { await ctx.reply("âڑ ï¸ڈ ظ„ط§ ظٹظ…ظƒظ†  ط­ط°ظپ ط§ظ„ظ€API ط§ظ„ط£ط³ط§ط³ظٹ."); return; }
     await q("DELETE FROM cached_products WHERE source_id=$1", [id]);
     await q("DELETE FROM api_sources WHERE id=$1", [id]);
-    invalidateCaches(); await ctx.reply("âœ… طھظ… ط­ط°ظپ API ظˆ ظ…ظ†طھط¬ط§طھظ†طŒ ظ…ظ†  ط§ظ„ظƒطھط§ظ„ظˆ ط¬."); await showApiSources(ctx);
+    invalidateCaches(); await ctx.reply("âœ… طھظ… ط­ط°ظپ API ظˆ ظ…ظ†طھط¬ط§طھظ‡ ظ…ظ†  ط§ظ„ظƒطھط§ظ„ظˆ ط¬."); await showApiSources(ctx);
   });
   bot.action(/^adm:apiSync:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
@@ -3207,16 +2950,16 @@ async function startBot() {
     try {
       const count = await syncApiSource(source);
       invalidateCaches();
-      await ctx.reply(`âœ… طھظ…طھ ظ…ط²ط§ظ…ظ† ط© ${count} ظ…ظ†طھط¬ ظ…ظ†  ${source.name}.`);
+      await ctx.reply(`âœ… طھظ…طھ ظ…ط²ط§ظ…ظ†ط© ${count} ظ…ظ†طھط¬ ظ…ظ†  ${source.name}.`);
     } catch (err) {
       await q("UPDATE api_sources SET last_sync_error=$1 WHERE id=$2", [String(err?.message ?? err).slice(0, 500), source.id]).catch(() => {});
-      await ctx.reply("â‌Œ ظپط´ظ„طھ ط§ظ„ظ…ط²ط§ظ…ظ† ط©. طھط­ظ‚ظ‚ ظ…ظ†  ط§ظ„ط±ط§ط¨ط· ظˆ API token.");
+      await ctx.reply("â‌Œ ظپط´ظ„طھ ط§ظ„ظ…ط²ط§ظ…ظ†ط©. طھط­ظ‚ظ‚ ظ…ظ†  ط§ظ„ط±ط§ط¨ط· ظˆ API token.");
     }
     await showApiSources(ctx);
   });
   bot.action("adm:apiSyncAll", async ctx => {
     if (!(await requireAdmin(ctx))) return;
-    await ctx.reply("âڈ³ ط¨ط¯ط£طھ ظ…ط²ط§ظ…ظ† ط© ط§ظ„ظ…ظ†طھط¬ط§طھ ط¨ط§ظ„ط®ظ„ظپظٹط©...");
+    await ctx.reply("âڈ³ ط¨ط¯ط£طھ ظ…ط²ط§ظ…ظ†ط© ط§ظ„ظ…ظ†طھط¬ط§طھ ط¨ط§ظ„ط®ظ„ظپظٹط©...");
     const summary = await syncAllApiSources();
     const successful = summary.filter(item => item.ok);
     const failed = summary.filter(item => !item.ok);
@@ -3224,11 +2967,11 @@ async function startBot() {
     const failedText = failed.length
       ? `\nط£ط®ط،ط§ظ„ طھط­ط¯ظٹط«: ${failed.map(item => `${repairArabicEncoding(item.source.name)} (${item.error})`).join(" | ")}`
       : "";
-    await ctx.reply(`âœ… ط§ظ† طھظ†طŒطھ ظ…ط²ط§ظ…ظ† ط© ${successful.length} ظ…ظ† APIs ظ„ظ…ظ†  ${syncedCount} ظ…ط½ظ„طھ ظ…ظ† ط¬ط§طھ.${failedText}`);
+    await ctx.reply(`âœ… ط§ظ†طھظ‡طھ ظ…ط²ط§ظ…ظ†ط© ${successful.length} ظ…ظ† APIs ظ„ظ…ظ†  ${syncedCount} ظ…ظ†طھط¬ط§طھ.${failedText}`);
     await showApiSources(ctx);
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: ping أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action("adm:ping", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const [enabled, target, interval] = await Promise.all([getSetting("auto_ping_enabled"), getSetting("auto_ping_target_user_id"), getSetting("auto_ping_interval_min")]);
@@ -3239,7 +2982,7 @@ async function startBot() {
   bot.action("adm:pingTarget", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:pingTarget" }); await ctx.reply("ًںژ¯ ط£ط±ط³ظ„ ID ط§ظ„ظ…ط³طھط®ط¯ظ… ط§ظ„ظ…ط³طھظ‡ط¯ظپ:"); });
   bot.action("adm:pingInterval", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:pingInterval" }); await ctx.reply("âڈ± ط£ط±ط³ظ„ ط§ظ„ظپط§طµظ„ ط§ظ„ط²ظ…ظ† ظٹ ط¨ط§ظ„ط¯ظ‚ط§ط¦ظ‚:"); });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: contacts أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action("adm:contacts", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const links = (await q("SELECT * FROM contact_links ORDER BY id")).rows;
@@ -3257,7 +3000,7 @@ async function startBot() {
   bot.action(/^adm:contactToggle:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const id = Number(ctx.match[1]); const l = (await q("SELECT active FROM contact_links WHERE id=$1", [id])).rows[0]; if (!l) return; await q("UPDATE contact_links SET active=$1 WHERE id=$2", [!l.active, id]); });
   bot.action(/^adm:contactDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; await q("DELETE FROM contact_links WHERE id=$1", [Number(ctx.match[1])]); await ctx.reply("ًں—‘ï¸ڈ طھظ… ط§ظ„ط­ط°ظپ."); });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: manual product categories أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action("adm:manualCats", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const cats = (await q("SELECT * FROM manual_categories WHERE parent_id=0 ORDER BY position,id")).rows;
@@ -3311,7 +3054,7 @@ async function startBot() {
       [ids]
     );
     invalidateCaches();
-    await ctx.reply(`âœ… طھظ… ط¥ط®ط±ط§ط¬ ${moved.rows.length} ظ…ظ†طھط¬ط§ظ‹ ظ…ظ†  ط§ظ„ظ‚ط³ظ… ظˆ ط¬ط¹ظ„ظ‡ط§ ط¶ظ…ظ†  ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©.`);
+    await ctx.reply(`âœ… طھظ… ط¥ط®ط±ط§ط¬ ${moved.rows.length} ظ…ظ†طھط¬ط§ظ‹ ظ…ظ†  ط§ظ„ظ‚ط³ظ… ظˆ ط¬ط¹ظ„ظ‡ط§ ط¶ظ…ظ† ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©.`);
     await showManualCategory(ctx, rootId, 1, 0);
   });
   bot.action(/^adm:mcatDel:(\d+)$/, async ctx => {
@@ -3319,7 +3062,7 @@ async function startBot() {
     const id = Number(ctx.match[1]);
     const cat = (await q("SELECT name FROM manual_categories WHERE id=$1", [id])).rows[0];
     if (!cat) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ‚ط³ظ… ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
-    await sendOrEdit(ctx, `âڑ ï¸ڈ ط³ظٹطھظ… ط­ط°ظپ ط§ظ„ظ‚ط³ظ… "${cat.name}" ظˆ ظƒظ„ ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ظپط±ط¹ظٹط©.\nط³طھظڈظ†ظ‚ظ„ ط§ظ„ظ…ظ†طھط¬ط§طھ ط¥ظ„ظ‰ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©. ظ†طŒظ„ طھطھط§ط¨ط¹طں`,
+    await sendOrEdit(ctx, `âڑ ï¸ڈ ط³ظٹطھظ… ط­ط°ظپ ط§ظ„ظ‚ط³ظ… "${cat.name}" ظˆ ظƒظ„ ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ظپط±ط¹ظٹط©.\nط³طھظڈظ†ظ‚ظ„ ط§ظ„ظ…ظ†طھط¬ط§طھ ط¥ظ„ظ‰ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©. ظ‡ظ„ طھطھط§ط¨ط¹طں`,
       Markup.inlineKeyboard([
         [Markup.button.callback("âœ… ظ† ط¹ظ…طŒ ط§ط­ط°ظپ ط§ظ„ظ‚ط³ظ…", `adm:mcatDelConfirm:${id}`)],
         [Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `mcat:${id}:1:0`)]
@@ -3336,11 +3079,11 @@ async function startBot() {
     await q("UPDATE manual_products SET category_id=0,category_is_virtual=false,updated_at=NOW() WHERE category_id=ANY($1)", [ids]);
     await q("DELETE FROM manual_categories WHERE id=ANY($1)", [ids]);
     invalidateCaches();
-    await ctx.reply("âœ… طھظ… ط­ط°ظپ ط§ظ„ظ‚ط³ظ… ظˆ ظ†ظ‚ظ„ ظ…ظ†طھط¬ط§طھظ†طŒ ط¥ظ„ظ‰ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©.");
+    await ctx.reply("âœ… طھظ… ط­ط°ظپ ط§ظ„ظ‚ط³ظ… ظˆ ظ†ظ‚ظ„ ظ…ظ†طھط¬ط§طھظ‡ ط¥ظ„ظ‰ ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©.");
     await showCategory(ctx, 0, 1, 0);
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: virtual categories أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action("adm:vcList", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const vcs = (await q("SELECT * FROM virtual_categories WHERE parent_id=0 ORDER BY position")).rows;
@@ -3377,7 +3120,7 @@ async function startBot() {
     const id = Number(ctx.match[1]);
     const cat = (await q("SELECT name FROM virtual_categories WHERE id=$1", [id])).rows[0];
     if (!cat) { await ctx.reply("âڑ ï¸ڈ ط§ظ„ظ‚ط³ظ… ط؛ظٹط± ظ…ظˆط¬ظˆط¯."); return; }
-    await sendOrEdit(ctx, `âڑ ï¸ڈ ط³ظٹطھظ… ط­ط°ظپ ط§ظ„ظ‚ط³ظ… "${cat.name}" ظˆ ظƒظ„ ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ظپط±ط¹ظٹط©.\nط³طھظڈظ†ظ‚ظ„ ط§ظ„ظ…ظ†طھط¬ط§طھ ط¥ظ„ظ‰ ط£ظ‚ط³ط§ظ…ظ†طŒط§ ط§ظ„ط£طµظ„ظٹط©/ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©. ظ†طŒظ„ طھطھط§ط¨ط¹طں`,
+    await sendOrEdit(ctx, `âڑ ï¸ڈ ط³ظٹطھظ… ط­ط°ظپ ط§ظ„ظ‚ط³ظ… "${cat.name}" ظˆ ظƒظ„ ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ظپط±ط¹ظٹط©.\nط³طھظڈظ†ظ‚ظ„ ط§ظ„ظ…ظ†طھط¬ط§طھ ط¥ظ„ظ‰ ط£ظ‚ط³ط§ظ…ظ‡ط§ ط§ظ„ط£طµظ„ظٹط©/ط§ظ„ظ‚ط§ط¦ظ…ط© ط§ظ„ط¹ط§ظ…ط©. ظ‡ظ„ طھطھط§ط¨ط¹طں`,
       Markup.inlineKeyboard([
         [Markup.button.callback("âœ… ظ† ط¹ظ…طŒ ط§ط­ط°ظپ ط§ظ„ظ‚ط³ظ…", `adm:vcDelConfirm:${id}`)],
         [Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", `vcat:${id}:1:0`)]
@@ -3395,11 +3138,11 @@ async function startBot() {
     await q("UPDATE product_overrides SET custom_category_id=NULL,updated_at=NOW() WHERE custom_category_id=ANY($1)", [ids]);
     await q("DELETE FROM virtual_categories WHERE id=ANY($1)", [ids]);
     invalidateCaches();
-    await ctx.reply("âœ… طھظ… ط­ط°ظپ ط§ظ„ظ‚ط³ظ… ظˆ ظ†ظ‚ظ„ ط§ظ„ظ…ظ†طھط¬ط§طھ ط®ط§ط±ط¬ظ†طŒ.");
+    await ctx.reply("âœ… طھظ… ط­ط°ظپ ط§ظ„ظ‚ط³ظ… ظˆ ظ†ظ‚ظ„ ط§ظ„ظ…ظ†طھط¬ط§طھ ط®ط§ط±ط¬ظ‡.");
     await showCategory(ctx, 0, 1, 0);
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: manual products أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action("adm:manualProds", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const prods = (await q("SELECT * FROM manual_products ORDER BY id")).rows;
@@ -3443,20 +3186,20 @@ async function startBot() {
     await sendOrEdit(ctx, `ًں“‹ ط·ظ„ط¨ ظٹط¯ظˆظٹ\nًں‘¤ ${u?.username ? "@" + u.username : `ID:${o.user_id}`}\nًں›’ ${o.product_name}\nًں’° ${Number(o.price_usd).toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³\nط§ظ„ط­ط§ظ„ط©: ${o.status}`,
       Markup.inlineKeyboard([[Markup.button.callback("âœ… ظ‚ط¨ظˆظ„ ظˆ طھط³ظ„ظٹظ…", `adm:mordAccept:${oid}`), Markup.button.callback("â‌Œ ط±ظپط¶ ظˆ ط§ط³طھط±ط¯ط§ط¯", `adm:mordReject:${oid}`)], [Markup.button.callback("ًں’¬ ط¥ط±ط³ط§ظ„ ط±ط³ط§ظ„ط©", `adm:mordMsg:${oid}`)], [Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "adm:manualOrders")]]));
   });
-  bot.action(/^adm:mordAccept:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o || o.status !== "pending") { await ctx.reply("âڑ ï¸ڈ طھظ… ظ…ط¹ط§ظ„ط¬طھظ†طŒ ظ…ط³ط¨ظ‚ط§ظ‹."); return; } setStep(ctx.from.id, { kind: "admin:manualOrderAccept", orderId: oid, userId: Number(o.user_id), productName: o.product_name, priceUsd: Number(o.price_usd) }); await ctx.reply(`âœڈï¸ڈ ط£ط±ط³ظ„ ط±ط³ط§ظ„ط© ط§ظ„طھط³ظ„ظٹظ… ط£ظˆ  "skip":`); });
+  bot.action(/^adm:mordAccept:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o || o.status !== "pending") { await ctx.reply("âڑ ï¸ڈ طھظ… ظ…ط¹ط§ظ„ط¬طھظ‡ ظ…ط³ط¨ظ‚ط§ظ‹."); return; } setStep(ctx.from.id, { kind: "admin:manualOrderAccept", orderId: oid, userId: Number(o.user_id), productName: o.product_name, priceUsd: Number(o.price_usd) }); await ctx.reply(`âœڈï¸ڈ ط£ط±ط³ظ„ ط±ط³ط§ظ„ط© ط§ظ„طھط³ظ„ظٹظ… ط£ظˆ  "skip":`); });
   bot.action(/^adm:mordReject:(\d+)$/, async ctx => {
     if (!(await requireAdmin(ctx))) return;
-    const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o || o.status !== "pending") { await ctx.reply("âڑ ï¸ڈ طھظ… ظ…ط¹ط§ظ„ط¬طھظ†طŒ."); return; }
+    const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o || o.status !== "pending") { await ctx.reply("âڑ ï¸ڈ طھظ… ظ…ط¹ط§ظ„ط¬طھظ‡."); return; }
     await q("UPDATE manual_orders SET status='rejected', updated_at=NOW() WHERE id=$1", [oid]);
     await adjustBalance(Number(o.user_id), Number(o.price_usd));
     await ctx.reply(`âœ… طھظ… ط§ظ„ط±ظپط¶ ظˆ ط¥ط¹ط§ط¯ط© ط§ظ„ط±طµظٹط¯.`);
     const rate = await getExchangeRate(); const syp = Math.round(Number(o.price_usd) * rate);
-    // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ظ„ط§ ظ† ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
     await ctx.telegram.sendMessage(o.user_id, `â‌Œ طھظ… ط±ظپط¶ ط·ظ„ط¨ظƒ\nًں›’ ${o.product_name}\nًں’° طھظ…طھ ط¥ط¹ط§ط¯ط© ${Number(o.price_usd).toFixed(2)}$ | ${syp.toLocaleString("en-US")} ظ„.ط³`, Markup.inlineKeyboard([[Markup.button.callback("ًںڈ   ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])).catch(() => {});
   });
   bot.action(/^adm:mordMsg:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const oid = Number(ctx.match[1]); const o = (await q("SELECT user_id FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o) return; setStep(ctx.from.id, { kind: "admin:manualOrderMsg", orderId: oid, userId: Number(o.user_id) }); await ctx.reply(`ًں’¬ ط£ط±ط³ظ„ ط§ظ„ط±ط³ط§ظ„ط© ظ„ظ„ظ…ط³طھط®ط¯ظ… ${o.user_id}:`); });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: nav buttons أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action("adm:btnLabels", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     const [b, h, p2, n] = await Promise.all([getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel()]);
@@ -3470,15 +3213,15 @@ async function startBot() {
     await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ظ„ط£ط²ط±ط§ط± ظ„ظ„ط§ظپطھط±ط§ط¶ظٹ.");
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Admin: AI support أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.action("adm:aiSupport", async ctx => {
     if (!(await requireAdmin(ctx))) return;
     clearAiHistory(ctx.from.id);
     setStep(ctx.from.id, { kind: "admin:aiSupport" });
-    await ctx.reply(`ًں¤– ظ…ط³ط§ط¹ط¯ ط§ظ„ط¥ط¯ط§ط±ط©${hasAiKey() ? "" : " (ظˆط¶ط¹ FAQ)"}\nط£ط±ط³ظ„ ط³ط¤ط§ظ„ظƒ ط£ظˆ  "ط®ط±ظˆط¬" ظ„ظ„ط¥ظ† ظ†طŒط§ط،:`, Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]]));
+    await ctx.reply(`ًں¤– ظ…ط³ط§ط¹ط¯ ط§ظ„ط¥ط¯ط§ط±ط©${hasAiKey() ? "" : " (ظˆط¶ط¹ FAQ)"}\nط£ط±ط³ظ„ ط³ط¤ط§ظ„ظƒ ط£ظˆ  "ط®ط±ظˆط¬" ظ„ظ„ط¥ظ†ظ‡ط§ط،:`, Markup.inlineKeyboard([[Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]]));
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Photo handler أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.on("photo", async ctx => {
     const step = getStep(ctx.from.id);
     const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
@@ -3486,7 +3229,7 @@ async function startBot() {
     if (step.kind === "admin:setMethodImage") {
       await q("UPDATE deposit_methods SET image_file_id=$1 WHERE id=$2", [fileId, step.methodId]);
       setStep(ctx.from.id, { kind: "idle" });
-      await ctx.reply("âœ… طھظ… ط­ظپط¸ ط§ظ„طµظˆط±ط©. ط³طھط¸ظ†طŒط± ظ„ظ„ظ…ط³طھط®ط¯ظ…ظٹظ†  ط¹ظ† ط¯ ط§ط®طھظٹط§ط± ظ†طŒط°ظ†طŒ ط§ظ„ط·ط±ظٹظ‚ط©.");
+      await ctx.reply("âœ… طھظ… ط­ظپط¸ ط§ظ„طµظˆط±ط©. ط³طھط¸ظ‡ط± ظ„ظ„ظ…ط³طھط®ط¯ظ…ظٹظ†  ط¹ظ† ط¯ ط§ط®طھظٹط§ط± ظ‡ط°ظ‡ ط§ظ„ط·ط±ظٹظ‚ط©.");
       return;
     }
 
@@ -3498,7 +3241,7 @@ async function startBot() {
       return;
     }
 
-    // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ طھط¯ظپظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹ ط§ظ„ط¬ط¯ظٹط¯: ط§ط³طھظ„ط§ظ… ط§ظ„طµظˆط±ط© أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
     if (step.kind === "deposit:info") {
       // ط¥ط°ط§ ط£ط±ط³ظ„ ط§ظ„ظ…ط³طھط®ط¯ظ… ط§ظ„ظ…ط¨ظ„ط؛ ظپظٹ طھط¹ظ„ظٹظ‚ ط§ظ„طµظˆط±ط©طŒ ظ† ظ‚ط±ط£ظ†طŒ ظ…ط¨ط§ط´ط±ط©.
       const caption = ctx.message.caption?.trim() || "";
@@ -3516,14 +3259,14 @@ async function startBot() {
       } else {
         // ط§ط³طھظ„ظ…ظ† ط§ ط§ظ„طµظˆط±ط© ظ‚ط¨ظ„ ط§ظ„ظ…ط¨ظ„ط؛طŒ ط§ط·ظ„ط¨ ط§ظ„ظ…ط¨ظ„ط؛
         setStep(ctx.from.id, newStep);
-        await ctx.reply("ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„ط°ظٹ ظ‚ظ…طھ ط¨طھط­ظˆ ظٹظ„ظ†طŒ:",
+        await ctx.reply("ط£ط±ط³ظ„ ط§ظ„ظ…ط¨ظ„ط؛ ط§ظ„ط°ظٹ ظ‚ظ…طھ ط¨طھط­ظˆظٹظ„ظ‡:",
           Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "dep:cancel")]]));
       }
       return;
     }
   });
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Text router أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   bot.on("text", async (ctx, next) => {
     const step = getStep(ctx.from.id);
     const rawTxt = ctx.message.text.trim();
@@ -3542,12 +3285,12 @@ async function startBot() {
 
     if (txt.startsWith("/")) return next();
 
-    // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ طھط¯ظپظ‚ ط§ظ„ط¥ظٹط¯ط§ط¹ ط§ظ„ط¬ط¯ظٹط¯: ط§ط³طھظ„ط§ظ… ط§ظ„ظ…ط¨ظ„ط؛ أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
     if (step.kind === "deposit:info") {
       const exchangeRate = await getExchangeRate();
       const amount = extractAmountFromText(txt, exchangeRate);
       if (!amount || amount <= 0) {
-        await ctx.reply("âڑ ï¸ڈ ظ„ظ… ط£ط³طھط·ط¹ ظپظ†طŒظ… ط§ظ„ظ…ط¨ظ„ط؛. ط£ط±ط³ظ„ظ†طŒ ط¨ط´ظƒظ„ ط£ظˆ ط¶ط­ (ظ…ط«ط§ظ„: 5$ ط£ظˆ  1000 ظ„.ط³).",
+        await ctx.reply("âڑ ï¸ڈ ظ„ظ… ط£ط³طھط·ط¹ ظپظ‡ظ… ط§ظ„ظ…ط¨ظ„ط؛. ط£ط±ط³ظ„ظ‡ ط¨ط´ظƒظ„ ط£ظˆط¶ط­ (ظ…ط«ط§ظ„: 5$ ط£ظˆ  1000 ظ„.ط³).",
           Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "dep:cancel")]]));
         return;
       }
@@ -3557,7 +3300,7 @@ async function startBot() {
         await completeDepositRequest(ctx, newStep);
       } else {
         setStep(ctx.from.id, newStep);
-        await ctx.reply(`ط£ط±ط³ظ„ طµظˆ ط±ط© ط¥ط´ط¹ط§ط± ط§ظ„طھط­ظˆ ظٹظ„.`,
+        await ctx.reply(`ط£ط±ط³ظ„ طµظˆط±ط© ط¥ط´ط¹ط§ط± ط§ظ„طھط­ظˆظٹظ„.`,
           Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "dep:cancel")]]));
       }
       return;
@@ -3587,14 +3330,14 @@ async function startBot() {
        const debited = await debitBalance(ctx.from.id, step.priceUsd);
        if (!debited) {
          setStep(ctx.from.id, { kind: "idle" });
-         await ctx.reply("â‌Œ ط±طµظٹط¯ ط؛ظٹط± ظƒط§ظپظچ  ط­ط§ظ„ظٹط§ظ‹. ط­ط§ظˆ ظ„ طھط­ط¯ظٹط« ط§ظ„ط±طµظٹط¯ ط«ظ… ط£ط¹ط¯ ط§ظ„ط·ظ„ط¨.");
+         await ctx.reply("â‌Œ ط±طµظٹط¯ ط؛ظٹط± ظƒط§ظپظچ  ط­ط§ظ„ظٹط§ظ‹. ط­ط§ظˆظ„ طھط­ط¯ظٹط« ط§ظ„ط±طµظٹط¯ ط«ظ… ط£ط¹ط¯ ط§ظ„ط·ظ„ط¨.");
          return;
        }
       const ins = await q("INSERT INTO manual_orders(user_id,product_id,product_name,price_usd,note) VALUES($1,$2,$3,$4,$5) RETURNING *",
         [ctx.from.id, m.id, m.name, m.price_usd, note]);
       const ord = ins.rows[0];
       setStep(ctx.from.id, { kind: "idle" });
-      // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ظ„ط§ ظ† ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
       await ctx.reply(`âœ… طھظ… ط§ط³طھظ„ط§ظ… ط·ظ„ط¨ظƒ\nًں›’ ${m.name}\nط³ظٹطھظ… ط§ظ„طھظ†ظپظٹط° ظپظٹ ط£ظ‚ط±ط¨ ظˆظ‚طھ.`, Markup.inlineKeyboard([[Markup.button.callback("ًںڈ   ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]]));
       const admins = await listAdmins();
       const rate = await getExchangeRate(); const syp = Math.round(step.priceUsd * rate);
@@ -3625,7 +3368,7 @@ async function startBot() {
         await showAdminMenu(ctx); return;
       }
       case "admin:setMarkup": { const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ط±ظ‚ظ…ط§ظ‹ طµط§ظ„ط­ط§ظ‹."); return; } await setSetting("markup_percent", String(n)); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ط§ظ„ط±ط¨ط­ ط§ظ„ط¹ط§ظ…: ${n}%.`); await showSettingsMenu(ctx); return; }
-      case "admin:setSocialMarkup": { const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ط±ظ‚ظ…ط§ظ‹ طµط§ظ„ط­ط§ظ‹."); return; } await setSetting("social_markup_percent", String(n)); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ط±ط¨ط­ ط§ظ„ط³ظˆ ط´ظ„: ${n}%.`); await showSettingsMenu(ctx); return; }
+      case "admin:setSocialMarkup": { const n = Number(txt); if (!Number.isFinite(n) || n < 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ط±ظ‚ظ…ط§ظ‹ طµط§ظ„ط­ط§ظ‹."); return; } await setSetting("social_markup_percent", String(n)); invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ط±ط¨ط­ ط§ظ„ط³ظˆط´ط§ظ„: ${n}%.`); await showSettingsMenu(ctx); return; }
       case "admin:setRate": { const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("âڑ ï¸ڈ ط³ط¹ط± طµط±ظپ ط؛ظٹط± طµط§ظ„ط­."); return; } await setSetting("exchange_rate", String(n)); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ط³ط¹ط± ط§ظ„طµط±ظپ: ${n} ظ„.ط³/$.`); await showSettingsMenu(ctx); return; }
       case "admin:newPassword": { if (rawTxt.length < 4) { await ctx.reply("âڑ ï¸ڈ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ظ‚طµظٹط±ط© ط¬ط¯ط§ظ‹."); return; } await setSetting("admin_password", rawTxt); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… طھط­ط¯ظٹط« ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±."); return; }
       case "admin:changeLoginCmd": {
@@ -3636,13 +3379,13 @@ async function startBot() {
       case "admin:depositApproveAmount": {
         const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ظ…ط¨ظ„ط؛ط§ظ‹ طµط§ظ„ط­ط§ظ‹."); return; }
         const updated = await q("UPDATE deposit_requests SET status='approved', amount=$1, processed_by=$2, processed_at=NOW() WHERE id=$3 AND status='pending' RETURNING *", [String(n), ctx.from.id, step.depositId]);
-        if (!updated.rows.length) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âڑ ï¸ڈ طھظ…طھ ظ…ط¹ط§ظ„ط¬ط© ظ‡ط°ط§ ط§ظ„ط·ظ„ط¨ ظ…ط³ط¨ظ‚ط§ظ‹ ط¨ظˆ ط§ط³ط·ط© ظ…ط¯ظٹط± ط¢ط®ط±."); return; }
+        if (!updated.rows.length) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âڑ ï¸ڈ طھظ…طھ ظ…ط¹ط§ظ„ط¬ط© ظ‡ط°ط§ ط§ظ„ط·ظ„ط¨ ظ…ط³ط¨ظ‚ط§ظ‹ ط¨ظˆط§ط³ط·ط© ظ…ط¯ظٹط± ط¢ط®ط±."); return; }
         const d = updated.rows[0];
         await adjustBalance(d.user_id, n);
         await clearDepositForOtherAdmins(ctx.from.id, step.depositId, `âœ… ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹ â€” طھظ…طھ ط§ظ„ظ…ظˆط§ظپظ‚ط© (+${n}$)`);
         setStep(ctx.from.id, { kind: "idle" });
         await ctx.reply(`âœ… طھظ…طھ ط¥ط¶ط§ظپط© ${n}$ ظ„ظ„ظ…ط³طھط®ط¯ظ… ${d.user_id}.`);
-        // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ط±ط³ط§ظ„ط© ظˆ ط§ط¶ط­ط© ظ„ظ„ظ…ط³طھط®ط¯ظ… ط¨ط¯ظˆ ظ†  ط±ظ‚ظ… ط·ظ„ط¨ أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
         try { await ctx.telegram.sendMessage(d.user_id, `âœ… طھظ… ظ‚ط¨ظˆظ„ ط·ظ„ط¨ ط¥ظٹط¯ط§ط¹ظƒطŒ ظˆ طھظ…طھ ط¥ط¶ط§ظپط© ${n}$ ط¥ظ„ظ‰ ط±طµظٹط¯ظƒ.`); } catch { /* ignore */ }
         return;
       }
@@ -3650,7 +3393,7 @@ async function startBot() {
         const n = Number(txt); if (!Number.isFinite(n) || n <= 0) { await ctx.reply("âڑ ï¸ڈ ط£ط¯ط®ظ„ ظ…ط¨ظ„ط؛ط§ظ‹ طµط§ظ„ط­ط§ظ‹."); return; }
         const delta = step.mode === "add" ? n : -n; await adjustBalance(step.userId, delta); setStep(ctx.from.id, { kind: "idle" });
         const u = await getUser(step.userId); await ctx.reply(`âœ… طھظ… ط§ظ„طھط¹ط¯ظٹظ„. ط§ظ„ط±طµظٹط¯ ط§ظ„ط¬ط¯ظٹط¯: ${u ? Number(u.balance).toFixed(2) : "?"}$`);
-        try { await ctx.telegram.sendMessage(step.userId, step.mode === "add" ? `ًں’° طھظ…طھ ط¥ط¶ط§ظپط© ${n}$ ط¥ظ„ظ‰ ط±طµظٹط¯ظƒ.` : `ظ‹ع؛أ¢أ¢â€ڑآ¬أ¢â€‍آ¢آ¸ طھظ… ط®طµظ… ${n}$ ظ…ظ†  ط±طµظٹط¯ظƒ.`); } catch { /* ignore */ }
+        try { await ctx.telegram.sendMessage(step.userId, step.mode === "add" ? `ًں’° طھظ…طھ ط¥ط¶ط§ظپط© ${n}$ ط¥ظ„ظ‰ ط±طµظٹط¯ظƒ.` : `ًں’µ طھظ… ط®طµظ… ${n}$ ظ…ظ†  ط±طµظٹط¯ظƒ.`); } catch { /* ignore */ }
         return;
       }
       case "admin:findUser": { const found = await searchUser(txt); setStep(ctx.from.id, { kind: "idle" }); if (!found.length) { await ctx.reply("âڑ ï¸ڈ ظ„ط§ ظٹظˆط¬ط¯ ظ† طھط§ط¦ط¬."); return; } const kb = found.map(u => [Markup.button.callback(`${u.first_name ?? "â€”"}${u.username ? " @" + u.username : ""} â€¢ ${Number(u.balance).toFixed(2)}$`, `adm:user:${u.id}`)]); kb.push([Markup.button.callback("â¬…ï¸ڈ ط±ط¬ظˆط¹", "admin:menu")]); await ctx.reply(`ظ† طھط§ط¦ط¬ (${found.length}):`, Markup.inlineKeyboard(kb)); return; }
@@ -3679,7 +3422,7 @@ async function startBot() {
       case "admin:moveProduct": {
         if (txt.toLowerCase() === "reset") {
           await q("INSERT INTO product_overrides(product_id,product_name) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=NULL, updated_at=NOW()", [step.productId, step.productName]);
-          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ظ„ظ…ظ†طھط¬ ظ„ظ‚ط³ظ…ظ†طŒ ط§ظ„ط£طµظ„ظٹ."); return;
+          invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ…طھ ط¥ط¹ط§ط¯ط© ط§ظ„ظ…ظ†طھط¬ ظ„ظ‚ط³ظ…ظ‡ ط§ظ„ط£طµظ„ظٹ."); return;
         }
         const catId = Number(txt); if (!Number.isFinite(catId)) { await ctx.reply("âڑ ï¸ڈ ط±ظ‚ظ… ط§ظ„ظ‚ط³ظ… ط؛ظٹط± طµط§ظ„ط­."); return; }
         await q("INSERT INTO product_overrides(product_id,product_name,custom_category_id) VALUES($1,$2,$3) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=$3, updated_at=NOW()", [step.productId, step.productName, catId]);
@@ -3757,20 +3500,20 @@ async function startBot() {
       case "admin:addMethod:id": { setStep(ctx.from.id, { kind: "admin:addMethod:instr", name: step.name, identifier: txt }); await ctx.reply("ًں“‹ ط£ط±ط³ظ„ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ:"); return; }
       case "admin:addMethod:instr": {
         setStep(ctx.from.id, { kind: "admin:addMethod:photo", name: step.name, identifier: step.identifier, instructions: txt });
-        await ctx.reply("ًں–¼ ط£ط±ط³ظ„ طµظˆ ط±ط© ظ„ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹ ط£ظˆ  ط§ظƒطھط¨ *skip* ظ„طھط®ط·ظ‘ظٹ:", { parse_mode: "Markdown" }); return;
+        await ctx.reply("ًں–¼ ط£ط±ط³ظ„ طµظˆط±ط© ظ„ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹ ط£ظˆ  ط§ظƒطھط¨ *skip* ظ„طھط®ط·ظ‘ظٹ:", { parse_mode: "Markdown" }); return;
       }
       case "admin:addMethod:photo": {
         if (txt.toLowerCase() === "skip") {
           await q("INSERT INTO deposit_methods(name,identifier,instructions) VALUES($1,$2,$3)", [step.name, step.identifier, step.instructions]);
-          setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… ط¥ط¶ط§ظپط© ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹ ط¨ط¯ظˆ ظ†  طµظˆ ط±ط©."); return;
+          setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… ط¥ط¶ط§ظپط© ط·ط±ظٹظ‚ط© ط§ظ„ط¥ظٹط¯ط§ط¹ ط¨ط¯ظˆ ظ†  طµظˆط±ط©."); return;
         }
-        await ctx.reply("âڑ ï¸ڈ ط£ط±ط³ظ„ طµظˆ ط±ط© ط£ظˆ  ط§ظƒطھط¨ *skip* ظ„طھط®ط·ظ‘ظٹ.", { parse_mode: "Markdown" }); return;
+        await ctx.reply("âڑ ï¸ڈ ط£ط±ط³ظ„ طµظˆط±ط© ط£ظˆ  ط§ظƒطھط¨ *skip* ظ„طھط®ط·ظ‘ظٹ.", { parse_mode: "Markdown" }); return;
       }
       case "admin:addApi:name": {
-        if (!txt.trim()) { await ctx.reply("â‌Œ ط§ط³ظ… ط§ظ„ظ€API ظ„ط§ ظٹظ…ظƒط¸أ¢â‚¬  ط£ط¸أ¢â‚¬  ظٹظƒظˆط¸أ¢â‚¬  ظپط§ط±ط؛ط§ظ‹."); return; }
+        if (!txt.trim()) { await ctx.reply("â‌Œ ط§ط³ظ… ط§ظ„ظ€API ظ„ط§ ظٹظ…ظƒظ† ط£ظ† ظٹظƒظˆظ† ظپط§ط±ط؛ط§ظ‹."); return; }
         setStep(ctx.from.id, { kind: "admin:addApi:base", name: txt.trim() });
         await ctx.reply(
-          "ظ‹ع؛أ¢â‚¬â€Œإ’ ط£ط±ط³ظ„ ط±ط§ط¨ط· ط§ظ„ظ€API ط§ظ„ط¬ط¯ظٹط¯.\nظ…ط«ط§ظ„ طھط¬ط±ظٹط¨ظٹ: https://api.example.com",
+          "ًں”— ط£ط±ط³ظ„ ط±ط§ط¨ط· ط§ظ„ظ€API ط§ظ„ط¬ط¯ظٹط¯.\nظ…ط«ط§ظ„ طھط¬ط±ظٹط¨ظٹ: https://api.example.com",
           Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:apis")]])
         );
         return;
@@ -3783,7 +3526,7 @@ async function startBot() {
         }
         setStep(ctx.from.id, { kind: "admin:addApi:token", name: step.name, baseUrl });
         await ctx.reply(
-          "ًں”‘ ط£ط±ط³ظ„ API token ظپظ‚ط·.\nط³ظٹطھظ… ط¬ظ„ط¨ ط§ظ„ظ…ظ†طھط¬ط§طھ ظ…ط¨ط§ط´ط±ط© ظ…ط¸أ¢â‚¬  ظ‡ط°ط§ ط§ظ„ط±ط§ط¨ط· ظˆظ…ط²ط§ظ…ط¸أ¢â‚¬ طھظ‡ط§ ظ…ط¹ ظƒطھط§ظ„ظˆط¬ ط§ظ„ظ€API ط§ظ„ط£ط³ط§ط³ظٹ.\nظ„ط¸أ¢â‚¬  ظٹط¸ظ‡ط± ط§ظ„ظ€token ظ„ظ„ظ…ط³طھط®ط¯ظ…ظٹط¸أ¢â‚¬  ظˆط³ظٹظڈط­ظپط¸ ظ…ط´ظپط±ط§ظ‹.",
+          "ًں”‘ ط£ط±ط³ظ„ API token ظپظ‚ط·.\nط³ظٹطھظ… ط¬ظ„ط¨ ط§ظ„ظ…ظ†طھط¬ط§طھ ظ…ط¨ط§ط´ط±ط© ظ…ظ† ظ‡ط°ط§ ط§ظ„ط±ط§ط¨ط· ظˆظ…ط²ط§ظ…ظ†طھظ‡ط§ ظ…ط¹ ظƒطھط§ظ„ظˆط¬ ط§ظ„ظ€API ط§ظ„ط£ط³ط§ط³ظٹ.\nظ„ظ† ظٹط¸ظ‡ط± ط§ظ„ظ€token ظ„ظ„ظ…ط³طھط®ط¯ظ…ظٹظ†  ظˆط³ظٹظڈط­ظپط¸ ظ…ط´ظپط±ط§ظ‹.",
           Markup.inlineKeyboard([[Markup.button.callback("â‌Œ ط¥ظ„ط؛ط§ط،", "adm:apis")]])
         );
         return;
@@ -3799,7 +3542,7 @@ async function startBot() {
           is_primary: false,
         };
         try {
-          // ط§ط®طھط¨ط± ط§ظ„ظ€API ظ‚ط¨ظ„ ط¥ظ† ط´ط§ط، ط§ظ„ط³ط¬ظ„ ط­طھظ‰ ظ„ط§ ظٹط¨ظ‚ظ‰ API ظپط§ط±ط؛ط§ظ‹ ط¹ظ† ط¯ ظپط´ظ„ ط§ظ„طھظˆط«ظٹظ‚.
+//
           const products = await fetchProductsFromApi(draft);
           const validProducts = products.filter(raw => raw && (raw.id ?? raw.product_id ?? raw.productId) != null);
           if (!validProducts.length) throw new Error("API returned no products with valid IDs");
@@ -3818,10 +3561,10 @@ async function startBot() {
           }
           invalidateCaches();
           setStep(ctx.from.id, { kind: "idle" });
-          await ctx.reply(`âœ… طھظ…طھ ط¥ط¶ط§ظپط© ${step.name} ظˆ ظ…ط²ط§ظ…ظ† ط© ${count} ظ…ظ†طھط¬.`);
+          await ctx.reply(`âœ… طھظ…طھ ط¥ط¶ط§ظپط© ${step.name} ظˆ ظ…ط²ط§ظ…ظ†ط© ${count} ظ…ظ†طھط¬.`);
         } catch (err) {
           setStep(ctx.from.id, { kind: "idle" });
-          await ctx.reply(`â‌Œ ظپط´ظ„طھ ط¥ط¶ط§ظپط© ط§ظ„ظ€API ظˆ ظ„ظ… ظٹطھظ… ط­ظپط¸ظ†طŒ ظ„ط£ظ† ظ†طŒ ظپط§ط±ط؛ ط£ظˆ  ظپط´ظ„ ط§ظ„طھظˆط«ظٹظ‚.\nط§ظ„ط³ط¨ط¨: ${String(err?.message ?? err).slice(0, 180)}`);
+          await ctx.reply(`â‌Œ ظپط´ظ„طھ ط¥ط¶ط§ظپط© ط§ظ„ظ€API ظˆ ظ„ظ… ظٹطھظ… ط­ظپط¸ظ‡ ظ„ط£ظ† ط§ظ„ط§ط³ظ… ظپط§ط±ط؛ ط£ظˆ  ظپط´ظ„ ط§ظ„طھظˆط«ظٹظ‚.\nط§ظ„ط³ط¨ط¨: ${String(err?.message ?? err).slice(0, 180)}`);
         }
         await showApiSources(ctx);
         return;
@@ -3892,7 +3635,7 @@ async function startBot() {
         }
         if (categoryId > 0) {
           const cat = (await q("SELECT id FROM manual_categories WHERE id=$1", [categoryId])).rows[0];
-          if (!cat) { await ctx.reply("âڑ ï¸ڈ ظ‡ط°ط§ ط§ظ„ظ‚ط³ظ… ط؛ظٹط± ظ…ظˆط¬ظˆط¯. ط£ط±ط³ظ„ ط±ظ‚ظ…ط§ظ‹ ظ…ظ†  ط§ظ„ظ‚ط§ط¦ظ…ط©."); return; }
+          if (!cat) { await ctx.reply("âڑ ï¸ڈ ظ‡ط°ط§ ط§ظ„ظ‚ط³ظ… ط؛ظٹط± ظ…ظˆط¬ظˆط¯. ط£ط±ط³ظ„ ط±ظ‚ظ…ط§ظ‹ ظ…ظ† ط§ظ„ظ‚ط§ط¦ظ…ط©."); return; }
         }
         await q(
           "INSERT INTO manual_products(name,category_id,category_is_virtual,price_usd) VALUES($1,$2,$3,$4)",
@@ -3923,7 +3666,7 @@ async function startBot() {
         await q("UPDATE manual_orders SET status='accepted', admin_note=$1, updated_at=NOW() WHERE id=$2", [delivery, step.orderId]);
         setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… ظ‚ط¨ظˆظ„ ط§ظ„ط·ظ„ط¨.");
         if (step.userId) {
-          // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ ظ„ط§ ظ† ط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨ ظ„ظ„ظ…ط³طھط®ط¯ظ… أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
           const msg = delivery ? `âœ… طھظ… طھظ†ظپظٹط° ط·ظ„ط¨ظƒ\nًں›’ ${step.productName}\n\nًں“¦ ${delivery}` : `âœ… طھظ… طھظ†ظپظٹط° ط·ظ„ط¨ظƒ\nًں›’ ${step.productName}`;
           await ctx.telegram.sendMessage(step.userId, msg, Markup.inlineKeyboard([[Markup.button.callback("ًںڈ   ط§ظ„ط±ط¦ظٹط³ظٹط©", "home")]])).catch(() => {});
         }
@@ -3948,7 +3691,7 @@ async function startBot() {
       case "admin:pingInterval": { const n = Number(txt); if (!Number.isFinite(n) || n < 1) { await ctx.reply("âڑ ï¸ڈ ط±ظ‚ظ… ط؛ظٹط± طµط§ظ„ط­."); return; } await setSetting("auto_ping_interval_min", String(n)); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply(`âœ… ط§ظ„ظپط§طµظ„: ${n} ط¯ظ‚ظٹظ‚ط©.`); return; }
       case "admin:editBtnLabel": { await setSetting(step.key, txt); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("âœ… طھظ… طھط­ط¯ظٹط« ط§ظ„ط²ط±."); return; }
       case "admin:aiSupport": {
-        if (txt === "ط®ط±ظˆط¬" || txt.toLowerCase() === "exit") { clearAiHistory(ctx.from.id); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("ًںڑھ طھظ… ط¥ظ† ظ†طŒط§ط، ط¬ظ„ط³ط© ط§ظ„ط°ظƒط§ط، ط§ظ„ط§طµط·ظ†ط§ط¹ظٹ."); return; }
+        if (txt === "ط®ط±ظˆط¬" || txt.toLowerCase() === "exit") { clearAiHistory(ctx.from.id); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("ًںڑھ طھظ… ط¥ظ†ظ‡ط§ط، ط¬ظ„ط³ط© ط§ظ„ط°ظƒط§ط، ط§ظ„ط§طµط·ظ†ط§ط¹ظٹ."); return; }
         const reply = await callAiSupport(ctx.from.id, txt);
         await ctx.reply(reply, { parse_mode: "Markdown" }); return;
       }
@@ -3959,8 +3702,8 @@ async function startBot() {
   bot.catch(async (err, ctx) => {
     console.error("Telegraf error:", err?.message ?? err);
     try {
-      if (ctx?.callbackQuery) await ctx.answerCbQuery("âڑ ï¸ڈ ط­ط¯ط« ط®ط·ط£ ظ…ط¤ظ‚طھطŒ ط­ط§ظˆ ظ„ ظ…ط±ط© ط£ط®ط±ظ‰.").catch(() => {});
-      else if (ctx?.chat) await ctx.reply("âڑ ï¸ڈ ط­ط¯ط« ط®ط·ط£ ظ…ط¤ظ‚طھ. ط­ط§ظˆ ظ„ ظ…ط±ط© ط£ط®ط±ظ‰ ط¨ط¹ط¯ ظ„ط­ط¸ط§طھ.").catch(() => {});
+      if (ctx?.callbackQuery) await ctx.answerCbQuery("âڑ ï¸ڈ ط­ط¯ط« ط®ط·ط£ ظ…ط¤ظ‚طھطŒ ط­ط§ظˆظ„ ظ…ط±ط© ط£ط®ط±ظ‰.").catch(() => {});
+      else if (ctx?.chat) await ctx.reply("âڑ ï¸ڈ ط­ط¯ط« ط®ط·ط£ ظ…ط¤ظ‚طھ. ط­ط§ظˆظ„ ظ…ط±ط© ط£ط®ط±ظ‰ ط¨ط¹ط¯ ظ„ط­ط¸ط§طھ.").catch(() => {});
     } catch { /* ظ„ط§ ظ† ط³ظ…ط­ ظ„ط®ط·ط£ ط§ظ„ط¥ط´ط¹ط§ط± ط¨ط¥ظٹظ‚ط§ظپ ط§ظ„ظ…ط¹ط§ظ„ط¬ */ }
   });
 
@@ -3973,7 +3716,7 @@ async function startBot() {
     { command: "support", description: "ًں“‍ ط§ظ„ط¯ط¹ظ…" },
   ]).catch(err => console.error("setMyCommands failed:", err?.message ?? err));
 
-  // أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ طھط³ط®ظٹظ†  ط§ظ„ظƒط§ط´ ظ…ط¨ظƒط±ط§ظ‹ ظ„طھط³ط±ظٹط¹ ط£ظˆ ظ„ ط§ط³طھط¬ط§ط¨ط© أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
   getCachedProducts().catch(() => {}); getAllOverridesCached().catch(() => {}); getCachedContent(0).catch(() => {});
   startBackgroundRefresher();
   void syncAllApiSources().catch(err => console.error("Initial product sync failed:", err?.message ?? err));
@@ -3991,7 +3734,7 @@ async function startBot() {
 
   const stopTelegram = reason => {
     telegramShutdownRequested = true;
-    // ظپظٹ ظˆط¶ط¹ webhook ظ„ط§ ظٹظ† ط´ط¦ Telegraf ط®ط§ط¯ظ…ط§ظ‹ ط¯ط§ط®ظ„ظٹط§ظ‹.
+//
     if (!bot.polling && !bot.webhookServer) return;
     try {
       bot.stop(reason);
@@ -4013,11 +3756,11 @@ async function startBot() {
       void runPollingWithReconnect(bot, pollingConfig, shouldStopTelegram);
     }
   } else {
-    // ط£ط²ظ„ ط£ظٹ Webhook ظ‚ط¯ظٹظ… ظ‚ط¨ظ„ طھط´ط؛ظٹظ„ pollingط› ظˆط¬ظˆط¯ظ‡ ظٹظ…ط¸أ¢â‚¬ ط¹ Telegram ظ…ط¸أ¢â‚¬  طھط³ظ„ظٹظ… ط§ظ„طھط­ط¯ظٹط«ط§طھ.
+//
     await bot.telegram.deleteWebhook({ drop_pending_updates: false }).catch(err => {
       console.error("deleteWebhook before polling failed:", err?.message ?? err);
     });
-    // ظ„ط§ ط¸أ¢â‚¬ طھط±ظƒ ط±ظپط¶ bot.launch ظٹط¸أ¢â‚¬ ظ‡ظٹ polling ظ†ظ‡ط§ط¦ظٹط§ظ‹ ط¨ط¹ط¯ timeout ط£ظˆ ط§ط¸أ¢â‚¬ ظ‚ط·ط§ط¹ ظ…ط¤ظ‚طھ.
+//
     void runPollingWithReconnect(bot, pollingConfig, shouldStopTelegram);
   }
 
@@ -4039,7 +3782,7 @@ async function startBot() {
   return bot;
 }
 
-// أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Express health server + webhook receiver أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
 const app = express();
 const PORT = Number(process.env.PORT ?? 3000);
 app.use(express.json({ limit: "256kb" }));
@@ -4064,7 +3807,7 @@ app.post(/^\/bot.+/, (req, res) => {
   }
 });
 
-// أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬ Start أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬أ¢أ¢أ¢â€ڑآ¬أ¢â‚¬إ’أ¢أ¢â‚¬ع‘آ¬
+//
 const server = http.createServer(app);
 server.requestTimeout = 15_000;
 server.headersTimeout = 10_000;
