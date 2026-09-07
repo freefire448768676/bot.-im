@@ -986,7 +986,12 @@ for (const n of list) {
 if (n.adminId === processorId) continue;
 try {
 await _botRef?.telegram.editMessageCaption(n.adminId, n.messageId, undefined,
-${statusText}\n(تمت المعالجة بواسطة مدير آخر));
+await _botRef?.telegram.editMessageCaption(
+  n.adminId,
+  n.messageId,
+  undefined,
+  `${statusText}\n(تم إلغاء العملية بواسطة مدير آخر)`
+);
 } catch { /* ignore */ }
 }
 }
