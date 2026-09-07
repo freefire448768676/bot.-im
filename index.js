@@ -1048,7 +1048,13 @@ if (status === "off" && !authedAdminIds.has(user.id) && !adminSessionActive) {
 await sendOrEdit(ctx, "🔧 البوت قيد الصيانة. سيعود للعمل بأقرب وقت ممكن. نشكر صبركم! 🙏");
 return;
 }
-const greeting = أهلاً فيك في متجر المروان 🌟\nالاسم: ${user.first_name ?? "—"}${user.username ?  (@${user.username}) : ""}\nالرقم: ${user.id}\nالرصيد: ${formatBalance(Number(user.balance), rate)}\n\nاختر من القائمة 👇;
+const greeting = `أهلًا بك في متجر المروان 🌟
+
+الاسم: ${user.first_name ?? "-"}${user.username ? ` (@${user.username})` : ""}
+الرقم: ${user.id}
+الرصيد: ${formatBalance(Number(user.balance), rate)}
+
+اختر من القائمة 👇`;
 if (authedAdminIds.has(user.id) && !adminSessionActive && !user.is_admin) {
 authedAdminIds.delete(user.id);
 }
