@@ -97,6 +97,11 @@ status TEXT NOT NULL DEFAULT 'pending',
 api_response JSONB,
 delivered_code TEXT,
 api_source_id INTEGER,
+cancel_enabled BOOLEAN NOT NULL DEFAULT false,
+cancel_seconds INTEGER,
+cancel_url TEXT,
+cancel_available_at TIMESTAMPTZ,
+refunded_at TIMESTAMPTZ,
 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS product_overrides (
@@ -215,6 +220,9 @@ qty_values JSONB,
 params JSONB,
 notes TEXT,
 available BOOLEAN DEFAULT true,
+cancel_enabled BOOLEAN NOT NULL DEFAULT false,
+cancel_seconds INTEGER,
+cancel_url TEXT,
 updated_at TIMESTAMPTZ DEFAULT NOW(),
 UNIQUE(api_source_id, external_id)
 );
@@ -224,8 +232,14 @@ api_source_id INTEGER NOT NULL REFERENCES api_sources(id) ON DELETE CASCADE,
 external_id TEXT NOT NULL,
 name TEXT NOT NULL,
 parent_id INTEGER DEFAULT 0,
+active BOOLEAN NOT NULL DEFAULT true,
 updated_at TIMESTAMPTZ DEFAULT NOW(),
 UNIQUE(api_source_id, external_id)
+);
+CREATE TABLE IF NOT EXISTS product_catalog_cache (
+cache_key TEXT PRIMARY KEY,
+payload JSONB NOT NULL,
+updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 `);
 
@@ -237,11 +251,20 @@ const migrations = [
 "ALTER TABLE product_overrides ADD COLUMN IF NOT EXISTS api_source_id INTEGER",
 "ALTER TABLE product_overrides ADD COLUMN IF NOT EXISTS external_id TEXT",
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS api_source_id INTEGER",
+"ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_enabled BOOLEAN NOT NULL DEFAULT false",
+"ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_seconds INTEGER",
+"ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_url TEXT",
+"ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_available_at TIMESTAMPTZ",
+"ALTER TABLE orders ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS manual_category_id INTEGER",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS description TEXT",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS image_file_id TEXT",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS stock_qty INTEGER NOT NULL DEFAULT -1",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS markup_percent NUMERIC(6,2)",
+"ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS cancel_enabled BOOLEAN NOT NULL DEFAULT false",
+"ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS cancel_seconds INTEGER",
+"ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS cancel_url TEXT",
+"ALTER TABLE api_source_categories ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT true",
 ];
 for (const mig of migrations) {
 await q(mig).catch(() => {});
@@ -320,10 +343,10 @@ async function getSocialMinQty() { const n = Number(await getSetting("social_min
 async function getSocialMaxQty() { const n = Number(await getSetting("social_max_qty")); return Number.isFinite(n) && n > 0 ? n : 10000; }
 async function getAdminPassword() { return getSetting("admin_password"); }
 async function getAdminLoginCommand() { return getSetting("admin_login_command"); }
-async function getBtnBackLabel() { return getSetting("btn_back_label"); }
-async function getBtnHomeLabel() { return getSetting("btn_home_label"); }
-async function getBtnPrevLabel() { return getSetting("btn_prev_label"); }
-async function getBtnNextLabel() { return getSetting("btn_next_label"); }
+async function getBtnBackLabel() { return DEFAULTS.btn_back_label; }
+async function getBtnHomeLabel() { return DEFAULTS.btn_home_label; }
+async function getBtnPrevLabel() { return DEFAULTS.btn_prev_label; }
+async function getBtnNextLabel() { return DEFAULTS.btn_next_label; }
 
 function isSocialProduct(name, catName, kws) {
 const n = ((name ?? "") + " " + (catName ?? "")).toLowerCase();
@@ -557,27 +580,34 @@ return res.data;
 
 function extractDeliveredCode(resp) {
 const rawD = resp?.data;
-const d = Array.isArray(rawD) ? rawD[0] : rawD;
-if (!d && !resp?.replay_api) return null;
+const records = Array.isArray(rawD) ? rawD : (rawD != null ? [rawD] : []);
+if (!records.length && !resp?.replay_api && !resp?.response && !resp?.result && !resp?.note && !resp?.notes) return null;
 const candidates = [];
+for (const d of records) {
 if (d?.data) candidates.push(d.data);
 if (d?.replay_api) candidates.push(d.replay_api);
-if (resp?.replay_api) candidates.push(resp.replay_api);
 if (d?.response) candidates.push(d.response);
 if (d?.result) candidates.push(d.result);
 if (d?.note) candidates.push(d.note);
 if (d?.notes) candidates.push(d.notes);
+}
+if (resp?.replay_api) candidates.push(resp.replay_api);
+if (resp?.response) candidates.push(resp.response);
+if (resp?.result) candidates.push(resp.result);
+if (resp?.note) candidates.push(resp.note);
+if (resp?.notes) candidates.push(resp.notes);
 const lines = [];
+const seen = new Set();
 const visit = v => {
 if (v == null) return;
-if (typeof v === "string" && v.trim()) lines.push(v.trim());
-else if (typeof v === "number") lines.push(String(v));
+if (typeof v === "string" && v.trim()) { const x = v.trim(); if (!seen.has(x)) { seen.add(x); lines.push(x); } }
+else if (typeof v === "number") { const x = String(v); if (!seen.has(x)) { seen.add(x); lines.push(x); } }
 else if (Array.isArray(v)) v.forEach(visit);
 else if (typeof v === "object") {
 for (const [k, val] of Object.entries(v)) {
 if (val == null) continue;
 if (typeof val === "object") visit(val);
-else lines.push(`${k}: ${val}`);
+else { const x = `${k}: ${val}`; if (!seen.has(x)) { seen.add(x); lines.push(x); } }
 }
 }
 };
@@ -649,38 +679,72 @@ const res = await client.get(`/client/api/check?${search.toString()}`);
 return res.data;
 }
 
+function extractCancelMeta(product) {
+const urlCandidates = [
+product?.cancel_url, product?.cancel_link, product?.cancellation_url, product?.cancellation_link,
+product?.cancel?.url, product?.cancel?.link, product?.cancellation?.url, product?.cancellation?.link,
+typeof product?.cancel === "string" ? product.cancel : null,
+typeof product?.cancellation === "string" ? product.cancellation : null,
+product?.links?.cancel, product?.actions?.cancel?.url,
+];
+const cancelUrl = urlCandidates.find(v => typeof v === "string" && (v.startsWith("http://") || v.startsWith("https://") || v.startsWith("/"))) ?? null;
+const secondsCandidates = [
+product?.cancel_seconds, product?.cancellation_seconds, product?.cancel_after_seconds,
+product?.cancel_duration, product?.cancel_time, product?.cancellation_time,
+product?.cancel?.seconds, product?.cancel?.after_seconds, product?.cancel?.after,
+product?.cancellation?.seconds, product?.cancellation?.after_seconds, product?.cancellation?.after,
+];
+const rawSeconds = secondsCandidates.find(v => v != null && v !== "");
+const seconds = Number.isFinite(Number(rawSeconds)) && Number(rawSeconds) > 0 ? Math.floor(Number(rawSeconds)) : null;
+return { cancelUrl, cancelSeconds: seconds };
+}
+
 async function syncApiSource(sourceId) {
 const srcRes = await q("SELECT * FROM api_sources WHERE id=$1", [sourceId]);
 const src = srcRes.rows[0];
 if (!src) throw new Error("API source not found");
 
-// Fetch products
 const products = await fetchApiSourceProducts(src);
+const seen = new Set();
 for (const p of products) {
+const externalId = String(p.id);
+seen.add(externalId);
+const { cancelUrl, cancelSeconds } = extractCancelMeta(p);
 await q(`
-INSERT INTO api_source_products(api_source_id, external_id, name, category_name, category_id, parent_id, price, base_price, rate, qty_values, params, notes, available)
-VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+INSERT INTO api_source_products(api_source_id, external_id, name, category_name, category_id, parent_id, price, base_price, rate, qty_values, params, notes, available, cancel_enabled, cancel_seconds, cancel_url)
+VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
 ON CONFLICT(api_source_id, external_id) DO UPDATE SET
-name=$3, category_name=$4, category_id=$5, parent_id=$6, price=$7, base_price=$8, rate=$9, qty_values=$10, params=$11, notes=$12, available=$13, updated_at=NOW()
-`, [src.id, String(p.id), p.name, p.category_name, p.category_id, p.parent_id, p.price, p.base_price, p.rate, JSON.stringify(p.qty_values), JSON.stringify(p.params), p.notes, p.available !== false]);
+name=$3, category_name=$4, category_id=$5, parent_id=$6, price=$7, base_price=$8, rate=$9, qty_values=$10, params=$11, notes=$12, available=$13, cancel_enabled=$14, cancel_seconds=$15, cancel_url=$16, updated_at=NOW()`,
+[src.id, externalId, p.name, p.category_name, p.category_id, p.parent_id ?? 0, p.price, p.base_price, p.rate, JSON.stringify(p.qty_values), JSON.stringify(p.params), p.notes, p.available !== false, !!cancelUrl && !!cancelSeconds, cancelSeconds, cancelUrl]);
+}
+// Mark products removed from the provider as unavailable instead of leaving stale products visible.
+if (seen.size) {
+await q("UPDATE api_source_products SET available=false, updated_at=NOW() WHERE api_source_id=$1 AND external_id <> ALL($2)", [src.id, [...seen]]).catch(() => {});
 }
 
-// Fetch categories (from root)
+// Fetch root categories and their children. Removed provider categories are hidden, not deleted, so old Telegram buttons do not break.
+await q("UPDATE api_source_categories SET active=false, updated_at=NOW() WHERE api_source_id=$1", [src.id]);
+const queue = [0];
+const visited = new Set();
+while (queue.length) {
+const parentExternalId = queue.shift();
+if (visited.has(parentExternalId)) continue;
+visited.add(parentExternalId);
 try {
-const content = await fetchApiSourceContent(src, 0);
-const cats = content.categories || [];
-for (const c of cats) {
+const content = await fetchApiSourceContent(src, parentExternalId);
+for (const c of content.categories || []) {
+const extId = String(c.id);
 await q(`
-INSERT INTO api_source_categories(api_source_id, external_id, name, parent_id)
-VALUES($1,$2,$3,$4)
-ON CONFLICT(api_source_id, external_id) DO UPDATE SET
-name=$3, parent_id=$4, updated_at=NOW()
-`, [src.id, String(c.id), c.name, c.parent_id ?? 0]);
+INSERT INTO api_source_categories(api_source_id, external_id, name, parent_id, active)
+VALUES($1,$2,$3,$4,true)
+ON CONFLICT(api_source_id, external_id) DO UPDATE SET name=$3, parent_id=$4, active=true, updated_at=NOW()`,
+[src.id, extId, c.name, c.parent_id ?? parentExternalId]);
+queue.push(c.id);
 }
 } catch (e) {
-console.log("API source categories fetch skipped:", e.message);
+if (parentExternalId !== 0) console.log(`API source category ${parentExternalId} skipped:`, e.message);
 }
-
+}
 return products.length;
 }
 
@@ -774,68 +838,84 @@ return "📞 للمساعدة تواصل مع الدعم عبر زر *الدعم
 }
 
 // ============================================================
-//  PRODUCT CACHE
+//  PRODUCT CACHE — DB first, API refresh in background
 // ============================================================
-const PRODUCTS_TTL  = 15 * 60_000;
-const CONTENT_TTL   = 15 * 60_000;
-const OVERRIDES_TTL = 10 * 60_000;
+const PRODUCTS_TTL = 5 * 60_000;
+const CONTENT_TTL = 5 * 60_000;
+const OVERRIDES_TTL = 2 * 60_000;
 const PAGE_SIZE = 8;
+const CATALOG_REFRESH_MS = 10_000;
 
 let productsCache = null;
 const contentCache = new Map();
 let allOverridesCache = null;
+let _productsInFlight = null;
+const _contentInFlight = new Map();
+let _overridesInFlight = null;
+let _catalogRefreshInFlight = null;
 
-let _productsInFlight    = null;
-const _contentInFlight   = new Map();
-let _overridesInFlight   = null;
+async function loadCatalogCache(key) {
+try {
+const res = await q("SELECT payload FROM product_catalog_cache WHERE cache_key=$1", [key]);
+return res.rows[0]?.payload ?? null;
+} catch { return null; }
+}
+
+async function saveCatalogCache(key, payload) {
+try {
+await q("INSERT INTO product_catalog_cache(cache_key,payload,updated_at) VALUES($1,$2,NOW()) ON CONFLICT(cache_key) DO UPDATE SET payload=$2, updated_at=NOW()", [key, JSON.stringify(payload)]);
+} catch (e) { console.error("catalog cache save error:", e.message); }
+}
+
+function normalizeApi1Products(products) {
+return (Array.isArray(products) ? products : []).map(p => ({ ...p, _source: "api1", _source_id: null }));
+}
+
+function normalizeApi2Products(rows) {
+return rows.map(p => ({
+id: `ext_${p.api_source_id}_${p.external_id}`,
+_source: "api2", _source_id: p.api_source_id, _external_id: p.external_id,
+name: p.name, category_name: p.category_name, category_id: p.category_id,
+parent_id: p.parent_id, price: p.price, base_price: p.base_price, rate: p.rate,
+qty_values: p.qty_values, params: p.params, notes: p.notes, available: p.available,
+api_source_product_id: p.id,
+cancel_enabled: p.cancel_enabled ?? false, cancel_seconds: p.cancel_seconds ?? null, cancel_url: p.cancel_url ?? null
+}));
+}
 
 async function getCachedProducts() {
 if (productsCache && productsCache.expiry > Date.now()) return productsCache.products;
 if (_productsInFlight) return _productsInFlight;
 _productsInFlight = (async () => {
-const all = [];
-
-// API 1 (ORANOS)
-const api1 = await fetchAllProducts();
-for (const p of api1) {
-p._source = 'api1';
-p._source_id = null;
-all.push(p);
-}
-
-// API sources (API 2+)
+// Fast path: database snapshot. Never wait for API 1 on a normal button press.
+const cachedApi1 = await loadCatalogCache("api1_products");
+if (Array.isArray(cachedApi1)) {
+const api1 = normalizeApi1Products(cachedApi1);
+let api2 = [];
 try {
-const sources = await listApiSources();
-for (const src of sources) {
-if (!src.active) continue;
-try {
-const cached = await q("SELECT * FROM api_source_products WHERE api_source_id=$1", [src.id]);
-for (const p of cached.rows) {
-all.push({
-id: `ext_${src.id}_${p.external_id}`,
-_source: 'api2',
-_source_id: src.id,
-_external_id: p.external_id,
-name: p.name,
-category_name: p.category_name,
-category_id: p.category_id,
-parent_id: p.parent_id,
-price: p.price,
-base_price: p.base_price,
-rate: p.rate,
-qty_values: p.qty_values,
-params: p.params,
-notes: p.notes,
-available: p.available,
-});
-}
-} catch (e) { console.error(`API source ${src.id} load error: ${e.message}`); }
-}
-} catch (e) { console.error("API sources load error:", e.message); }
-
+const r = await q("SELECT * FROM api_source_products WHERE available=true ORDER BY id");
+api2 = normalizeApi2Products(r.rows);
+} catch {}
+const all = [...api1, ...api2];
 productsCache = { products: all, expiry: Date.now() + PRODUCTS_TTL };
 _productsInFlight = null;
+// Refresh silently; the user gets the DB snapshot immediately.
+refreshCatalogCache().catch(() => {});
 return all;
+}
+
+// First boot only: seed the database once.
+try {
+const api1 = await fetchAllProducts();
+await saveCatalogCache("api1_products", api1);
+const all = normalizeApi1Products(api1);
+try {
+const r = await q("SELECT * FROM api_source_products WHERE available=true ORDER BY id");
+all.push(...normalizeApi2Products(r.rows));
+} catch {}
+productsCache = { products: all, expiry: Date.now() + PRODUCTS_TTL };
+return all;
+} finally { _productsInFlight = null; }
 })();
 return _productsInFlight;
 }
@@ -843,30 +923,79 @@ return _productsInFlight;
 async function getCachedContent(parentId) {
 const cached = contentCache.get(parentId);
 if (cached && cached.expiry > Date.now()) return cached.content;
-const inFlight = _contentInFlight.get(parentId);
-if (inFlight) return inFlight;
-const p = fetchContent(parentId)
-.then(content => {
-contentCache.set(parentId, { content, expiry: Date.now() + CONTENT_TTL });
-_contentInFlight.delete(parentId);
-return content;
-})
-.catch(err => { _contentInFlight.delete(parentId); throw err; });
+if (_contentInFlight.has(parentId)) return _contentInFlight.get(parentId);
+
+const p = (async () => {
+const db = await loadCatalogCache(`api1_content_${parentId}`);
+if (db && Array.isArray(db.products) && Array.isArray(db.categories)) {
+contentCache.set(parentId, { content: db, expiry: Date.now() + CONTENT_TTL });
+fetchAndCacheContent(parentId).catch(() => {});
+return db;
+}
+return fetchAndCacheContent(parentId);
+})().finally(() => _contentInFlight.delete(parentId));
 _contentInFlight.set(parentId, p);
 return p;
+}
+
+async function fetchAndCacheContent(parentId) {
+const content = await fetchContent(parentId);
+contentCache.set(parentId, { content, expiry: Date.now() + CONTENT_TTL });
+await saveCatalogCache(`api1_content_${parentId}`, content);
+return content;
 }
 
 async function getAllOverridesCached() {
 if (allOverridesCache && allOverridesCache.expiry > Date.now()) return allOverridesCache.map;
 if (_overridesInFlight) return _overridesInFlight;
-_overridesInFlight = loadAllOverrides()
-.then(map => {
+_overridesInFlight = loadAllOverrides().then(map => {
 allOverridesCache = { map, expiry: Date.now() + OVERRIDES_TTL };
 _overridesInFlight = null;
 return map;
-})
-.catch(err => { _overridesInFlight = null; throw err; });
+}).catch(err => { _overridesInFlight = null; throw err; });
 return _overridesInFlight;
+}
+
+async function refreshCatalogCache() {
+if (_catalogRefreshInFlight) return _catalogRefreshInFlight;
+_catalogRefreshInFlight = (async () => {
+try {
+const api1 = await fetchAllProducts();
+await saveCatalogCache("api1_products", api1);
+productsCache = { products: normalizeApi1Products(api1), expiry: Date.now() + PRODUCTS_TTL };
+} catch (e) { console.error("API1 products refresh failed:", e.message); }
+
+try {
+const root = await fetchContent(0);
+await saveCatalogCache("api1_content_0", root);
+contentCache.set(0, { content: root, expiry: Date.now() + CONTENT_TTL });
+// Warm the category cache so opening a nested category is also fast.
+const ids = [];
+for (const c of root.categories || []) ids.push(c.id);
+for (const id of ids.slice(0, 150)) {
+try {
+const c = await fetchContent(id);
+await saveCatalogCache(`api1_content_${id}`, c);
+contentCache.set(id, { content: c, expiry: Date.now() + CONTENT_TTL });
+} catch {}
+}
+} catch (e) { console.error("API1 content refresh failed:", e.message); }
+
+try {
+const sources = await listApiSources();
+for (const src of sources) {
+if (!src.active) continue;
+try { await syncApiSource(src.id); } catch (e) { console.error(`API ${src.id} refresh failed:`, e.message); }
+}
+// Rebuild unified in-memory cache after API2 refresh.
+productsCache = null;
+} catch (e) { console.error("API2 refresh failed:", e.message); }
+
+try {
+allOverridesCache = null;
+} catch {}
+})().finally(() => { _catalogRefreshInFlight = null; });
+return _catalogRefreshInFlight;
 }
 
 function invalidateCaches() {
@@ -879,13 +1008,8 @@ let refresherStarted = false;
 function startBackgroundRefresher() {
 if (refresherStarted) return;
 refresherStarted = true;
-setInterval(() => {
-Promise.all([
-fetchAllProducts().then(p => { productsCache = { products: p, expiry: Date.now() + PRODUCTS_TTL }; }),
-loadAllOverrides().then(m => { allOverridesCache = { map: m, expiry: Date.now() + OVERRIDES_TTL }; }),
-fetchContent(0).then(c => { contentCache.set(0, { content: c, expiry: Date.now() + CONTENT_TTL }); }),
-]).catch(() => {});
-}, 11 * 60_000).unref();
+setInterval(() => { refreshCatalogCache().catch(() => {}); }, CATALOG_REFRESH_MS).unref();
+refreshCatalogCache().catch(() => {});
 }
 
 function isExcludedProduct(p, kws) {
@@ -1094,12 +1218,12 @@ if (!_depositMethodsEnsured) await ensureDefaultDepositMethods();
 const res = await q("SELECT * FROM deposit_methods WHERE active=true ORDER BY id");
 const methods = res.rows;
 if (!methods.length) {
-await sendOrEdit(ctx,` "❌ لا توجد طرق إيداع متاحة حالياً."`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+await sendOrEdit(ctx, "❌ لا توجد طرق إيداع متاحة حالياً.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
 return;
 }
 const rows = methods.map(m => [Markup.button.callback(`💳 ${m.name}`, `dep:method:${m.id}`)]);
 rows.push([Markup.button.callback("🏠 الرئيسية", "home")]);
-await sendOrEdit(ctx,` "💳 اختر طريقة الإيداع:"`, Markup.inlineKeyboard(rows));
+await sendOrEdit(ctx, "💳 اختر طريقة الإيداع:", Markup.inlineKeyboard(rows));
 }
 
 async function showDepositMethod(ctx, methodId) {
@@ -1187,8 +1311,8 @@ return true;
 
 // API 2 products in this category
 const [api2Prods, api2Cats] = await Promise.all([
-q("SELECT * FROM api_source_products WHERE parent_id=$1 AND available=true", [parentId]).catch(() => ({ rows: [] })),
-q("SELECT * FROM api_source_categories WHERE parent_id=$1", [parentId]).catch(() => ({ rows: [] })),
+q("SELECT * FROM api_source_products WHERE category_id=$1 AND available=true", [parentId]),
+q("SELECT * FROM api_source_categories WHERE parent_id=$1 AND active=true ORDER BY id", [parentId]).catch(() => ({ rows: [] })),
 ]);
 
 const [vcRes, mpRes, rate, backLabel, homeLabel, prevLabel, nextLabel] = await Promise.all([
@@ -1229,7 +1353,7 @@ const bp = getNavPage(ctx.from.id, backTo);
 const backAction = backTo === 0 ? "cat:0:1:0" : `cat:${backTo}:${bp}:0`;
 emptyRows.push([Markup.button.callback(backLabel, backAction), Markup.button.callback(homeLabel, "home")]);
 }
-await sendOrEdit(ctx,` "📭 هذا القسم فارغ حالياً."`, Markup.inlineKeyboard(emptyRows)); return;
+await sendOrEdit(ctx, "📭 هذا القسم فارغ حالياً.", Markup.inlineKeyboard(emptyRows)); return;
 }
 
 visibleCats.sort((a, b) => (catOv.get(a.id)?.sortOrder ?? 9999) - (catOv.get(b.id)?.sortOrder ?? 9999));
@@ -1312,7 +1436,7 @@ if (vc) return Markup.button.callback(backLabel, `vcat:${to}:${page}:0`);
 return Markup.button.callback(backLabel, `cat:${to}:${page}:0`);
 }
 
-if (!p) { await sendOrEdit(ctx,` "⚠️ المنتج غير موجود."`, Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
+if (!p) { await sendOrEdit(ctx, "⚠️ المنتج غير موجود.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
 
 const [kws, u, ovMap, markup, rate, socialKws, socialMarkup, sessionActive] = await Promise.all([
 getExcludedKeywords(),
@@ -1325,9 +1449,10 @@ getSocialMarkupPercent(),
 isAdminSessionActive(ctx.from.id),
 ]);
 const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || sessionActive);
+const isSuperAdmin = !!u?.is_super_admin && isAdmin;
 const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
-if (isExcludedProduct(p, kws) && !isAdmin) { await sendOrEdit(ctx,` "⚠️ هذا المنتج غير متاح."`, Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
+if (isExcludedProduct(p, kws) && !isAdmin) { await sendOrEdit(ctx, "⚠️ هذا المنتج غير متاح.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
 const ov = ovMap.get(p.id);
 const isSocial = isSocialProduct(p.name, p.category_name, socialKws);
 const usd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws, null, userMarkupPercent);
@@ -1356,6 +1481,7 @@ if (isAdmin) {
 btns.push([Markup.button.callback("✏️ تعديل السعر", `adm:editPrice:${p.id}`), Markup.button.callback("📋 تعليمات", `adm:editInstr:${p.id}`)]);
 btns.push([Markup.button.callback("📝 تعديل الاسم", `adm:renameProd:${p.id}`), Markup.button.callback("🚚 نقل لقسم آخر", `adm:moveProd:${p.id}`)]);
 btns.push([Markup.button.callback(ov?.hidden ? "👁 إظهار" : "🙈 إخفاء", `adm:hideProd:${p.id}`)]);
+if (isSuperAdmin) btns.push([Markup.button.callback("🗑️ حذف من المتجر", `adm:deleteProd:${p.id}`)]);
 }
 btns.push([backBtnResolved, Markup.button.callback(homeLabel, "home")]);
 await sendOrEdit(ctx, text, Markup.inlineKeyboard(btns));
@@ -1378,7 +1504,7 @@ getSocialMarkupPercent(),
 getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel(),
 ]);
 const vc = vcRes.rows[0];
-if (!vc || (!vc.active && !isAdmin)) { await sendOrEdit(ctx,` "⚠️ هذا القسم غير متاح."`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
+if (!vc || (!vc.active && !isAdmin)) { await sendOrEdit(ctx, "⚠️ هذا القسم غير متاح.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
 let backBtn;
 if (backTo === 0) {
 backBtn = Markup.button.callback(backLabel, "cat:0:1:0");
@@ -1410,7 +1536,7 @@ const usd = Number(m.price_usd); const syp = Math.round(usd * rate);
 return Markup.button.callback(`🛒 ${m.name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `mprod:${m.id}:${vcId}`);
 });
 
-if (!visible.length && !subVcBtns.length && !manualBtnsVc.length && !isAdmin) { await sendOrEdit(ctx,` "📭 هذا القسم فارغ حالياً."`, Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
+if (!visible.length && !subVcBtns.length && !manualBtnsVc.length && !isAdmin) { await sendOrEdit(ctx, "📭 هذا القسم فارغ حالياً.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
 
 const ovMap = await loadOverrideMap(visible.map(p => p.id));
 const prodBtns = await Promise.all(visible.map(async p => {
@@ -1447,6 +1573,7 @@ await sendOrEdit(ctx, `📂 ${vc.name}`, Markup.inlineKeyboard(rows));
 async function showManualCategory(ctx, mcId, page, backTo) {
 const [u, _sessActive] = await Promise.all([getUser(ctx.from.id), isAdminSessionActive(ctx.from.id)]);
 const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || _sessActive);
+const isSuperAdmin = !!u?.is_super_admin && isAdmin;
 const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
 const [mcRes, rate, backLabel, homeLabel, prevLabel, nextLabel] = await Promise.all([
@@ -1455,7 +1582,7 @@ getExchangeRate(),
 getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel(),
 ]);
 const mc = mcRes.rows[0];
-if (!mc || (!mc.active && !isAdmin)) { await sendOrEdit(ctx,` "⚠️ هذا القسم غير متاح."`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
+if (!mc || (!mc.active && !isAdmin)) { await sendOrEdit(ctx, "⚠️ هذا القسم غير متاح.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
 
 let backBtn;
 if (backTo === 0) {
@@ -1485,7 +1612,7 @@ return Markup.button.callback(`🛒 ${m.name} ${stockLabel} • ${finalUsd.toFix
 });
 
 if (!subMcBtns.length && !manualBtns.length && !isAdmin) {
-await sendOrEdit(ctx,` "📭 هذا القسم فارغ حالياً."`, Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return;
+await sendOrEdit(ctx, "📭 هذا القسم فارغ حالياً.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return;
 }
 
 const allBtns = [...subMcBtns, ...manualBtns];
@@ -1526,7 +1653,7 @@ const mRes = await q("SELECT * FROM manual_products WHERE id=$1", [mId]);
 const m = mRes.rows[0];
 const u = await getUser(ctx.from.id);
 const isAdmin = !!u?.is_admin;
-if (!m || (!m.active && !isAdmin)) { await sendOrEdit(ctx,` "⚠️ المنتج غير متاح."`, Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
+if (!m || (!m.active && !isAdmin)) { await sendOrEdit(ctx, "⚠️ المنتج غير متاح.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
 const rate = await getExchangeRate();
 const usd = Number(m.price_usd);
 const markup = m.markup_percent != null ? Number(m.markup_percent) : 0;
@@ -1565,6 +1692,7 @@ await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
 async function showApi2Category(ctx, catId, page, backTo) {
 const [u, _sessActive] = await Promise.all([getUser(ctx.from.id), isAdminSessionActive(ctx.from.id)]);
 const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || _sessActive);
+const isSuperAdmin = !!u?.is_super_admin && isAdmin;
 
 const [catRes, rate, backLabel, homeLabel, prevLabel, nextLabel] = await Promise.all([
 q("SELECT * FROM api_source_categories WHERE id=$1", [catId]),
@@ -1572,14 +1700,14 @@ getExchangeRate(),
 getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel(),
 ]);
 const cat = catRes.rows[0];
-if (!cat) { await sendOrEdit(ctx,` "⚠️ القسم غير موجود."`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
+if (!cat) { await sendOrEdit(ctx, "⚠️ القسم غير موجود.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
 
 let backBtn;
 if (backTo === 0) backBtn = Markup.button.callback(backLabel, "cat:0:1:0");
 else backBtn = Markup.button.callback(backLabel, `cat:${backTo}:1:0`);
 
 // Sub categories
-const subRes = await q("SELECT * FROM api_source_categories WHERE parent_id=$1", [catId]);
+const subRes = await q("SELECT * FROM api_source_categories WHERE parent_id=$1 AND active=true ORDER BY id", [catId]);
 const subBtns = subRes.rows.map(c => Markup.button.callback(`📂 ${c.name}`.slice(0, 60), `api2cat:${c.id}:1:${catId}`));
 
 // Products
@@ -1606,12 +1734,18 @@ if (safe > 1) nav.push(Markup.button.callback(prevLabel, `api2cat:${catId}:${saf
 nav.push(Markup.button.callback(`${safe}/${totalPages}`, "noop"));
 if (safe < totalPages) nav.push(Markup.button.callback(nextLabel, `api2cat:${catId}:${safe + 1}:${backTo}`));
 if (nav.length > 1) rows.push(nav);
+if (isAdmin) {
+rows.push([Markup.button.callback("📁 نقل القسم إلى قسم", `adm:moveApi2CatToParent:${cat.id}`)]);
+if (isSuperAdmin) rows.push([Markup.button.callback("🗑️ حذف القسم", `adm:deleteApi2Cat:${cat.id}`)]);
+}
 rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
 await sendOrEdit(ctx, `📂 ${cat.name}`, Markup.inlineKeyboard(rows));
 }
 
 async function showApi2Product(ctx, prodId, backTo) {
-const [backLabel, homeLabel] = await Promise.all([getBtnBackLabel(), getBtnHomeLabel()]);
+const [backLabel, homeLabel, u, sessionActive] = await Promise.all([getBtnBackLabel(), getBtnHomeLabel(), getUser(ctx.from.id), isAdminSessionActive(ctx.from.id)]);
+const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || sessionActive);
+const isSuperAdmin = !!u?.is_super_admin && isAdmin;
 let backBtn;
 if (backTo === 0) backBtn = Markup.button.callback(backLabel, "cat:0:1:0");
 else {
@@ -1621,7 +1755,7 @@ backBtn = parentIsCat ? Markup.button.callback(backLabel, `api2cat:${backTo}:1:0
 
 const pRes = await q("SELECT * FROM api_source_products WHERE id=$1", [prodId]);
 const p = pRes.rows[0];
-if (!p || !p.available) { await sendOrEdit(ctx,` "⚠️ المنتج غير متاح."`, Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
+if (!p || !p.available) { await sendOrEdit(ctx, "⚠️ المنتج غير متاح.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
 
 const [rate, src] = await Promise.all([getExchangeRate(), getApiSource(p.api_source_id)]);
 const srcMarkup = src?.markup_percent ?? 3;
@@ -1656,9 +1790,29 @@ const ACCEPT_STATUSES = new Set(["accept","accepted","success","done","complete"
 const TERMINAL_STATUSES = ["accept","accepted","success","done","complete","completed","delivered","reject","rejected","error","refused","cancel","cancelled","canceled","fail","failed"];
 
 function extractOrderData(resp) {
-if (!resp.data) return null;
+if (!resp?.data) return null;
 if (Array.isArray(resp.data)) return resp.data[0] ?? null;
 return resp.data;
+}
+
+function extractApiStatuses(resp) {
+const values = [];
+const data = resp?.data;
+const records = Array.isArray(data) ? data : (data != null ? [data] : []);
+for (const item of records) {
+if (item && typeof item === "object" && item.status != null) values.push(String(item.status).toLowerCase());
+}
+if (resp?.status != null) values.push(String(resp.status).toLowerCase());
+return [...new Set(values)];
+}
+
+function getBestApiStatus(resp) {
+const statuses = extractApiStatuses(resp);
+const accepted = statuses.find(s => ACCEPT_STATUSES.has(s));
+if (accepted) return accepted;
+const rejected = statuses.find(s => REJECT_STATUSES.has(s));
+if (rejected) return rejected;
+return statuses[0] ?? "";
 }
 
 function formatApiResponseClean(resp) {
@@ -1787,18 +1941,28 @@ const rows = lowBalance
 await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
 }
 
-async function waitForOrderCompletion(orderUuid, maxAttempts = 30, delayMs = 5000) {
+async function waitForOrderCompletion(orderUuid, source, orderId, maxAttempts = 30, delayMs = 5000) {
+let lastResp = null;
 for (let i = 0; i < maxAttempts; i++) {
 await new Promise(r => setTimeout(r, delayMs));
-const resp = await checkOrder(orderUuid, true).catch(() => null);
+let resp = null;
+if (source?._source === "api2" && source._source_id) {
+const src = await getApiSource(source._source_id).catch(() => null);
+if (src) {
+resp = await checkApiSourceOrder(src, orderId, false).catch(() => null);
+if (!resp) resp = await checkApiSourceOrder(src, orderUuid, true).catch(() => null);
+}
+} else {
+resp = await checkOrder(orderId, false).catch(() => null);
+if (!resp) resp = await checkOrder(orderUuid, true).catch(() => null);
+}
 if (!resp) continue;
+lastResp = resp;
 const orderData = extractOrderData(resp);
-const status = (orderData?.status ?? "").toString().toLowerCase();
-if (ACCEPT_STATUSES.has(status) || REJECT_STATUSES.has(status)) {
-return { resp, finalStatus: status, completed: true };
+const status = getBestApiStatus(resp);
+if (ACCEPT_STATUSES.has(status) || REJECT_STATUSES.has(status)) return { resp, finalStatus: status, completed: true };
 }
-}
-return { resp: null, finalStatus: "timeout", completed: false };
+return { resp: lastResp, finalStatus: "timeout", completed: false };
 }
 
 async function executeOrder(ctx) {
@@ -1821,9 +1985,9 @@ const params = { ...step.collected };
 if (step.qty && step.qty !== 1) params["qty"] = step.qty;
 
 const insRes = await q(
-`INSERT INTO orders(user_id,product_id,product_name,qty,params,price_usd,oranos_uuid,status,api_source_id)
-VALUES($1,$2,$3,$4,$5,$6,$7,'pending',$8) RETURNING *`,
-[ctx.from.id, p.id, p.name, String(step.qty), JSON.stringify(step.collected), String(totalUsd), orderUuid, p._source === 'api2' ? p._source_id : null]
+`INSERT INTO orders(user_id,product_id,product_name,qty,params,price_usd,oranos_uuid,status,api_source_id,cancel_enabled,cancel_seconds,cancel_url,cancel_available_at)
+VALUES($1,$2,$3,$4,$5,$6,$7,'pending',$8,$9,$10,$11,$12) RETURNING *`,
+[ctx.from.id, p.id, p.name, String(step.qty), JSON.stringify(step.collected), String(totalUsd), orderUuid, p._source === 'api2' ? p._source_id : null, p._source === 'api2' ? !!p.cancel_enabled && !!p.cancel_url && Number(p.cancel_seconds) > 0 : false, p._source === 'api2' ? (Number(p.cancel_seconds) || null) : null, p._source === 'api2' ? (p.cancel_url || null) : null, p._source === 'api2' && p.cancel_enabled && p.cancel_url && Number(p.cancel_seconds) > 0 ? new Date(Date.now() + Number(p.cancel_seconds) * 1000) : null]
 );
 const order = insRes.rows[0];
 await ctx.reply("⏳ جاري تنفيذ طلبك...");
@@ -1838,12 +2002,13 @@ resp = await placeApiSourceOrder(src, p._external_id, params, orderUuid);
 resp = await placeOrder(p.id, params, orderUuid);
 }
 
-const initialStatus = (resp?.status ?? "").toLowerCase();
+const initialStatus = getBestApiStatus(resp);
 
 if (ACCEPT_STATUSES.has(initialStatus) || REJECT_STATUSES.has(initialStatus)) {
 finalApiStatus = initialStatus;
 } else {
-const waitResult = await waitForOrderCompletion(orderUuid, 30, 5000);
+const waitOrderId = resp?.data?.order_id ?? resp?.order_id ?? orderUuid;
+const waitResult = await waitForOrderCompletion(orderUuid, p, waitOrderId, 30, 5000);
 if (waitResult.completed) {
 resp = waitResult.resp;
 finalApiStatus = waitResult.finalStatus;
@@ -1862,7 +2027,16 @@ const isPending = !success && !isRejected && finalApiStatus !== "err";
 
 if (isRejected || finalApiStatus === "err") {
 await adjustBalance(ctx.from.id, totalUsd);
-const checkResp = await checkOrder(orderUuid, true).catch(() => null);
+let checkResp = null;
+if (p._source === "api2" && p._source_id) {
+const src = await getApiSource(p._source_id).catch(() => null);
+if (src) {
+const checkId = resp?.data?.order_id ?? resp?.order_id ?? orderUuid;
+checkResp = await checkApiSourceOrder(src, checkId, !!(resp?.data?.order_id ?? resp?.order_id) ? false : true).catch(() => null);
+}
+} else {
+checkResp = await checkOrder(orderUuid, true).catch(() => null);
+}
 const detailedResp = checkResp ?? resp;
 await q("UPDATE orders SET status='reject', api_response=$1 WHERE id=$2", [JSON.stringify(detailedResp), order.id]);
 setStep(ctx.from.id, { kind: "idle" });
@@ -1876,12 +2050,13 @@ return;
 }
 
 if (isPending) {
-await q("UPDATE orders SET status='pending', api_response=$1 WHERE id=$2", [JSON.stringify(resp), order.id]);
+await q("UPDATE orders SET status='pending', oranos_order_id=$1, api_response=$2 WHERE id=$3", [resp?.data?.order_id ?? resp?.order_id ?? null, JSON.stringify(resp), order.id]);
 setStep(ctx.from.id, { kind: "idle" });
 await ctx.reply(
 `⏳ طلبك قيد المعالجة.\n🛒 ${p.name} × ${step.qty}\n💰 ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س\n\nسأُعلمك تلقائياً عند اكتماله.`,
 Markup.inlineKeyboard([
 [Markup.button.callback("🔄 تحديث الحالة", `ord:check:${order.id}`)],
+...(order.cancel_enabled && order.cancel_url && order.cancel_available_at && new Date(order.cancel_available_at).getTime() <= Date.now() ? [[Markup.button.callback("❌ إلغاء الطلب", `api2cancel:${order.id}`)]] : []),
 [Markup.button.callback("🏠 الرئيسية", "home")]
 ])
 );
@@ -1889,7 +2064,7 @@ return;
 }
 
 const deliveredCode = extractDeliveredCode(resp);
-const oranosOrderId = resp?.data?.order_id ?? null;
+const oranosOrderId = resp?.data?.order_id ?? resp?.order_id ?? null;
 await q("UPDATE orders SET status='accept', oranos_order_id=$1, api_response=$2, delivered_code=$3 WHERE id=$4",
 [oranosOrderId, JSON.stringify(resp), deliveredCode ?? null, order.id]);
 setStep(ctx.from.id, { kind: "idle" });
@@ -1908,12 +2083,98 @@ const res = await q("SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at D
 const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
 if (!slice.length) { await sendOrEdit(ctx, "📭 لا يوجد لديك أي طلبات بعد.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
 const lines = slice.map(r => `🛒 ${r.product_name} ×${r.qty} • ${Number(r.price_usd).toFixed(2)}$ • ${statusLabel(r.status)}`);
+const orderRows = [];
+for (const r of slice) {
+const row = [];
+if (r.status === "pending") row.push(Markup.button.callback("🔄 الحالة", `ord:check:${r.id}`));
+if (r.status === "pending" && r.cancel_enabled && r.cancel_url && r.cancel_available_at && new Date(r.cancel_available_at).getTime() <= Date.now()) row.push(Markup.button.callback("❌ إلغاء الطلب", `api2cancel:${r.id}`));
+if (row.length) orderRows.push(row);
+}
 const navRow = [];
 if (page > 1) navRow.push(Markup.button.callback("⬅️ السابق", `myorders:${page - 1}`));
 if (hasNext) navRow.push(Markup.button.callback("التالي ➡️", `myorders:${page + 1}`));
-const kb = []; if (navRow.length) kb.push(navRow);
+const kb = [];
+for (const row of orderRows) kb.push(row);
+if (navRow.length) kb.push(navRow);
 kb.push([Markup.button.callback("🏠 الرئيسية", "home")]);
 await sendOrEdit(ctx, `📦 طلباتي\n\n${lines.join("\n")}`, Markup.inlineKeyboard(kb));
+}
+
+function buildCancelUrl(rawUrl, source, order) {
+if (!rawUrl) return null;
+let url = String(rawUrl).trim();
+const orderId = encodeURIComponent(String(order.oranos_order_id ?? ""));
+const uuid = encodeURIComponent(String(order.oranos_uuid ?? ""));
+url = url.replace(/\{(?:order_id|orderId|id)\}/gi, orderId)
+.replace(/\{(?:order_uuid|orderUuid|uuid)\}/gi, uuid);
+if (url.startsWith("/")) url = `${String(source.base_url).replace(/\/+$/, "")}${url}`;
+return url;
+}
+
+function cancellationConfirmed(resp) {
+const values = [];
+const walk = v => {
+if (v == null) return;
+if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") values.push(String(v).toLowerCase());
+else if (Array.isArray(v)) v.forEach(walk);
+else if (typeof v === "object") Object.values(v).forEach(walk);
+};
+walk(resp);
+const text = values.join(" ");
+return /cancelled|canceled|cancellation successful|\bcancel\b.*\b(success|ok|true|done)\b|\b(success|ok|true|done)\b.*\bcancel\b/.test(text);
+}
+
+async function requestApiSourceCancellation(source, order) {
+const url = buildCancelUrl(order.cancel_url, source, order);
+if (!url) return { ok: false, response: { status: "NO_CANCEL_URL" } };
+try {
+const client = getApiSourceClient(source);
+const res = await client.get(url);
+return { ok: cancellationConfirmed(res.data), response: res.data };
+} catch (err) {
+return { ok: false, response: err?.response?.data ?? { status: "ERR", message: err?.message ?? "Cancellation request failed" } };
+}
+}
+
+async function refundCancelledOrder(order, bot, ctx = null) {
+const client = await pool.connect();
+try {
+await client.query("BEGIN");
+const locked = (await client.query("SELECT * FROM orders WHERE id=$1 FOR UPDATE", [order.id])).rows[0];
+if (!locked || Number(locked.user_id) !== Number(order.user_id) || locked.status === "cancelled" || locked.refunded_at) {
+await client.query("ROLLBACK");
+return false;
+}
+await client.query("UPDATE orders SET status='cancelled', refunded_at=NOW(), api_response=$1 WHERE id=$2", [JSON.stringify(order._cancelResponse ?? {}), order.id]);
+await client.query("UPDATE users SET balance=balance+$1 WHERE id=$2", [Number(locked.price_usd), locked.user_id]);
+await client.query("COMMIT");
+const rate = await getExchangeRate();
+const syp = Math.round(Number(locked.price_usd) * rate);
+const telegram = bot?.telegram ?? ctx?.telegram;
+if (telegram) await telegram.sendMessage(locked.user_id, `✅ تم إلغاء الطلب بنجاح.\n🛒 ${locked.product_name}\n💰 تمت إعادة ${Number(locked.price_usd).toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س إلى رصيدك.`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+return true;
+} catch (e) {
+try { await client.query("ROLLBACK"); } catch {}
+throw e;
+} finally { client.release(); }
+}
+
+async function cancelApi2Order(ctx, orderId) {
+const row = (await q("SELECT * FROM orders WHERE id=$1", [orderId])).rows[0];
+if (!row || Number(row.user_id) !== Number(ctx.from.id) || !row.api_source_id) { await ctx.reply("⚠️ الطلب غير موجود."); return; }
+if (row.status !== "pending") { await ctx.reply("⚠️ لا يمكن إلغاء هذا الطلب بعد تغير حالته."); return; }
+if (!row.cancel_enabled || !row.cancel_url || !row.cancel_seconds) { await ctx.reply("⚠️ هذا المنتج لا يدعم الإلغاء."); return; }
+const availableAt = row.cancel_available_at ? new Date(row.cancel_available_at).getTime() : new Date(row.created_at).getTime() + Number(row.cancel_seconds) * 1000;
+if (Date.now() < availableAt) { const remaining = Math.ceil((availableAt - Date.now()) / 1000); await ctx.reply(`⏳ لا يمكن إلغاء الطلب الآن. الإلغاء يصبح متاحاً بعد ${remaining} ثانية.`); return; }
+const src = await getApiSource(row.api_source_id);
+if (!src) { await ctx.reply("⚠️ مصدر API غير موجود."); return; }
+await ctx.reply("⏳ جاري إلغاء الطلب والتحقق من العملية...");
+const result = await requestApiSourceCancellation(src, row);
+if (!result.ok) { await ctx.reply(`❌ لم يتم تأكيد إلغاء الطلب من API.\nالرد: ${formatApiResponseClean(result.response) || "غير معروف"}`); return; }
+row._cancelResponse = result.response;
+const refunded = await refundCancelledOrder(row, null, ctx);
+if (!refunded) { await ctx.reply("⚠️ تم إرسال الإلغاء لكن تعذر تسجيل إعادة الرصيد."); return; }
+await ctx.reply("✅ تم إلغاء الطلب وإعادة قيمته إلى رصيدك بعد تأكيد الإلغاء من API.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
 }
 
 async function checkOrderStatus(ctx, orderId) {
@@ -1931,7 +2192,7 @@ resp = await checkOrder(row.oranos_order_id);
 }
 
 const orderData = extractOrderData(resp);
-const rawNew = ((orderData?.status ?? row.status) ?? "").toString().toLowerCase();
+const rawNew = getBestApiStatus(resp) || String(row.status ?? "").toLowerCase();
 const isRejected = REJECT_STATUSES.has(rawNew); const isAccepted = ACCEPT_STATUSES.has(rawNew);
 const finalStatus = isRejected ? "reject" : isAccepted ? "accept" : rawNew;
 if (finalStatus !== row.status) {
@@ -1961,7 +2222,7 @@ if (!resp && order.oranos_uuid) resp = await checkOrder(order.oranos_uuid, true)
 if (!resp) return;
 
 const orderData = extractOrderData(resp);
-const rawNew = ((orderData?.status ?? "").toString().toLowerCase());
+const rawNew = getBestApiStatus(resp);
 if (!rawNew || rawNew === order.status) return;
 
 const isRejected = REJECT_STATUSES.has(rawNew);
@@ -2136,10 +2397,46 @@ try { await ctx.replyWithPhoto(d.screenshot_file_id, { caption: text, ...kb }); 
 catch { await ctx.reply(`${text}\n\n(تعذّر تحميل الصورة)`, kb); }
 }
 
-async function approveDeposit(ctx, depId) {
+async function approveDeposit(ctx, depId, overrideAmount = null) {
 if (!(await requireAdmin(ctx))) return;
+const client = await pool.connect();
+let d;
+let approvedAmount = null;
+try {
+await client.query("BEGIN");
+const res = await client.query("SELECT * FROM deposit_requests WHERE id=$1 FOR UPDATE", [depId]);
+d = res.rows[0];
+if (!d || d.status !== "pending") {
+await client.query("ROLLBACK");
+await ctx.reply("⚠️ تمت معالجة طلب الإيداع مسبقاً.");
+return;
+}
+const amount = overrideAmount != null ? Number(overrideAmount) : Number(d.amount);
+if (!Number.isFinite(amount) || amount <= 0) {
+await client.query("ROLLBACK");
 setStep(ctx.from.id, { kind: "admin:depositApproveAmount", depositId: depId });
-await ctx.reply(`💵 أرسل المبلغ بالدولار لإضافته إلى رصيد المستخدم:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "admin:menu")]]));
+await ctx.reply("💵 أرسل المبلغ بالدولار لإضافته إلى رصيد المستخدم:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "admin:menu")]]));
+return;
+}
+approvedAmount = amount;
+await client.query("UPDATE users SET balance=balance+$1 WHERE id=$2", [amount, d.user_id]);
+await client.query("UPDATE deposit_requests SET status='approved', amount=$1, processed_by=$2, processed_at=NOW() WHERE id=$3", [amount, ctx.from.id, depId]);
+await client.query("COMMIT");
+} catch (e) {
+try { await client.query("ROLLBACK"); } catch {}
+throw e;
+} finally { client.release(); }
+
+invalidateUserCache(d.user_id);
+await clearDepositForOtherAdmins(ctx.from.id, depId, "✅ طلب إيداع — تمت الموافقة");
+setStep(ctx.from.id, { kind: "idle" });
+const rate = await getExchangeRate();
+const amount = Number(approvedAmount);
+await ctx.reply(`✅ تمت الموافقة على الإيداع.
+💵 تمت إضافة ${amount.toFixed(2)}$ إلى رصيد المستخدم.`);
+await ctx.telegram.sendMessage(d.user_id, `✅ تمت الموافقة على إيداعك.
+💰 تمت إضافة ${amount.toFixed(2)}$ إلى رصيدك.
+📊 رصيدك الجديد: ${formatBalance(Number((await getUser(d.user_id))?.balance ?? 0), rate)}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
 }
 
 async function rejectDeposit(ctx, depId) {
@@ -2281,6 +2578,8 @@ if (!token) { console.error("❌ BOT_TOKEN is required"); process.exit(1); }
 await ensureTables();
 await ensureDefaults();
 await ensureDefaultDepositMethods();
+// Seed the local product catalog before users can press "المنتجات".
+await Promise.race([refreshCatalogCache(), new Promise(resolve => setTimeout(resolve, 9000))]).catch(() => {});
 
 const bot = new Telegraf(token, { handlerTimeout: 90_000 });
 
@@ -2487,6 +2786,7 @@ await askNextParam(ctx, p, step.priceUsd, qty, step.paramKeys, {}, 0, step.backT
 bot.action("ord:confirm", async ctx => { await executeOrder(ctx); });
 bot.action("ord:cancel", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
 bot.action(/^ord:check:(\d+)$/, async ctx => { await checkOrderStatus(ctx, Number(ctx.match[1])); });
+bot.action(/^api2cancel:(\d+)$/, async ctx => { await cancelApi2Order(ctx, Number(ctx.match[1])); });
 
 // ── Manual product buy (NO NOTE REQUIRED) ─────────────────────────────
 bot.action(/^mbuy:(\d+)$/, async ctx => {
@@ -2551,7 +2851,7 @@ if (newStatus === "banned" && u?.is_admin) {
 authedAdminIds.delete(uid);
 await setAdminSession(uid, false).catch(() => {});
 }
-await ctx.reply(`newStatus === "banned" ? "🚫 تم الحظر." : "✅ تم رفع الحظر."`);
+await ctx.reply(newStatus === "banned" ? "🚫 تم الحظر." : "✅ تم رفع الحظر.");
 await showUserCard(ctx, uid);
 });
 bot.action(/^adm:userAdmin:(\d+)$/, async ctx => {
@@ -2565,7 +2865,7 @@ if (!newAdmin) {
 authedAdminIds.delete(uid);
 await setAdminSession(uid, false).catch(() => {});
 }
-await ctx.reply(`newAdmin ? "👑 تم التعيين إداريًّا." : "👤 تم إلغاء الإداري."`);
+await ctx.reply(newAdmin ? "👑 تم التعيين إداريًّا." : "👤 تم إلغاء الإداري.");
 await showUserCard(ctx, uid);
 });
 bot.action(/^adm:userSA:(\d+)$/, async ctx => {
@@ -2658,6 +2958,13 @@ const nextHidden = !(cur?.hidden ?? false);
 await q("INSERT INTO product_overrides(product_id,hidden) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET hidden=$2, updated_at=NOW()", [pid, nextHidden]);
 invalidateCaches(); await ctx.reply(nextHidden ? "🙈 تم إخفاء المنتج." : "👁 تم إظهار المنتج.");
 });
+bot.action(/^adm:deleteProd:(\d+)$/, async ctx => {
+if (!(await requireSuperAdmin(ctx))) return;
+const pid = Number(ctx.match[1]);
+await q("INSERT INTO product_overrides(product_id,hidden) VALUES($1,true) ON CONFLICT(product_id) DO UPDATE SET hidden=true, updated_at=NOW()", [pid]);
+invalidateCaches();
+await ctx.reply("🗑️ تم حذف المنتج من واجهة المتجر. يمكنك إظهاره لاحقاً من إدارة المنتج.");
+});
 
 // ── Admin: category management ────────────────────────────────────────
 bot.action(/^adm:catEdit:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editCategoryName", categoryId: Number(ctx.match[1]) }); await ctx.reply("✏️ أرسل الاسم الجديد للقسم (أو reset):"); });
@@ -2666,16 +2973,39 @@ if (!(await requireAdmin(ctx))) return;
 const cid = Number(ctx.match[1]); const cur = (await q("SELECT hidden FROM category_overrides WHERE category_id=$1", [cid])).rows[0];
 const nextHidden = !(cur?.hidden ?? false);
 await q("INSERT INTO category_overrides(category_id,hidden) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET hidden=$2, updated_at=NOW()", [cid, nextHidden]);
-invalidateCaches(); await ctx.reply(`nextHidden ? "🙈 تم إخفاء القسم." : "👁 تم إظهار القسم."`);
+invalidateCaches(); await ctx.reply(nextHidden ? "🙈 تم إخفاء القسم." : "👁 تم إظهار القسم.");
 });
 bot.action(/^adm:catMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); const cur = (await q("SELECT custom_markup_percent FROM category_overrides WHERE category_id=$1", [cid])).rows[0]; setStep(ctx.from.id, { kind: "admin:setCatMarkup", categoryId: cid }); await ctx.reply(`% نسبة ربح القسم ${cid}\nالحالية: ${cur?.custom_markup_percent ?? "غير محددة"}\nأرسل النسبة أو reset:`); });
 bot.action(/^adm:catSort:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); setStep(ctx.from.id, { kind: "admin:setCatSort", categoryId: cid }); await ctx.reply(`🔢 ترتيب القسم ${cid}\nأرسل رقم الترتيب أو reset:`); });
 bot.action(/^adm:moveCatAll:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:moveCatAll", sourceCategoryId: Number(ctx.match[1]) }); await ctx.reply(`🚚 نقل جميع منتجات القسم\nأرسل رقم القسم الهدف أو cancel:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${ctx.match[1]}:1:0`)]])); });
 bot.action(/^adm:moveCatToParent:(\d+)$/, async ctx => {
-if (!(await requireAdmin(ctx))) return;
+if (!(await requireSuperAdmin(ctx))) return;
 const cid = Number(ctx.match[1]);
 setStep(ctx.from.id, { kind: "admin:moveCatToParent", categoryId: cid });
-await ctx.reply(`📁 نقل القسم إلى داخل قسم آخر\nأرسل رقم القسم الهدف أو "0" للرجوع للجذر أو "cancel" للإلغاء:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${cid}:1:0`)]]));
+await ctx.reply(`📁 نقل القسم إلى داخل قسم آخر\nأرسل **اسم القسم الهدف** كما يظهر في المتجر، أو اكتب "0" للجذر أو "cancel" للإلغاء:`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${cid}:1:0`)]]) });
+});
+bot.action(/^adm:moveApi2CatToParent:(\d+)$/, async ctx => {
+if (!(await requireSuperAdmin(ctx))) return;
+const cid = Number(ctx.match[1]);
+const cat = (await q("SELECT * FROM api_source_categories WHERE id=$1", [cid])).rows[0];
+if (!cat) { await ctx.reply("⚠️ القسم غير موجود."); return; }
+setStep(ctx.from.id, { kind: "admin:moveApi2CatToParent", categoryId: cid });
+await ctx.reply(`📁 نقل «${cat.name}» إلى داخل قسم آخر\nأرسل **اسم القسم الهدف** كما يظهر في المتجر، أو اكتب "0" للجذر أو "cancel" للإلغاء:`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `api2cat:${cid}:1:0`) ]]) });
+});
+bot.action(/^adm:deleteApi2Cat:(\d+)$/, async ctx => {
+if (!(await requireSuperAdmin(ctx))) return;
+const cid = Number(ctx.match[1]);
+await q("UPDATE api_source_categories SET active=false, updated_at=NOW() WHERE id=$1", [cid]);
+await q("UPDATE api_source_products SET available=false, updated_at=NOW() WHERE category_id=$1", [cid]);
+invalidateCaches();
+await ctx.reply("🗑️ تم حذف القسم ومنتجاته من واجهة المتجر.");
+});
+bot.action(/^adm:deleteApi2Prod:(\d+)$/, async ctx => {
+if (!(await requireSuperAdmin(ctx))) return;
+const pid = Number(ctx.match[1]);
+await q("UPDATE api_source_products SET available=false, updated_at=NOW() WHERE id=$1", [pid]);
+invalidateCaches();
+await ctx.reply("🗑️ تم حذف المنتج من واجهة المتجر.");
 });
 
 // ── Admin: settings ───────────────────────────────────────────────────
@@ -2887,7 +3217,7 @@ const id = Number(ctx.match[1]);
 const src = await getApiSource(id);
 if (!src) return;
 await updateApiSource(id, { active: !src.active });
-await ctx.reply(`!src.active ? "✅ تم التفعيل." : "🔴 تم التعطيل."`);
+await ctx.reply(src.active ? "🔴 تم التعطيل." : "✅ تم التفعيل.");
 });
 bot.action(/^adm:apiSync:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
@@ -2895,6 +3225,8 @@ const id = Number(ctx.match[1]);
 await ctx.reply("🔄 جاري تحديث المنتجات...");
 try {
 const count = await syncApiSource(id);
+invalidateCaches();
+await refreshCatalogCache().catch(() => {});
 await ctx.reply(`✅ تم تحديث ${count} منتج.`);
 } catch (err) {
 await ctx.reply(`❌ خطأ: ${err.message}`);
@@ -3011,6 +3343,15 @@ const key = step.paramKeys?.[step.idx];
 const collected = { ...(step.collected ?? {}) };
 if (key) collected[key] = txt;
 await askNextParam(ctx, product, step.priceUsd, step.qty, step.paramKeys ?? [], collected, (step.idx ?? 0) + 1, step.backTo);
+return;
+}
+case "admin:depositApproveAmount": {
+const amount = Number(txt.replace(/,/g, ""));
+if (!Number.isFinite(amount) || amount <= 0) {
+await ctx.reply("⚠️ أرسل مبلغاً صحيحاً أكبر من صفر.");
+return;
+}
+await approveDeposit(ctx, step.depositId, amount);
 return;
 }
 case "deposit:info": {
@@ -3142,6 +3483,53 @@ setStep(ctx.from.id, { kind: "idle" });
 await ctx.reply("✅ تم إرسال الرسالة.");
 return;
 }
+case "admin:moveCatToParent": {
+if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await showAdminMenu(ctx); return; }
+const sourceId = Number(step.categoryId);
+if (!Number.isFinite(sourceId) || sourceId <= 0) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("⚠️ القسم المصدر غير صالح."); return; }
+if (txt === "0") {
+await q("DELETE FROM category_overrides WHERE category_id=$1", [sourceId]);
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إعادة القسم إلى الجذر/مكانه الأصلي."); return;
+}
+const visited = new Set();
+const matches = [];
+const walk = async parentId => {
+if (visited.has(parentId)) return;
+visited.add(parentId);
+const content = await getCachedContent(parentId);
+for (const c of content.categories || []) {
+if (String(c.name ?? "").trim().toLowerCase() === txt.trim().toLowerCase()) matches.push(c);
+await walk(c.id);
+}
+};
+try { await walk(0); } catch (e) { await ctx.reply(`❌ تعذر البحث عن القسم: ${e.message}`); return; }
+if (!matches.length) { await ctx.reply("❌ لم أجد قسماً بهذا الاسم في API 1."); return; }
+if (matches.length > 1) { await ctx.reply("⚠️ يوجد أكثر من قسم بنفس الاسم. أرسل اسماً مميزاً."); return; }
+const target = matches[0];
+if (Number(target.id) === sourceId) { await ctx.reply("⚠️ لا يمكن نقل القسم إلى نفسه."); return; }
+await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=$2, updated_at=NOW()", [sourceId, target.id]);
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply(`✅ تم نقل القسم «${sourceId}» إلى داخل «${target.name}».`);
+return;
+}
+case "admin:moveApi2CatToParent": {
+if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await showAdminMenu(ctx); return; }
+const sourceId = Number(step.categoryId);
+const src = (await q("SELECT * FROM api_source_categories WHERE id=$1", [sourceId])).rows[0];
+if (!src) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("⚠️ القسم المصدر غير موجود."); return; }
+if (txt === "0") {
+await q("UPDATE api_source_categories SET parent_id=0, updated_at=NOW() WHERE id=$1", [sourceId]);
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم نقل القسم إلى الجذر."); return;
+}
+const target = (await q("SELECT * FROM api_source_categories WHERE lower(trim(name))=lower(trim($1)) AND active=true LIMIT 2", [txt.trim()])).rows;
+if (!target.length) { await ctx.reply("❌ لم أجد قسماً بهذا الاسم."); return; }
+if (target.length > 1) { await ctx.reply("⚠️ يوجد أكثر من قسم بنفس الاسم. أرسل اسماً مميزاً."); return; }
+if (Number(target[0].id) === sourceId) { await ctx.reply("⚠️ لا يمكن نقل القسم إلى نفسه."); return; }
+await q("UPDATE api_source_categories SET parent_id=$1, updated_at=NOW() WHERE id=$2", [target[0].id, sourceId]);
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply(`✅ تم نقل القسم «${src.name}» إلى داخل «${target[0].name}».`);
+return;
+}
 case "admin:addApiSource:name": {
 setStep(ctx.from.id, { kind: "admin:addApiSource:url", name: txt });
 await ctx.reply("🔗 أرسل رابط API (base URL):");
@@ -3158,20 +3546,35 @@ await ctx.reply("% أرسل نسبة الربح الافتراضية (مثال: 
 return;
 }
 case "admin:addApiSource:markup": {
-const markup = Number(txt);
-if (!Number.isFinite(markup) || markup < 0) { await ctx.reply("⚠️ نسبة غير صالحة."); return; }
-const src = await createApiSource(step.name, step.baseUrl, step.apiToken, markup);
+const markup = Number(txt.replace(/,/g, ""));
+if (!Number.isFinite(markup) || markup < 0) { await ctx.reply("⚠️ نسبة غير صالحة. أرسل رقماً مثل 5"); return; }
+const baseUrl = String(step.baseUrl ?? "").trim().replace(/\/+$/, "");
+if (!/^https?:\/\//i.test(baseUrl)) { await ctx.reply("⚠️ رابط API غير صالح. أرسله بهذا الشكل: https://example.com"); return; }
+if (!step.apiToken?.trim()) { await ctx.reply("⚠️ API Token فارغ."); return; }
+try {
+const src = await createApiSource(step.name, baseUrl, step.apiToken.trim(), markup);
+try { await syncApiSource(src.id); } catch (e) { console.error("Initial API sync failed:", e.message); }
+invalidateCaches();
 setStep(ctx.from.id, { kind: "idle" });
-await ctx.reply(`✅ تم إضافة API: ${src.name}`);
+await ctx.reply(`✅ تم إضافة API: ${src.name}\n🔄 تم حفظ المنتجات وتحديث الأقسام.`);
+} catch (e) {
+console.error("Create API source failed:", e);
+await ctx.reply(`❌ تعذر إضافة API.\nالسبب: ${e?.message ?? "خطأ غير معروف"}`);
+}
 return;
 }
 case "admin:editApiMarkup": {
-const markup = Number(txt);
+const markup = Number(txt.replace(/,/g, ""));
 if (!Number.isFinite(markup) || markup < 0) { await ctx.reply("⚠️ نسبة غير صالحة."); return; }
+try {
 await updateApiSource(step.apiSourceId, { markup_percent: markup });
 invalidateCaches();
 setStep(ctx.from.id, { kind: "idle" });
 await ctx.reply("✅ تم تحديث نسبة الربح.");
+} catch (e) {
+console.error("API markup update failed:", e);
+await ctx.reply(`❌ تعذر حفظ نسبة الربح.\nالسبب: ${e?.message ?? "خطأ غير معروف"}`);
+}
 return;
 }
 case "admin:editBtnLabel": {
