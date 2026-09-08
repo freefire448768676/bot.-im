@@ -1,5 +1,5 @@
 // ============================================================
-//  متجر المروان — بوت تيليجرام v3.0 (تحديث شامل)
+//  متجر المروان — بوت تيليجرام v3.8 (إصلاح شامل)
 //  إضافات: API ثاني، منتجات يدوية متكاملة، أقسام يدوية، ردود متعددة
 // ============================================================
 "use strict";
@@ -244,6 +244,10 @@ CREATE TABLE IF NOT EXISTS product_catalog_cache (
 cache_key TEXT PRIMARY KEY,
 payload JSONB NOT NULL,
 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS processed_telegram_updates (
+update_id BIGINT PRIMARY KEY,
+created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 `);
 
@@ -666,7 +670,7 @@ if (apiSourceClients.has(key)) return apiSourceClients.get(key);
 const client = axios.create({
 baseURL: source.base_url,
 timeout: 12000,
-headers: { "api-token": source.api_token, Accept: "application/json" },
+headers: { "api-token": source.api_token, Authorization: `Bearer ${source.api_token}`, Accept: "application/json" },
 httpAgent: new http.Agent({ keepAlive: true, maxSockets: 20 }),
 httpsAgent: new https.Agent({ keepAlive: true, maxSockets: 20 }),
 });
@@ -674,26 +678,69 @@ apiSourceClients.set(key, client);
 return client;
 }
 
+function unwrapApiList(data, keys = ["products", "data", "result", "items"]) {
+if (Array.isArray(data)) return data;
+for (const key of keys) if (Array.isArray(data?.[key])) return data[key];
+return [];
+}
+
 async function fetchApiSourceProducts(source) {
 const client = getApiSourceClient(source);
-const res = await client.get("/client/api/products");
-const data = res.data;
-if (Array.isArray(data)) return data;
-if (Array.isArray(data?.products)) return data.products;
-if (Array.isArray(data?.data)) return data.data;
-if (Array.isArray(data?.result)) return data.result;
+let lastError = null;
+for (const path of ["/client/api/products", "/client/api/products-wrapped"]) {
+try {
+const res = await client.get(path);
+const products = unwrapApiList(res.data);
+if (products.length || path.endsWith("wrapped")) return products;
+} catch (e) { lastError = e; }
+}
+// Some providers expose the complete catalog instead of the products endpoint.
+try {
+const res = await client.get("/client/api/catalog");
+const products = unwrapApiList(res.data);
+if (products.length) return products;
+} catch (e) { lastError = e; }
+if (lastError) throw lastError;
 return [];
+}
+
+function flattenApiCategories(items, parentExternalId = 0, out = []) {
+for (const c of Array.isArray(items) ? items : []) {
+const id = c?.id ?? c?.category_id ?? c?.categoryId;
+if (id == null) continue;
+const row = { ...c, id, parent_id: c?.parent_id ?? c?.parentId ?? parentExternalId };
+out.push(row);
+const children = c?.categories ?? c?.children ?? c?.subcategories ?? [];
+if (Array.isArray(children) && children.length) flattenApiCategories(children, id, out);
+}
+return out;
 }
 
 async function fetchApiSourceContent(source, parentId) {
 const client = getApiSourceClient(source);
+try {
 const res = await client.get(`/client/api/content/${parentId}`);
 const data = res.data ?? {};
 const body = Array.isArray(data?.data) ? { products: data.data, categories: [] } : (data?.data && typeof data.data === "object" ? data.data : data);
 return {
-products: Array.isArray(body?.products) ? body.products : [],
+products: unwrapApiList(body, ["products", "data", "result", "items"]),
 categories: Array.isArray(body?.categories) ? body.categories : [],
 };
+} catch (firstError) {
+if (String(parentId) !== "0") throw firstError;
+// Fallback for providers that do not implement /content/0.
+for (const path of ["/client/api/catalog", "/client/api/tree", "/client/api/categories/all"]) {
+try {
+const res = await client.get(path);
+const data = res.data ?? {};
+const root = data?.data && typeof data.data === "object" && !Array.isArray(data.data) ? data.data : data;
+const cats = flattenApiCategories(root?.categories ?? root?.data ?? root?.items ?? (Array.isArray(root) ? root : []));
+const products = unwrapApiList(root, ["products", "data", "result", "items"]);
+if (cats.length || products.length) return { products, categories: cats };
+} catch {}
+}
+throw firstError;
+}
 }
 
 async function placeApiSourceOrder(source, productId, params, orderUuid) {
@@ -1453,7 +1500,7 @@ return Markup.button.callback(`🛒 ${m.name} • ${usd.toFixed(2)}$ | ${syp.toL
 });
 
 // API 2 category buttons
-const api2CatBtns = api2Cats.rows.map(c => Markup.button.callback(`📂 ${isAdmin ? `🔢${c.id} | ` : ""}${c.name}`.slice(0, 60), `api2cat:${c.id}:1:${parentId}`));
+const api2CatBtns = api2Cats.rows.map(c => Markup.button.callback(`📂 ${c.name}`.slice(0, 60), `api2cat:${c.id}:1:${parentId}`));
 
 if (!visibleCats.length && !visibleProds.length && !vcBtns.length && !manualBtns.length && !manualCatBtns.length && !api2CatBtns.length && !api2Prods.rows.length) {
 const emptyRows = [];
@@ -1481,7 +1528,7 @@ const catBtns = [
 ...visibleCats.map(c => {
 const ov = catOv.get(c.id);
 const label = ov?.customName ?? c._override?.custom_name ?? c.name;
-const adminLabel = isAdmin ? `🔢${c.id} | ` : "";
+const adminLabel = "";
 return Markup.button.callback(`${ov?.hidden ? "🔒 " : "📂 "}${adminLabel}${label}`.slice(0, 60), `cat:${c.id}:1:${parentId}`);
 }),
 ];
@@ -1829,7 +1876,7 @@ else backBtn = Markup.button.callback(backLabel, `cat:${backTo}:1:0`);
 
 // Sub categories
 const subRes = await q("SELECT * FROM api_source_categories WHERE COALESCE(custom_parent_id,parent_id)=$1 AND active=true ORDER BY id", [catId]);
-const subBtns = subRes.rows.map(c => Markup.button.callback(`📂 ${isAdmin ? `🔢${c.id} | ` : ""}${c.name}`.slice(0, 60), `api2cat:${c.id}:1:${catId}`));
+const subBtns = subRes.rows.map(c => Markup.button.callback(`📂 ${c.name}`.slice(0, 60), `api2cat:${c.id}:1:${catId}`));
 
 // Products
 const prodRes = await q("SELECT * FROM api_source_products WHERE category_id=$1 AND available=true", [catId]);
@@ -2323,25 +2370,31 @@ const isRejected = REJECT_STATUSES.has(rawNew);
 const isAccepted = ACCEPT_STATUSES.has(rawNew);
 const finalStatus = isRejected ? "reject" : isAccepted ? "accept" : "pending";
 const code = extractDeliveredCode(resp);
-
+let latest = row.status;
 if (finalStatus !== row.status) {
 const updateSql = "UPDATE orders SET status=$1, api_response=$2" + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3") + " AND status=$" + (code ? "5" : "4") + " RETURNING id";
 const updateParams = code ? [finalStatus, JSON.stringify(resp), code, row.id, row.status] : [finalStatus, JSON.stringify(resp), row.id, row.status];
 const updated = await q(updateSql, updateParams);
 if (updated.rows.length) {
-if (isRejected && !REJECT_STATUSES.has(row.status)) await adjustBalance(ctx.from.id, Number(row.price_usd));
-if (isRejected) await ctx.reply(`❌ تم رفض طلبك.\n💰 تمت إعادة ${Number(row.price_usd).toFixed(2)}$ إلى رصيدك.`);
-else if (isAccepted) await ctx.reply(code ? `✅ تم تنفيذ طلبك بنجاح.\n🔑 تفاصيل الطلب:\n\n${code}` : "✅ تم تنفيذ طلبك بنجاح.");
+if (isRejected) {
+await adjustBalance(ctx.from.id, Number(row.price_usd));
+latest = "reject";
+} else if (isAccepted) latest = "accept";
+} else {
+latest = (await q("SELECT status FROM orders WHERE id=$1", [row.id])).rows[0]?.status ?? finalStatus;
 }
+} else {
+latest = row.status;
 }
-
-const latest = (await q("SELECT status FROM orders WHERE id=$1", [row.id])).rows[0]?.status ?? finalStatus;
-await ctx.reply(
-`الحالة الحالية لطلبك: ${statusLabel(latest)}`,
-latest === "pending"
-? Markup.inlineKeyboard([[Markup.button.callback("🔄 تحديث الحالة", `ord:check:${row.id}`)], [Markup.button.callback("🏠 الرئيسية", "home")]])
-: Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])
-);
+if (latest === "accept") {
+await ctx.reply(code ? `✅ تم تنفيذ طلبك بنجاح.\n🔑 تفاصيل الطلب:\n\n${code}` : "✅ تم تنفيذ طلبك بنجاح.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+return;
+}
+if (latest === "reject") {
+await ctx.reply("❌ تم رفض طلبك. تمت إعادة المبلغ إلى رصيدك.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+return;
+}
+await ctx.reply("⏳ طلبك ما زال قيد التنفيذ.", Markup.inlineKeyboard([[Markup.button.callback("🔄 تحديث الحالة", `ord:check:${row.id}`)], [Markup.button.callback("🏠 الرئيسية", "home")]]));
 } catch (e) {
 console.error("checkOrderStatus failed:", e);
 await ctx.reply("⚠️ تعذّر فحص الحالة الآن.", Markup.inlineKeyboard([[Markup.button.callback("🔄 المحاولة مجدداً", `ord:check:${row.id}`)], [Markup.button.callback("🏠 الرئيسية", "home")]]));
@@ -2695,7 +2748,7 @@ await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
 async function showManualCategoriesAdmin(ctx) {
 if (!(await requireAdmin(ctx))) return;
 const cats = (await q("SELECT * FROM manual_categories WHERE parent_id=0 ORDER BY position")).rows;
-const rows = cats.map(c => [Markup.button.callback(`🔢${c.id} | ${c.active ? "📁" : "🔒"} ${c.name}`, `adm:mcManage:${c.id}`)]);
+const rows = cats.map(c => [Markup.button.callback(`${c.active ? "📁" : "🔒"} ${c.name}`, `adm:mcManage:${c.id}`)]);
 rows.push([Markup.button.callback("➕ إضافة قسم", "adm:addMc")]);
 rows.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
 await sendOrEdit(ctx, "📁 الأقسام اليدوية:", Markup.inlineKeyboard(rows));
@@ -2781,24 +2834,36 @@ if (ctx.callbackQuery) ctx.answerCbQuery().catch(() => {});
 return next();
 });
 
-// منع معالجة نفس Telegram update مرتين، ومنع إرسال نفس الرد مرتين داخل نفس update.
+// منع معالجة نفس Telegram update مرتين حتى لو أعاد Telegram الإرسال أو كانت هناك نسخة ثانية من البوت.
 const _processedUpdateIds = new Set();
 const _processedUpdateTimers = new Map();
+const _replyDedup = new Map();
 bot.use(async (ctx, next) => {
 const updateId = ctx.update?.update_id;
 if (updateId != null) {
 if (_processedUpdateIds.has(updateId)) return;
+try {
+const saved = await q("INSERT INTO processed_telegram_updates(update_id) VALUES($1) ON CONFLICT DO NOTHING RETURNING update_id", [updateId]);
+if (!saved.rows.length) return;
+} catch (e) {
+// إذا تعذر جدول منع التكرار، نستخدم الحماية داخل الذاكرة على الأقل.
+} 
 _processedUpdateIds.add(updateId);
 const timer = setTimeout(() => { _processedUpdateIds.delete(updateId); _processedUpdateTimers.delete(updateId); }, 60_000);
 _processedUpdateTimers.set(updateId, timer);
 }
-const sent = new Set();
 const originalReply = ctx.reply.bind(ctx);
 ctx.reply = async (...args) => {
 const text = typeof args[0] === "string" ? args[0] : JSON.stringify(args[0]);
-const key = `reply:${text}`;
-if (sent.has(key)) return;
-sent.add(key);
+const userId = ctx.from?.id ?? 0;
+const key = `${userId}:reply:${text}`;
+const now = Date.now();
+const last = _replyDedup.get(key) ?? 0;
+if (now - last < 2500) return;
+_replyDedup.set(key, now);
+if (_replyDedup.size > 2000) {
+for (const [k, t] of _replyDedup) if (now - t > 10000) _replyDedup.delete(k);
+}
 return originalReply(...args);
 };
 return next();
@@ -3161,7 +3226,7 @@ await ctx.reply("✅ تم حذف الصورة.");
 bot.action(/^adm:editPrice:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editPrice", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`✏️ سعر: ${p?.name ?? pid}\nأرسل: %5 ربح أو $2.5 ثابت أو reset`, { parse_mode: "Markdown" }); });
 bot.action(/^adm:editInstr:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editProductInstructions", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`📋 أرسل تعليمات ${p?.name ?? pid} أو clear للمسح:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `prod:${pid}:0`)]])); });
 bot.action(/^adm:renameProd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:renameProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`📝 الاسم الجديد لـ "${p?.name ?? pid}" أو reset:`); });
-bot.action(/^adm:moveProd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:moveProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`🚚 نقل "${p?.name ?? pid}"\nأرسل رقم القسم أو reset:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `prod:${pid}:0`)]])); });
+bot.action(/^adm:moveProd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:moveProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`🚚 نقل "${p?.name ?? pid}"\nأرسل اسم القسم أو reset:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `prod:${pid}:0`)]])); });
 bot.action(/^adm:hideProd:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const pid = Number(ctx.match[1]); const cur = (await q("SELECT hidden FROM product_overrides WHERE product_id=$1", [pid])).rows[0];
@@ -3196,12 +3261,12 @@ invalidateCaches(); await ctx.reply(nextHidden ? "🙈 تم إخفاء القس�
 });
 bot.action(/^adm:catMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); const cur = (await q("SELECT custom_markup_percent FROM category_overrides WHERE category_id=$1", [cid])).rows[0]; setStep(ctx.from.id, { kind: "admin:setCatMarkup", categoryId: cid }); await ctx.reply(`% نسبة ربح القسم ${cid}\nالحالية: ${cur?.custom_markup_percent ?? "غير محددة"}\nأرسل النسبة أو reset:`); });
 bot.action(/^adm:catSort:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); setStep(ctx.from.id, { kind: "admin:setCatSort", categoryId: cid }); await ctx.reply(`🔢 ترتيب القسم ${cid}\nأرسل رقم الترتيب أو reset:`); });
-bot.action(/^adm:moveCatAll:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:moveCatAll", sourceCategoryId: Number(ctx.match[1]) }); await ctx.reply(`🚚 نقل جميع منتجات القسم\nأرسل رقم القسم الهدف أو cancel:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${ctx.match[1]}:1:0`)]])); });
+bot.action(/^adm:moveCatAll:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:moveCatAll", sourceCategoryId: Number(ctx.match[1]) }); await ctx.reply(`🚚 نقل جميع منتجات القسم\nأرسل اسم القسم الهدف أو cancel:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${ctx.match[1]}:1:0`)]])); });
 bot.action(/^adm:moveCatToParent:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const cid = Number(ctx.match[1]);
 setStep(ctx.from.id, { kind: "admin:moveCatToParent", categoryId: cid });
-await ctx.reply(`📁 نقل القسم إلى داخل قسم آخر\nأرسل **رقم القسم الهدف** كما يظهر للإدارة، أو اكتب "0" للجذر أو "cancel" للإلغاء:`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${cid}:1:0`)]]) });
+await ctx.reply(`📁 نقل القسم إلى داخل قسم آخر\nأرسل **اسم القسم الهدف** كما يظهر في المتجر، أو اكتب "0" للجذر أو "cancel" للإلغاء:`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${cid}:1:0`)]]) });
 });
 bot.action(/^adm:moveApi2CatToParent:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
@@ -3209,7 +3274,7 @@ const cid = Number(ctx.match[1]);
 const cat = (await q("SELECT * FROM api_source_categories WHERE id=$1", [cid])).rows[0];
 if (!cat) { await ctx.reply("⚠️ القسم غير موجود."); return; }
 setStep(ctx.from.id, { kind: "admin:moveApi2CatToParent", categoryId: cid });
-await ctx.reply(`📁 نقل «${cat.name}» إلى داخل قسم آخر\nأرسل **رقم القسم الهدف** كما يظهر للإدارة، أو اكتب "0" للجذر أو "cancel" للإلغاء:`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `api2cat:${cid}:1:0`) ]]) });
+await ctx.reply(`📁 نقل «${cat.name}» إلى داخل قسم آخر\nأرسل **اسم القسم الهدف** كما يظهر في المتجر، أو اكتب "0" للجذر أو "cancel" للإلغاء:`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `api2cat:${cid}:1:0`) ]]) });
 });
 bot.action(/^adm:deleteApi2Cat:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
@@ -3302,7 +3367,7 @@ bot.action(/^adm:contactDel:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx
 bot.action("adm:vcList", async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const vcs = (await q("SELECT * FROM virtual_categories WHERE parent_id=0 ORDER BY position")).rows;
-const rows = vcs.map(v => [Markup.button.callback(`🔢${v.id} | ${v.active ? "📂" : "🔒"} ${v.name}`, `vcat:${v.id}:1:0`)]);
+const rows = vcs.map(v => [Markup.button.callback(`${v.active ? "📂" : "🔒"} ${v.name}`, `vcat:${v.id}:1:0`)]);
 rows.push([Markup.button.callback("➕ إضافة قسم", "adm:addVCat")]); rows.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
 await sendOrEdit(ctx, "📁 الأقسام المخصصة:", Markup.inlineKeyboard(rows));
 });
@@ -3730,18 +3795,55 @@ case "admin:moveCatToParent": {
 if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await showAdminMenu(ctx); return; }
 const sourceId = Number(step.categoryId);
 if (!Number.isFinite(sourceId) || sourceId <= 0) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("⚠️ القسم المصدر غير صالح."); return; }
-if (txt === "0") {
+if (txt === "0" || txt.toLowerCase() === "reset") {
 await q("DELETE FROM category_overrides WHERE category_id=$1", [sourceId]);
-invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إعادة القسم إلى مكانه الأصلي."); return;
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إعادة القسم إلى الجذر/مكانه الأصلي."); return;
 }
-const targetId = Number(txt.trim());
-if (!Number.isInteger(targetId) || targetId <= 0) { await ctx.reply("⚠️ أرسل رقم القسم فقط، أو 0 للجذر، أو cancel للإلغاء."); return; }
-const api1Target = await findApi1CategoryById(targetId);
-if (!api1Target) { await ctx.reply("❌ لم أجد قسماً بهذا الرقم في API 1."); return; }
-if (Number(api1Target.id) === sourceId) { await ctx.reply("⚠️ لا يمكن نقل القسم إلى نفسه."); return; }
-await q("INSERT INTO category_overrides(category_id,custom_name,custom_parent_id) VALUES($1,$2,$3) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=$3, custom_name=COALESCE(category_overrides.custom_name,$2), updated_at=NOW()", [sourceId, api1Target.name, api1Target.id]);
+const visited = new Set();
+const matches = [];
+const walk = async parentId => {
+if (visited.has(parentId)) return;
+visited.add(parentId);
+const content = await getCachedContent(parentId);
+for (const c of content.categories || []) {
+if (String(c.name ?? "").trim().toLowerCase() === txt.trim().toLowerCase()) matches.push(c);
+await walk(c.id);
+}
+};
+try { await walk(0); } catch (e) { await ctx.reply(`❌ تعذر البحث عن القسم: ${e.message}`); return; }
+if (!matches.length) { await ctx.reply("❌ لم أجد قسماً بهذا الاسم في API 1."); return; }
+if (matches.length > 1) { await ctx.reply("⚠️ يوجد أكثر من قسم بنفس الاسم. أرسل اسماً مميزاً."); return; }
+const target = matches[0];
+if (Number(target.id) === sourceId) { await ctx.reply("⚠️ لا يمكن نقل القسم إلى نفسه."); return; }
+await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=$2, updated_at=NOW()", [sourceId, target.id]);
 invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
-await ctx.reply(`✅ تم نقل القسم رقم ${sourceId} إلى داخل القسم رقم ${api1Target.id}.`);
+await ctx.reply(`✅ تم نقل القسم إلى داخل «${target.name}».`);
+return;
+}
+case "admin:moveProduct": {
+const pid = Number(step.productId);
+if (!Number.isFinite(pid) || pid <= 0) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("⚠️ المنتج غير صالح."); return; }
+if (txt.toLowerCase() === "reset" || txt === "0") {
+await q("INSERT INTO product_overrides(product_id,custom_category_id) VALUES($1,NULL) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=NULL, updated_at=NOW()", [pid]);
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إعادة المنتج إلى قسمه الأصلي."); return;
+}
+const visited = new Set();
+const matches = [];
+const walk = async parentId => {
+if (visited.has(parentId)) return;
+visited.add(parentId);
+const content = await getCachedContent(parentId);
+for (const c of content.categories || []) {
+if (String(c.name ?? "").trim().toLowerCase() === txt.trim().toLowerCase()) matches.push(c);
+await walk(c.id);
+}
+};
+try { await walk(0); } catch (e) { await ctx.reply(`❌ تعذر البحث عن القسم: ${e.message}`); return; }
+if (!matches.length) { await ctx.reply("❌ لم أجد قسماً بهذا الاسم في API 1."); return; }
+if (matches.length > 1) { await ctx.reply("⚠️ يوجد أكثر من قسم بنفس الاسم. أرسل اسماً مميزاً."); return; }
+await q("INSERT INTO product_overrides(product_id,custom_category_id) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET custom_category_id=$2, updated_at=NOW()", [pid, matches[0].id]);
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply(`✅ تم نقل المنتج إلى قسم «${matches[0].name}».`);
 return;
 }
 case "admin:renameApi2Product": {
