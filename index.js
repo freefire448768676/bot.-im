@@ -248,6 +248,7 @@ const migrations = [
 "ALTER TABLE category_overrides ADD COLUMN IF NOT EXISTS custom_parent_id INTEGER",
 "ALTER TABLE deposit_methods ADD COLUMN IF NOT EXISTS image_file_id TEXT",
 "ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_session_active BOOLEAN NOT NULL DEFAULT false",
+"ALTER TABLE users ADD COLUMN IF NOT EXISTS can_delete_products BOOLEAN NOT NULL DEFAULT false",
 "ALTER TABLE product_overrides ADD COLUMN IF NOT EXISTS api_source_id INTEGER",
 "ALTER TABLE product_overrides ADD COLUMN IF NOT EXISTS external_id TEXT",
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS api_source_id INTEGER",
@@ -261,13 +262,32 @@ const migrations = [
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS image_file_id TEXT",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS stock_qty INTEGER NOT NULL DEFAULT -1",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS markup_percent NUMERIC(6,2)",
+"ALTER TABLE api_sources ADD COLUMN IF NOT EXISTS api_token TEXT",
+"ALTER TABLE api_sources ADD COLUMN IF NOT EXISTS markup_percent NUMERIC(6,2)",
+"ALTER TABLE api_sources ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT true",
+"ALTER TABLE api_sources ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
+"UPDATE api_sources SET api_token='' WHERE api_token IS NULL",
+"UPDATE api_sources SET markup_percent=3 WHERE markup_percent IS NULL",
+"UPDATE api_sources SET active=true WHERE active IS NULL",
+"UPDATE api_sources SET updated_at=NOW() WHERE updated_at IS NULL",
+"ALTER TABLE api_sources ALTER COLUMN api_token SET DEFAULT ''",
+"ALTER TABLE api_sources ALTER COLUMN api_token SET NOT NULL",
+"ALTER TABLE api_sources ALTER COLUMN markup_percent SET DEFAULT 3",
+"ALTER TABLE api_sources ALTER COLUMN markup_percent SET NOT NULL",
+"ALTER TABLE api_sources ALTER COLUMN active SET DEFAULT true",
+"ALTER TABLE api_sources ALTER COLUMN active SET NOT NULL",
 "ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS cancel_enabled BOOLEAN NOT NULL DEFAULT false",
 "ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS cancel_seconds INTEGER",
 "ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS cancel_url TEXT",
 "ALTER TABLE api_source_categories ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT true",
+"CREATE INDEX IF NOT EXISTS idx_api_source_products_category_available ON api_source_products(category_id, available)",
+"CREATE INDEX IF NOT EXISTS idx_api_source_products_source_available ON api_source_products(api_source_id, available)",
+"CREATE INDEX IF NOT EXISTS idx_api_source_products_source_category_available ON api_source_products(api_source_id, category_id, available)",
+"CREATE INDEX IF NOT EXISTS idx_api_source_categories_parent_active ON api_source_categories(api_source_id, parent_id, active)",
 ];
 for (const mig of migrations) {
-await q(mig).catch(() => {});
+try { await q(mig); }
+catch (e) { console.error("DB migration failed:", mig, e.message); }
 }
 }
 
@@ -695,7 +715,18 @@ product?.cancel?.seconds, product?.cancel?.after_seconds, product?.cancel?.after
 product?.cancellation?.seconds, product?.cancellation?.after_seconds, product?.cancellation?.after,
 ];
 const rawSeconds = secondsCandidates.find(v => v != null && v !== "");
-const seconds = Number.isFinite(Number(rawSeconds)) && Number(rawSeconds) > 0 ? Math.floor(Number(rawSeconds)) : null;
+const parseDurationSeconds = value => {
+if (value == null || value === "") return null;
+if (typeof value === "number") return Number.isFinite(value) && value > 0 ? Math.floor(value) : null;
+const text = String(value).trim().toLowerCase();
+if (/^\d+(?:\.\d+)?$/.test(text)) return Math.floor(Number(text));
+const hm = text.match(/^(?:(\d+)\s*(?:h|hr|hour|hours|ساعة|ساعات)\s*)?(?:(\d+)\s*(?:m|min|minute|minutes|دقيقة|دقائق)\s*)?(?:(\d+)\s*(?:s|sec|second|seconds|ثانية|ثواني))?$/i);
+if (hm && (hm[1] || hm[2] || hm[3])) return Number(hm[1]||0)*3600 + Number(hm[2]||0)*60 + Number(hm[3]||0);
+const clock = text.match(/^(\d+):([0-5]\d)(?::([0-5]\d))?$/);
+if (clock) return Number(clock[1])*60 + Number(clock[2]) + Number(clock[3]||0);
+return null;
+};
+const seconds = parseDurationSeconds(rawSeconds);
 return { cancelUrl, cancelSeconds: seconds };
 }
 
@@ -732,6 +763,24 @@ if (visited.has(parentExternalId)) continue;
 visited.add(parentExternalId);
 try {
 const content = await fetchApiSourceContent(src, parentExternalId);
+// Some API2 installations expose cancellation/category metadata only from /content/{category}.
+// Merge that metadata into the local product database without making extra API calls.
+for (const cp of content.products || []) {
+const extId = cp?.id != null ? String(cp.id) : null;
+if (!extId) continue;
+const { cancelUrl, cancelSeconds } = extractCancelMeta(cp);
+await q(`
+UPDATE api_source_products SET
+category_id=COALESCE($1, category_id),
+parent_id=COALESCE($2, parent_id),
+category_name=COALESCE($3, category_name),
+cancel_enabled=CASE WHEN $4::text IS NOT NULL AND $5::int IS NOT NULL THEN true ELSE cancel_enabled END,
+cancel_seconds=COALESCE($5, cancel_seconds),
+cancel_url=COALESCE($4, cancel_url),
+updated_at=NOW()
+WHERE api_source_id=$6 AND external_id=$7`,
+[cp.category_id ?? null, cp.parent_id ?? parentExternalId, cp.category_name ?? null, cancelUrl, cancelSeconds, src.id, extId]);
+}
 for (const c of content.categories || []) {
 const extId = String(c.id);
 await q(`
@@ -791,6 +840,29 @@ await q(`UPDATE api_sources SET ${fields.join(",")}, updated_at=NOW() WHERE id=$
 async function deleteApiSource(id) {
 await q("DELETE FROM api_sources WHERE id=$1", [id]);
 apiSourceClients.delete(id);
+}
+
+// ── Default API 2 requested by the owner ─────────────────────────────
+// Stored in the database once; existing rows are updated with the supplied token.
+const DEFAULT_API2_NAME = "API 2 - Maxstore1";
+const DEFAULT_API2_BASE_URL = "https://maxstore1.com";
+const DEFAULT_API2_TOKEN = "msk_NRw8ZXlYtdPBil0wSxz2sAT4AV58gMvo2ITGGq-YC14";
+const DEFAULT_API2_MARKUP = 5;
+
+async function ensureDefaultApi2() {
+try {
+const existing = (await q("SELECT * FROM api_sources WHERE lower(trim(base_url))=lower(trim($1)) ORDER BY id LIMIT 1", [DEFAULT_API2_BASE_URL])).rows[0];
+if (existing) {
+await q("UPDATE api_sources SET name=$1, api_token=$2, markup_percent=$3, active=true, updated_at=NOW() WHERE id=$4", [DEFAULT_API2_NAME, DEFAULT_API2_TOKEN, DEFAULT_API2_MARKUP, existing.id]);
+apiSourceClients.delete(existing.id);
+return existing.id;
+}
+const created = await createApiSource(DEFAULT_API2_NAME, DEFAULT_API2_BASE_URL, DEFAULT_API2_TOKEN, DEFAULT_API2_MARKUP);
+return created.id;
+} catch (e) {
+console.error("Default API2 setup failed:", e.message);
+return null;
+}
 }
 
 // ============================================================
@@ -969,24 +1041,16 @@ try {
 const root = await fetchContent(0);
 await saveCatalogCache("api1_content_0", root);
 contentCache.set(0, { content: root, expiry: Date.now() + CONTENT_TTL });
-// Warm the category cache so opening a nested category is also fast.
-const ids = [];
-for (const c of root.categories || []) ids.push(c.id);
-for (const id of ids.slice(0, 150)) {
-try {
-const c = await fetchContent(id);
-await saveCatalogCache(`api1_content_${id}`, c);
-contentCache.set(id, { content: c, expiry: Date.now() + CONTENT_TTL });
-} catch {}
-}
+// لا نرسل طلباً لكل قسم هنا. الأقسام الفرعية تُحدّث عند الحاجة في الخلفية،
+// واللقطة القديمة من قاعدة البيانات تبقى صالحة للعرض الفوري.
 } catch (e) { console.error("API1 content refresh failed:", e.message); }
 
 try {
-const sources = await listApiSources();
-for (const src of sources) {
-if (!src.active) continue;
-try { await syncApiSource(src.id); } catch (e) { console.error(`API ${src.id} refresh failed:`, e.message); }
-}
+const sources = (await listApiSources()).filter(src => src.active);
+await Promise.allSettled(sources.map(async src => {
+try { await syncApiSource(src.id); }
+catch (e) { console.error(`API ${src.id} refresh failed:`, e.message); }
+}));
 // Rebuild unified in-memory cache after API2 refresh.
 productsCache = null;
 } catch (e) { console.error("API2 refresh failed:", e.message); }
@@ -1287,16 +1351,15 @@ getAllOverridesCached(),
 const excludedCats = new Set(excludedStr.split(",").map(s => Number(s.trim())).filter(Number.isFinite));
 const catOv = await loadCategoryOverrides([...content.categories.map(c => c.id), parentId]);
 
-const visibleDirectSet = await buildVisibleCategoryIds(excludedCats, kws);
-
+// لا نفحص كل قسم عبر API عند كل ضغطة. content نفسه محفوظ في قاعدة البيانات،
+// لذلك نعرض الأقسام مباشرة ونترك التحديث للمزامنة الخلفية. هذا يمنع البطء
+// الناتج عن عشرات/مئات طلبات API المتسلسلة عند فتح "المنتجات".
 const visibleCats = [];
 for (const c of content.categories) {
 if (excludedCats.has(c.id)) continue;
 const ov = catOv.get(c.id);
 if (ov?.hidden && !isAdmin) continue;
 if (ov?.customParentId != null && ov.customParentId !== parentId) continue;
-const visible = await isCategoryVisible(c.id, visibleDirectSet);
-if (!visible && !isAdmin) continue;
 visibleCats.push(c);
 }
 
@@ -1377,14 +1440,16 @@ return Markup.button.callback(`${ov?.hidden ? "🔒 " : "🛒 "}${name} • ${us
 }));
 
 // API 2 product buttons
-const api2ProdBtns = await Promise.all(api2Prods.rows.map(async p => {
-const src = await getApiSource(p.api_source_id);
-const srcMarkup = src?.markup_percent ?? markup;
+const api2SourceIds = [...new Set(api2Prods.rows.map(p => Number(p.api_source_id)).filter(Boolean))];
+const api2Sources = api2SourceIds.length ? (await q("SELECT id, markup_percent FROM api_sources WHERE id = ANY($1)", [api2SourceIds])).rows : [];
+const api2MarkupMap = new Map(api2Sources.map(src => [Number(src.id), Number(src.markup_percent ?? markup)]));
+const api2ProdBtns = api2Prods.rows.map(p => {
+const srcMarkup = api2MarkupMap.get(Number(p.api_source_id)) ?? markup;
 const rawPrice = Number(p.price) || Number(p.base_price) || 0;
 const usd = Number((rawPrice * (1 + srcMarkup / 100)).toFixed(6));
 const syp = Math.round(usd * rate);
 return Markup.button.callback(`🛒 ${p.name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `api2prod:${p.id}:${parentId}`);
-}));
+});
 
 const all = [...catBtns, ...prodBtns, ...manualBtns, ...api2ProdBtns];
 const totalPages = Math.max(1, Math.ceil(all.length / PAGE_SIZE));
@@ -1481,7 +1546,7 @@ if (isAdmin) {
 btns.push([Markup.button.callback("✏️ تعديل السعر", `adm:editPrice:${p.id}`), Markup.button.callback("📋 تعليمات", `adm:editInstr:${p.id}`)]);
 btns.push([Markup.button.callback("📝 تعديل الاسم", `adm:renameProd:${p.id}`), Markup.button.callback("🚚 نقل لقسم آخر", `adm:moveProd:${p.id}`)]);
 btns.push([Markup.button.callback(ov?.hidden ? "👁 إظهار" : "🙈 إخفاء", `adm:hideProd:${p.id}`)]);
-if (isSuperAdmin) btns.push([Markup.button.callback("🗑️ حذف من المتجر", `adm:deleteProd:${p.id}`)]);
+if (isSuperAdmin || !!u?.can_delete_products) btns.push([Markup.button.callback("🗑️ حذف من المتجر", `adm:deleteProd:${p.id}`)]);
 }
 btns.push([backBtnResolved, Markup.button.callback(homeLabel, "home")]);
 await sendOrEdit(ctx, text, Markup.inlineKeyboard(btns));
@@ -1777,8 +1842,12 @@ if (p.notes) text += `\n📋 ${p.notes}`;
 
 const rows = [
 [Markup.button.callback("🛒 طلب الآن", `api2buy:${p.id}:${backTo}`)],
-[backBtn, Markup.button.callback(homeLabel, "home")]
 ];
+if (isAdmin) {
+rows.push([Markup.button.callback("📝 تعديل اسم المنتج", `adm:api2RenameProd:${p.id}`), Markup.button.callback("🙈 إخفاء المنتج", `adm:api2HideProd:${p.id}`)]);
+if (isSuperAdmin || !!u?.can_delete_products) rows.push([Markup.button.callback("🗑️ حذف المنتج", `adm:deleteApi2Prod:${p.id}`)]);
+}
+rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
 await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
 }
 
@@ -2121,7 +2190,9 @@ else if (typeof v === "object") Object.values(v).forEach(walk);
 };
 walk(resp);
 const text = values.join(" ");
-return /cancelled|canceled|cancellation successful|\bcancel\b.*\b(success|ok|true|done)\b|\b(success|ok|true|done)\b.*\bcancel\b/.test(text);
+const hasExplicitCancel = /cancelled|canceled|cancellation\s*(successful|success|done|ok)|cancel\s*(successful|success|done|ok)/.test(text);
+const hasSuccessFlag = /(?:^|[\s:_-])(success|successful|ok|true|done|completed)(?:$|[\s:_-])/.test(text) && !/error|failed|rejected|denied/.test(text);
+return hasExplicitCancel || hasSuccessFlag;
 }
 
 async function requestApiSourceCancellation(source, order) {
@@ -2294,7 +2365,10 @@ await Promise.allSettled(res.rows.slice(i, i + CHUNK).map(order => pollOneOrder(
 }
 
 // ============================================================
-//  ADMIN
+//  ADMIN / ROLE PERMISSIONS
+//  - كل المدراء يصلون لميزات الإدارة العادية.
+//  - المدير الأعلى وحده يعيّن/يلغي المدير الأعلى.
+//  - حذف المنتجات للمدير الأعلى، أو لمدير منحه المدير الأعلى الصلاحية.
 // ============================================================
 async function requireAdmin(ctx) {
 const [sessionActive, u] = await Promise.all([
@@ -2325,6 +2399,16 @@ async function requireSuperAdmin(ctx) {
 if (!authedAdminIds.has(ctx.from.id)) { await ctx.reply("⛔ هذا الإجراء للمدير الأعلى فقط."); return false; }
 const u = await getUser(ctx.from.id);
 if (!u?.is_super_admin) { await ctx.reply("⛔ هذا الإجراء للمدير الأعلى فقط."); return false; }
+return true;
+}
+
+async function requireProductDelete(ctx) {
+if (!(await requireAdmin(ctx))) return false;
+const u = await getUser(ctx.from.id);
+if (!u?.is_super_admin && !u?.can_delete_products) {
+await ctx.reply("⛔ حذف المنتجات متاح للمدير الأعلى أو للمدير الذي منحه المدير الأعلى هذه الصلاحية.");
+return false;
+}
 return true;
 }
 
@@ -2360,9 +2444,7 @@ const rows = [
 [Markup.button.callback("🔑 تغيير كلمة المرور", "adm:newPass")],
 [Markup.button.callback("🔘 تعديل أزرار التنقل", "adm:btnLabels")],
 ];
-if (isSA) {
 rows.push([Markup.button.callback("🔐 تغيير أمر الدخول السري", "adm:changeLoginCmd")]);
-}
 rows.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
 await sendOrEdit(ctx, `⚙️ الإعدادات\n\nالربح العام: ${m}%\nربح السوشل: ${sm}%\nسعر الصرف: ${r} ل.س/$\nأمر الدخول: ${loginCmd}`,
 Markup.inlineKeyboard(rows));
@@ -2411,11 +2493,17 @@ await client.query("ROLLBACK");
 await ctx.reply("⚠️ تمت معالجة طلب الإيداع مسبقاً.");
 return;
 }
-const amount = overrideAmount != null ? Number(overrideAmount) : Number(d.amount);
-if (!Number.isFinite(amount) || amount <= 0) {
+if (overrideAmount == null) {
 await client.query("ROLLBACK");
 setStep(ctx.from.id, { kind: "admin:depositApproveAmount", depositId: depId });
 await ctx.reply("💵 أرسل المبلغ بالدولار لإضافته إلى رصيد المستخدم:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "admin:menu")]]));
+return;
+}
+const amount = Number(overrideAmount);
+if (!Number.isFinite(amount) || amount <= 0) {
+await client.query("ROLLBACK");
+setStep(ctx.from.id, { kind: "admin:depositApproveAmount", depositId: depId });
+await ctx.reply("⚠️ أرسل مبلغاً صحيحاً أكبر من صفر.");
 return;
 }
 approvedAmount = amount;
@@ -2464,6 +2552,9 @@ const kb = [
 ];
 if (isMeSA && uid !== ctx.from.id) {
 kb.push([Markup.button.callback(u.is_super_admin ? "⬇️ إلغاء المدير الأعلى" : "🌟 جعله مديراً أعلى", `adm:userSA:${uid}`)]);
+if (u.is_admin && !u.is_super_admin) {
+kb.push([Markup.button.callback(u.can_delete_products ? "🗑️ إلغاء صلاحية حذف المنتجات" : "🗑️ منحه صلاحية حذف المنتجات", `adm:userDeletePerm:${uid}`)]);
+}
 }
 kb.push([Markup.button.callback("⬅️ رجوع", "adm:users:1")]);
 await sendOrEdit(ctx, text, Markup.inlineKeyboard(kb));
@@ -2571,6 +2662,29 @@ await sendOrEdit(ctx, `📁 ${mc.name}\nالمنتجات: ${prods.length}`, Mark
 // ============================================================
 //  BOT LAUNCH
 // ============================================================
+async function warmFirstCatalogSnapshot() {
+try {
+const cachedRoot = await loadCatalogCache("api1_content_0");
+if (cachedRoot && Array.isArray(cachedRoot.products) && Array.isArray(cachedRoot.categories)) {
+contentCache.set(0, { content: cachedRoot, expiry: Date.now() + CONTENT_TTL });
+} else {
+const root = await fetchContent(0);
+await saveCatalogCache("api1_content_0", root);
+contentCache.set(0, { content: root, expiry: Date.now() + CONTENT_TTL });
+}
+} catch (e) {
+console.error("Root catalog warmup failed:", e.message);
+}
+try {
+const cachedProducts = await loadCatalogCache("api1_products");
+const api1 = Array.isArray(cachedProducts) ? normalizeApi1Products(cachedProducts) : [];
+const api2Rows = (await q("SELECT * FROM api_source_products WHERE available=true ORDER BY id")).rows;
+productsCache = { products: [...api1, ...normalizeApi2Products(api2Rows)], expiry: Date.now() + PRODUCTS_TTL };
+} catch (e) {
+console.error("Product snapshot warmup failed:", e.message);
+}
+}
+
 async function startBot() {
 const token = process.env.BOT_TOKEN;
 if (!token) { console.error("❌ BOT_TOKEN is required"); process.exit(1); }
@@ -2578,9 +2692,15 @@ if (!token) { console.error("❌ BOT_TOKEN is required"); process.exit(1); }
 await ensureTables();
 await ensureDefaults();
 await ensureDefaultDepositMethods();
-// Seed the local product catalog before users can press "المنتجات".
-await Promise.race([refreshCatalogCache(), new Promise(resolve => setTimeout(resolve, 9000))]).catch(() => {});
-
+const defaultApi2Id = await ensureDefaultApi2();
+// Build a local snapshot before Telegram starts. Normal users then open Products from DB in milliseconds.
+await warmFirstCatalogSnapshot();
+if (defaultApi2Id) {
+// Sync the supplied API2 in the background; never block the first user interaction on this network call.
+syncApiSource(defaultApi2Id).then(() => { invalidateCaches(); }).catch(e => console.error("Default API2 initial sync failed:", e.message));
+}
+// لا ننتظر مزامنة الـAPI قبل تشغيل البوت. المزامنة تعمل بالخلفية
+// حتى يستطيع المستخدم فتح البوت فوراً، وتُحفظ النتائج في قاعدة البيانات.
 const bot = new Telegraf(token, { handlerTimeout: 90_000 });
 
 // ── Rate limiter + رد فوري على callback ────────────────────────────────
@@ -2856,16 +2976,28 @@ await showUserCard(ctx, uid);
 });
 bot.action(/^adm:userAdmin:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
-const me = await getUser(ctx.from.id);
-if (!me?.is_super_admin) { await ctx.reply("⛔ المدير الأعلى فقط يستطيع تعيين المديرين."); return; }
 const uid = Number(ctx.match[1]); const u = await getUser(uid);
+if (u?.is_super_admin && u.id !== ctx.from.id) { await ctx.reply("⛔ لا يمكن للمدير العادي تعديل صلاحية المدير الأعلى."); return; }
 const newAdmin = !u?.is_admin;
 await setAdmin(uid, newAdmin, newAdmin ? false : undefined);
+if (!newAdmin) await q("UPDATE users SET can_delete_products=false WHERE id=$1", [uid]);
 if (!newAdmin) {
 authedAdminIds.delete(uid);
 await setAdminSession(uid, false).catch(() => {});
 }
 await ctx.reply(newAdmin ? "👑 تم التعيين إداريًّا." : "👤 تم إلغاء الإداري.");
+await showUserCard(ctx, uid);
+});
+bot.action(/^adm:userDeletePerm:(\d+)$/, async ctx => {
+if (!(await requireSuperAdmin(ctx))) return;
+const uid = Number(ctx.match[1]);
+if (uid === ctx.from.id) { await ctx.reply("⚠️ هذه الصلاحية تُمنح لمدير عادي، وليس لحسابك المدير الأعلى."); return; }
+const u = await getUser(uid);
+if (!u?.is_admin || u?.is_super_admin) { await ctx.reply("⚠️ يجب أن يكون المستخدم مديراً عادياً."); return; }
+const next = !u.can_delete_products;
+await q("UPDATE users SET can_delete_products=$1 WHERE id=$2", [next, uid]);
+invalidateUserCache(uid);
+await ctx.reply(next ? "✅ تم منح المدير صلاحية حذف المنتجات." : "✅ تم إلغاء صلاحية حذف المنتجات.");
 await showUserCard(ctx, uid);
 });
 bot.action(/^adm:userSA:(\d+)$/, async ctx => {
@@ -2959,7 +3091,7 @@ await q("INSERT INTO product_overrides(product_id,hidden) VALUES($1,$2) ON CONFL
 invalidateCaches(); await ctx.reply(nextHidden ? "🙈 تم إخفاء المنتج." : "👁 تم إظهار المنتج.");
 });
 bot.action(/^adm:deleteProd:(\d+)$/, async ctx => {
-if (!(await requireSuperAdmin(ctx))) return;
+if (!(await requireProductDelete(ctx))) return;
 const pid = Number(ctx.match[1]);
 await q("INSERT INTO product_overrides(product_id,hidden) VALUES($1,true) ON CONFLICT(product_id) DO UPDATE SET hidden=true, updated_at=NOW()", [pid]);
 invalidateCaches();
@@ -2979,13 +3111,13 @@ bot.action(/^adm:catMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx)
 bot.action(/^adm:catSort:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); setStep(ctx.from.id, { kind: "admin:setCatSort", categoryId: cid }); await ctx.reply(`🔢 ترتيب القسم ${cid}\nأرسل رقم الترتيب أو reset:`); });
 bot.action(/^adm:moveCatAll:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:moveCatAll", sourceCategoryId: Number(ctx.match[1]) }); await ctx.reply(`🚚 نقل جميع منتجات القسم\nأرسل رقم القسم الهدف أو cancel:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${ctx.match[1]}:1:0`)]])); });
 bot.action(/^adm:moveCatToParent:(\d+)$/, async ctx => {
-if (!(await requireSuperAdmin(ctx))) return;
+if (!(await requireAdmin(ctx))) return;
 const cid = Number(ctx.match[1]);
 setStep(ctx.from.id, { kind: "admin:moveCatToParent", categoryId: cid });
 await ctx.reply(`📁 نقل القسم إلى داخل قسم آخر\nأرسل **اسم القسم الهدف** كما يظهر في المتجر، أو اكتب "0" للجذر أو "cancel" للإلغاء:`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${cid}:1:0`)]]) });
 });
 bot.action(/^adm:moveApi2CatToParent:(\d+)$/, async ctx => {
-if (!(await requireSuperAdmin(ctx))) return;
+if (!(await requireAdmin(ctx))) return;
 const cid = Number(ctx.match[1]);
 const cat = (await q("SELECT * FROM api_source_categories WHERE id=$1", [cid])).rows[0];
 if (!cat) { await ctx.reply("⚠️ القسم غير موجود."); return; }
@@ -2993,7 +3125,7 @@ setStep(ctx.from.id, { kind: "admin:moveApi2CatToParent", categoryId: cid });
 await ctx.reply(`📁 نقل «${cat.name}» إلى داخل قسم آخر\nأرسل **اسم القسم الهدف** كما يظهر في المتجر، أو اكتب "0" للجذر أو "cancel" للإلغاء:`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `api2cat:${cid}:1:0`) ]]) });
 });
 bot.action(/^adm:deleteApi2Cat:(\d+)$/, async ctx => {
-if (!(await requireSuperAdmin(ctx))) return;
+if (!(await requireAdmin(ctx))) return;
 const cid = Number(ctx.match[1]);
 await q("UPDATE api_source_categories SET active=false, updated_at=NOW() WHERE id=$1", [cid]);
 await q("UPDATE api_source_products SET available=false, updated_at=NOW() WHERE category_id=$1", [cid]);
@@ -3001,11 +3133,26 @@ invalidateCaches();
 await ctx.reply("🗑️ تم حذف القسم ومنتجاته من واجهة المتجر.");
 });
 bot.action(/^adm:deleteApi2Prod:(\d+)$/, async ctx => {
-if (!(await requireSuperAdmin(ctx))) return;
+if (!(await requireProductDelete(ctx))) return;
 const pid = Number(ctx.match[1]);
 await q("UPDATE api_source_products SET available=false, updated_at=NOW() WHERE id=$1", [pid]);
 invalidateCaches();
 await ctx.reply("🗑️ تم حذف المنتج من واجهة المتجر.");
+});
+bot.action(/^adm:api2HideProd:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const pid = Number(ctx.match[1]);
+await q("UPDATE api_source_products SET available=false, updated_at=NOW() WHERE id=$1", [pid]);
+invalidateCaches();
+await ctx.reply("🙈 تم إخفاء المنتج من المتجر.");
+});
+bot.action(/^adm:api2RenameProd:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const pid = Number(ctx.match[1]);
+const row = (await q("SELECT name FROM api_source_products WHERE id=$1", [pid])).rows[0];
+if (!row) return;
+setStep(ctx.from.id, { kind: "admin:renameApi2Product", productId: pid });
+await ctx.reply(`📝 أرسل الاسم الجديد للمنتج «${row.name}»:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `api2prod:${pid}:0`)]]));
 });
 
 // ── Admin: settings ───────────────────────────────────────────────────
@@ -3015,7 +3162,7 @@ bot.action("adm:setSocialMarkup", async ctx => { if (!(await requireAdmin(ctx)))
 bot.action("adm:setRate", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setRate" }); await ctx.reply("💱 أرسل سعر الصرف (ل.س/$):", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "adm:settings")]])); });
 bot.action("adm:newPass", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:newPassword" }); await ctx.reply("🔑 أرسل كلمة المرور الجديدة (4 أحرف على الأقل):", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "adm:settings")]])); });
 bot.action("adm:changeLoginCmd", async ctx => {
-if (!(await requireSuperAdmin(ctx))) return;
+if (!(await requireAdmin(ctx))) return;
 const cur = await getAdminLoginCommand();
 setStep(ctx.from.id, { kind: "admin:changeLoginCmd" });
 await ctx.reply(`🔐 الأمر الحالي: \${cur}\\nأرسل الأمر الجديد:`, { parse_mode: "Markdown" });
@@ -3129,11 +3276,13 @@ await ctx.reply("📝 أرسل اسم المنتج اليدوي:", Markup.inline
 bot.action(/^adm:manualProd:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const pid = Number(ctx.match[1]); const p = (await q("SELECT * FROM manual_products WHERE id=$1", [pid])).rows[0]; if (!p) return;
+const viewer = await getUser(ctx.from.id);
+const canDelete = !!viewer?.is_super_admin || !!viewer?.can_delete_products;
 await sendOrEdit(ctx, `🛒 ${p.name}\nالسعر: ${Number(p.price_usd).toFixed(2)}$\nالربح: ${p.markup_percent ?? "افتراضي"}%\nالمخزون: ${p.stock_qty === -1 ? "غير محدود" : p.stock_qty}\nالحالة: ${p.active ? "✅" : "❌"}`,
 Markup.inlineKeyboard([
 [Markup.button.callback("✏️ تعديل", `adm:manualProdEdit:${pid}`)],
 [Markup.button.callback(p.active ? "❌ تعطيل" : "✅ تفعيل", `adm:manualToggle:${pid}`)],
-[Markup.button.callback("🗑️ حذف", `adm:manualDel:${pid}`)],
+...(canDelete ? [[Markup.button.callback("🗑️ حذف", `adm:manualDel:${pid}`)]] : []),
 [Markup.button.callback("⬅️ رجوع", "adm:manualProds")]
 ]));
 });
@@ -3156,7 +3305,7 @@ await q("UPDATE manual_products SET active=$1, updated_at=NOW() WHERE id=$2", [!
 await ctx.reply(!p.active ? "✅ تم التفعيل." : "❌ تم التعطيل.");
 });
 bot.action(/^adm:manualDel:(\d+)$/, async ctx => {
-if (!(await requireAdmin(ctx))) return;
+if (!(await requireProductDelete(ctx))) return;
 await q("DELETE FROM manual_products WHERE id=$1", [Number(ctx.match[1])]);
 await ctx.reply("🗑️ تم الحذف.");
 });
@@ -3510,6 +3659,15 @@ if (Number(target.id) === sourceId) { await ctx.reply("⚠️ لا يمكن نق
 await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=$2, updated_at=NOW()", [sourceId, target.id]);
 invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
 await ctx.reply(`✅ تم نقل القسم «${sourceId}» إلى داخل «${target.name}».`);
+return;
+}
+case "admin:renameApi2Product": {
+const pid = Number(step.productId);
+if (!Number.isFinite(pid) || pid <= 0 || !txt) { await ctx.reply("⚠️ الاسم غير صالح."); return; }
+await q("UPDATE api_source_products SET name=$1, updated_at=NOW() WHERE id=$2", [txt, pid]);
+invalidateCaches();
+setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply("✅ تم تغيير اسم المنتج.");
 return;
 }
 case "admin:moveApi2CatToParent": {
