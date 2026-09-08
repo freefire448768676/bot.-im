@@ -815,7 +815,7 @@ try {
 const cached = await q("SELECT * FROM api_source_products WHERE api_source_id=$1", [src.id]);
 for (const p of cached.rows) {
 all.push({
-id: ext_${src.id}_${p.external_id},
+id: `ext_${src.id}_${p.external_id}`,
 _source: 'api2',
 _source_id: src.id,
 _external_id: p.external_id,
