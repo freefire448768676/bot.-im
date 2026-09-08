@@ -751,7 +751,7 @@ convHistory.set(userId, hist);
 try {
 const resp = await fetch("https://api.openai.com/v1/chat/completions", {
 method: "POST",
-headers: { "Content-Type": "application/json", Authorization: Bearer ${apiKey} },
+headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
 body: JSON.stringify({ model: "gpt-4o-mini", max_completion_tokens: 1024, messages: [{ role: "system", content: AI_SYSTEM_PROMPT }, ...hist] }),
 });
 if (!resp.ok) { hist.pop(); convHistory.set(userId, hist); return buildSmartFaq(userMessage); }
