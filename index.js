@@ -832,7 +832,7 @@ notes: p.notes,
 available: p.available,
 });
 }
-} catch (e) { console.error(API source ${src.id} load error:, e.message); }
+} catch (e) { console.error(`API source ${src.id} load error: ${e.message}`); }
 }
 } catch (e) { console.error("API sources load error:", e.message); }
 
