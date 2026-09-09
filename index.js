@@ -1,5 +1,5 @@
 // ============================================================
-//  متجر المروان — بوت تيليجرام v3.8 (إصلاح شامل)
+//  متجر المروان — بوت تيليجرام v4.4 (تدقيق وإصلاح شامل)
 //  إضافات: API ثاني، منتجات يدوية متكاملة، أقسام يدوية، ردود متعددة
 // ============================================================
 "use strict";
@@ -224,6 +224,7 @@ cancel_enabled BOOLEAN NOT NULL DEFAULT false,
 cancel_seconds INTEGER,
 cancel_url TEXT,
 admin_deleted BOOLEAN NOT NULL DEFAULT false,
+admin_hidden BOOLEAN NOT NULL DEFAULT false,
 custom_name TEXT,
 updated_at TIMESTAMPTZ DEFAULT NOW(),
 UNIQUE(api_source_id, external_id)
@@ -288,6 +289,7 @@ const migrations = [
 "ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS cancel_seconds INTEGER",
 "ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS cancel_url TEXT",
 "ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS admin_deleted BOOLEAN NOT NULL DEFAULT false",
+"ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS admin_hidden BOOLEAN NOT NULL DEFAULT false",
 "ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS custom_name TEXT",
 "ALTER TABLE api_source_categories ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT true",
 "ALTER TABLE api_source_categories ADD COLUMN IF NOT EXISTS custom_parent_id INTEGER",
@@ -318,8 +320,6 @@ currency_label: "ل.س",
 excluded_category_ids: "6,81,561",
 excluded_product_keywords: "سيرتل كاش,سيريتل كاش,syriatel cash,mtn كاش,mtn cash,ام تي ان كاش",
 social_markup_percent: "3",
-social_min_qty: "500",
-social_max_qty: "10000",
 social_keywords: "سوشل,social,تواصل اجتماعي,اجتماعي,انستغرام,instagram,تيك توك,tiktok,فيسبوك,facebook,تويتر,twitter,يوتيوب,youtube,تليجرام,telegram,سناب,snap",
 ai_keywords: "ذكاء اصطناعي,chatgpt,gpt,openai,claude,gemini,midjourney,perplexity,ai ",
 // Configure these in Railway Variables. Do not keep credentials in source code.
@@ -372,14 +372,14 @@ async function getBotStatus() { return getSetting("bot_status"); }
 async function getExcludedKeywords() { const v = await getSetting("excluded_product_keywords"); return v.split(",").map(k => k.trim().toLowerCase()).filter(Boolean); }
 async function getSocialKeywords() { const v = await getSetting("social_keywords"); return v.split(",").map(k => k.trim().toLowerCase()).filter(Boolean); }
 async function getSocialMarkupPercent() { const n = Number(await getSetting("social_markup_percent")); return Number.isFinite(n) ? n : 3; }
-async function getSocialMinQty() { const n = Number(await getSetting("social_min_qty")); return Number.isFinite(n) && n > 0 ? n : 500; }
-async function getSocialMaxQty() { const n = Number(await getSetting("social_max_qty")); return Number.isFinite(n) && n > 0 ? n : 10000; }
+async function getSocialMinQty() { const n = Number(await getSetting("social_min_qty")); return Number.isFinite(n) && n > 0 ? n : null; }
+async function getSocialMaxQty() { const n = Number(await getSetting("social_max_qty")); return Number.isFinite(n) && n > 0 ? n : null; }
 async function getAdminPassword() { return getSetting("admin_password"); }
 async function getAdminLoginCommand() { return getSetting("admin_login_command"); }
-async function getBtnBackLabel() { return DEFAULTS.btn_back_label; }
-async function getBtnHomeLabel() { return DEFAULTS.btn_home_label; }
-async function getBtnPrevLabel() { return DEFAULTS.btn_prev_label; }
-async function getBtnNextLabel() { return DEFAULTS.btn_next_label; }
+async function getBtnBackLabel() { return getSetting("btn_back_label"); }
+async function getBtnHomeLabel() { return getSetting("btn_home_label"); }
+async function getBtnPrevLabel() { return getSetting("btn_prev_label"); }
+async function getBtnNextLabel() { return getSetting("btn_next_label"); }
 
 function isSocialProduct(name, catName, kws) {
 const n = ((name ?? "") + " " + (catName ?? "")).toLowerCase();
@@ -772,8 +772,8 @@ if (typeof raw === "string") {
   return Number.isFinite(n) && n > 0 ? [n] : null;
 }
 if (typeof raw === "object") {
-  const min = raw.min ?? raw.minimum ?? raw.min_qty ?? raw.min_quantity ?? raw.from;
-  const max = raw.max ?? raw.maximum ?? raw.max_qty ?? raw.max_quantity ?? raw.to;
+  const min = raw.min ?? raw.minimum ?? raw.min_qty ?? raw.min_quantity ?? raw.min_order ?? raw.min_order_qty ?? raw.min_order_quantity ?? raw.min_quantity ?? raw.purchase_limit ?? raw.from;
+  const max = raw.max ?? raw.maximum ?? raw.max_qty ?? raw.max_quantity ?? raw.max_order ?? raw.max_order_qty ?? raw.max_order_quantity ?? raw.max_quantity ?? raw.max_purchase ?? raw.purchase_limit ?? raw.to;
   if (min != null || max != null) {
     const a = Number(min); const b = Number(max ?? min);
     if (Number.isFinite(a) && Number.isFinite(b) && a > 0 && b > 0) return { min: Math.min(a,b), max: Math.max(a,b) };
@@ -803,7 +803,14 @@ category_name: p?.category_name ?? p?.category?.name ?? null,
 price: p?.price ?? p?.base_price ?? null,
 base_price: p?.base_price ?? p?.price ?? null,
 params: normalizeProviderParams(p?.params ?? p?.parameters ?? p?.fields ?? p?.requirements),
-qty_values: normalizeProviderQty(p?.qty_values ?? p?.quantity ?? p?.qty ?? p?.quantities ?? p?.quantity_range ?? (p?.min_qty != null || p?.max_qty != null ? { min: p?.min_qty, max: p?.max_qty } : null)),
+qty_values: normalizeProviderQty(
+  (p?.min_order != null || p?.max_order != null || p?.min_order_qty != null || p?.max_order_qty != null || p?.min_order_quantity != null || p?.max_order_quantity != null || p?.min_quantity != null || p?.max_quantity != null || p?.min_qty != null || p?.max_qty != null || p?.purchase_limit != null || p?.max_purchase != null)
+    ? {
+        min: p?.min_order ?? p?.min_order_qty ?? p?.min_order_quantity ?? p?.min_quantity ?? p?.min_qty ?? (p?.max_purchase != null || p?.purchase_limit != null || p?.max_order != null || p?.max_qty != null ? 1 : null),
+        max: p?.max_order ?? p?.max_order_qty ?? p?.max_order_quantity ?? p?.max_quantity ?? p?.max_qty ?? p?.max_purchase ?? p?.purchase_limit,
+      }
+    : (p?.qty_values ?? p?.quantity ?? p?.qty ?? p?.quantities ?? p?.quantity_range)
+),
 available: p?.available !== false && p?.active !== false && p?.enabled !== false,
 }));
 }
@@ -819,7 +826,7 @@ const client = getApiSourceClient(source);
 const numericProductId = Number(productId);
 const body = {
 product_id: Number.isFinite(numericProductId) ? numericProductId : productId,
-qty: Math.max(1, Number(qty) || 1),
+qty: Number.isFinite(Number(qty)) && Number(qty) > 0 ? Number(qty) : 1,
 order_uuid: orderUuid,
 params: params && typeof params === "object" ? params : {},
 };
@@ -1016,7 +1023,14 @@ for (const raw of products) {
   seenProductIds.add(externalId);
   const categoryExternalId = raw?.category_id ?? raw?.categoryId ?? raw?.category?.id ?? null;
   const categoryLocalId = categoryExternalId == null ? null : (categoryMap.get(String(categoryExternalId)) ?? null);
-  const qtyValues = normalizeProviderQty(raw?.qty_values ?? raw?.quantity ?? raw?.qty ?? raw?.quantities ?? raw?.quantity_range ?? (raw?.min_qty != null || raw?.max_qty != null ? { min: raw?.min_qty, max: raw?.max_qty } : null));
+  const qtyValues = normalizeProviderQty(
+  (raw?.min_order != null || raw?.max_order != null || raw?.min_order_qty != null || raw?.max_order_qty != null || raw?.min_order_quantity != null || raw?.max_order_quantity != null || raw?.min_quantity != null || raw?.max_quantity != null || raw?.min_qty != null || raw?.max_qty != null || raw?.purchase_limit != null || raw?.max_purchase != null)
+    ? {
+        min: raw?.min_order ?? raw?.min_order_qty ?? raw?.min_order_quantity ?? raw?.min_quantity ?? raw?.min_qty ?? (raw?.max_purchase != null || raw?.purchase_limit != null || raw?.max_order != null || raw?.max_qty != null ? 1 : null),
+        max: raw?.max_order ?? raw?.max_order_qty ?? raw?.max_order_quantity ?? raw?.max_quantity ?? raw?.max_qty ?? raw?.max_purchase ?? raw?.purchase_limit,
+      }
+    : (raw?.qty_values ?? raw?.quantity ?? raw?.qty ?? raw?.quantities ?? raw?.quantity_range)
+);
   const params = normalizeProviderParams(raw?.params ?? raw?.parameters ?? raw?.fields ?? raw?.requirements);
   const cancel = extractCancelMeta(raw);
   const available = raw?.available !== false && raw?.active !== false && raw?.enabled !== false;
@@ -1044,13 +1058,25 @@ cancel_enabled=EXCLUDED.cancel_enabled,cancel_seconds=EXCLUDED.cancel_seconds,ca
   );
 }
 
-if (seenCategories.size) {
-  await q("UPDATE api_source_categories SET active=CASE WHEN admin_deleted THEN false ELSE false END,updated_at=NOW() WHERE api_source_id=$1 AND NOT (external_id = ANY($2))", [src.id, [...seenCategories]]).catch(() => {});
-  await q("UPDATE api_source_categories SET active=CASE WHEN admin_deleted THEN false ELSE true END WHERE api_source_id=$1 AND external_id = ANY($2)", [src.id, [...seenCategories]]);
+// Deactivate anything the provider no longer returns. This also runs when the
+// provider returns an empty catalog, so deleted products/categories cannot remain
+// visible forever in the local database.
+const seenCategoryList = [...seenCategories];
+await q(
+  "UPDATE api_source_categories SET active=false,updated_at=NOW() WHERE api_source_id=$1 AND NOT (external_id = ANY($2))",
+  [src.id, seenCategoryList]
+).catch(() => {});
+if (seenCategoryList.length) {
+  await q(
+    "UPDATE api_source_categories SET active=CASE WHEN admin_deleted THEN false ELSE true END WHERE api_source_id=$1 AND external_id = ANY($2)",
+    [src.id, seenCategoryList]
+  );
 }
-if (seenProductIds.size) {
-  await q("UPDATE api_source_products SET available=false,updated_at=NOW() WHERE api_source_id=$1 AND NOT (external_id = ANY($2))", [src.id, [...seenProductIds]]).catch(() => {});
-}
+const seenProductList = [...seenProductIds];
+await q(
+  "UPDATE api_source_products SET available=false,updated_at=NOW() WHERE api_source_id=$1 AND NOT (external_id = ANY($2))",
+  [src.id, seenProductList]
+).catch(() => {});
 return seenProductIds.size;
 }
 
@@ -1204,9 +1230,9 @@ function normalizeApi2Products(rows) {
 return rows.map(p => ({
 id: `ext_${p.api_source_id}_${p.external_id}`,
 _source: "api2", _source_id: p.api_source_id, _external_id: p.external_id,
-name: p.name, category_name: p.category_name, category_id: p.category_id,
+name: p.custom_name ?? p.name, category_name: p.category_name, category_id: p.category_id,
 parent_id: p.parent_id, price: p.price, base_price: p.base_price, rate: p.rate,
-qty_values: p.qty_values, params: p.params, notes: p.notes, available: p.available,
+qty_values: p.qty_values, params: p.params, notes: p.notes, available: p.available, admin_hidden: p.admin_hidden ?? false, custom_name: p.custom_name ?? null,
 api_source_product_id: p.id,
 cancel_enabled: p.cancel_enabled ?? false, cancel_seconds: p.cancel_seconds ?? null, cancel_url: p.cancel_url ?? null
 }));
@@ -1406,7 +1432,7 @@ async function getApi2DisplayData(row, userId, preloaded = {}) {
   const p = {
     id: `ext_${row.api_source_id}_${row.external_id}`,
     api_source_product_id: row.id,
-    name: row.name,
+    name: row.custom_name ?? row.name,
     category_name: row.category_name,
     category_id: row.category_id,
     parent_id: row.parent_id,
@@ -1416,16 +1442,15 @@ async function getApi2DisplayData(row, userId, preloaded = {}) {
     _source: "api2",
     _source_id: row.api_source_id,
   };
-  const [src, user, ovRes, catOvRes, markup, socialMarkup, socialKws] = await Promise.all([
+  const [src, user, catOvRes, markup, socialMarkup, socialKws] = await Promise.all([
     preloaded.source ?? getApiSource(row.api_source_id),
     preloaded.user ?? getUser(userId),
-    preloaded.override ?? loadOverrideMap([Number(row.id)]),
     preloaded.categoryOverride ?? q("SELECT custom_markup_percent, custom_name, hidden FROM category_overrides WHERE category_id=$1", [Number(row.category_id)]).then(r => r.rows[0] ?? null),
     preloaded.markup ?? getMarkupPercent(),
     preloaded.socialMarkup ?? getSocialMarkupPercent(),
     preloaded.socialKws ?? getSocialKeywords(),
   ]);
-  const override = preloaded.override && !preloaded.override.get ? preloaded.override : (ovRes instanceof Map ? ovRes.get(Number(row.id)) : ovRes);
+  const override = null;
   const userMarkupPercent = user?.custom_markup_percent != null ? Number(user.custom_markup_percent) : null;
   const categoryMarkupPercent = catOvRes?.custom_markup_percent != null ? Number(catOvRes.custom_markup_percent) : null;
   const priceUsd = await effectivePriceUsd(p, override, Number(src?.markup_percent ?? markup), socialMarkup, socialKws, categoryMarkupPercent, userMarkupPercent);
@@ -1584,9 +1609,9 @@ setStep(ctx.from.id, { kind: "deposit:info", methodId: m.id, methodName: m.name,
 const kb = Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "deposit"), Markup.button.callback("❌ إلغاء", "dep:cancel")]]);
 const infoText = `💳 ${m.name}\n🔑 الرقم: ${m.identifier}\n\n📋 التعليمات:\n${m.instructions}\n\n📎 أرسل المبلغ وصورة إشعار التحويل\n(يمكنك إرسالهما بأي ترتيب)`;
 if (m.image_file_id) {
-await ctx.replyWithPhoto(m.image_file_id, { caption: infoText, parse_mode: "Markdown", ...kb });
+await ctx.replyWithPhoto(m.image_file_id, { caption: infoText, ...kb });
 } else {
-await ctx.reply(infoText, { parse_mode: "Markdown", ...kb });
+await ctx.reply(infoText, kb);
 }
 }
 
@@ -1641,7 +1666,17 @@ try { return await walk(0); } catch { return null; }
 
 async function getMovedApi1Categories(parentId) {
 const rows = (await q("SELECT category_id, custom_name, hidden, custom_parent_id FROM category_overrides WHERE custom_parent_id=$1", [parentId])).rows;
-return rows.map(r => ({ id: Number(r.category_id), name: r.custom_name || `قسم ${r.category_id}`, _moved: true, _override: r }));
+const moved = await Promise.all(rows.map(async r => {
+  const providerCategory = await findApi1CategoryById(r.category_id);
+  if (!providerCategory) return null;
+  return {
+    id: Number(r.category_id),
+    name: r.custom_name || providerCategory.name,
+    _moved: true,
+    _override: r,
+  };
+}));
+return moved.filter(Boolean);
 }
 
 async function showCategory(ctx, parentId, page, backTo) {
@@ -1763,16 +1798,15 @@ return Markup.button.callback(`${ov?.hidden ? "🔒 " : "🛒 "}${name} • ${us
 const api2SourceIds = [...new Set(api2Prods.rows.map(p => Number(p.api_source_id)).filter(Boolean))];
 const api2Sources = api2SourceIds.length ? (await q("SELECT id, markup_percent FROM api_sources WHERE id = ANY($1)", [api2SourceIds])).rows : [];
 const api2MarkupMap = new Map(api2Sources.map(src => [Number(src.id), Number(src.markup_percent ?? markup)]));
-const api2Overrides = api2Prods.rows.length ? await loadOverrideMap(api2Prods.rows.map(p => Number(p.id))) : new Map();
 const api2CatOvRes = api2Prods.rows.length ? await q("SELECT category_id, custom_markup_percent FROM category_overrides WHERE category_id = ANY($1)", [[...new Set(api2Prods.rows.map(p => Number(p.category_id)).filter(Boolean))]]) : { rows: [] };
 const api2CatMarkupMap = new Map(api2CatOvRes.rows.map(r => [Number(r.category_id), r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null]));
 const api2ProdBtns = await Promise.all(api2Prods.rows.map(async p => {
-const override = api2Overrides.get(Number(p.id));
+if (p.admin_hidden && !isAdmin) return null;
+const override = null;
 const categoryMarkup = api2CatMarkupMap.get(Number(p.category_id)) ?? null;
 const srcMarkup = api2MarkupMap.get(Number(p.api_source_id)) ?? markup;
 const usd = await effectivePriceUsd({ ...p, _source: "api2", _source_id: p.api_source_id, id: `ext_${p.api_source_id}_${p.external_id}` }, override, srcMarkup, socialMarkup, socialKws, categoryMarkup, userMarkupPercent);
-if (override?.hidden && !isAdmin) return null;
-const name = override?.customName ?? p.name;
+const name = p.custom_name ?? p.name;
 const syp = Math.round(usd * rate);
 return Markup.button.callback(`🛒 ${name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `api2prod:${p.id}:${parentId}`);
 }));
@@ -2105,15 +2139,14 @@ getMarkupPercent(), getSocialMarkupPercent(), getSocialKeywords(), getUser(ctx.f
 q("SELECT custom_markup_percent FROM category_overrides WHERE category_id=$1", [catId]),
 ]);
 const categoryMarkup = catOvRes.rows[0]?.custom_markup_percent != null ? Number(catOvRes.rows[0].custom_markup_percent) : null;
-const api2Overrides = prodRes.rows.length ? await loadOverrideMap(prodRes.rows.map(p => Number(p.id))) : new Map();
 const userMarkupPercent = user?.custom_markup_percent != null ? Number(user.custom_markup_percent) : null;
 
 const prodBtns = (await Promise.all(prodRes.rows.map(async p => {
-const override = api2Overrides.get(Number(p.id));
-if (override?.hidden && !isAdmin) return null;
+if (p.admin_hidden && !isAdmin) return null;
+const override = null;
 const usd = await effectivePriceUsd({ ...p, _source: "api2", _source_id: p.api_source_id, id: `ext_${p.api_source_id}_${p.external_id}` }, override, Number(src?.markup_percent ?? markup), socialMarkup, socialKws, categoryMarkup, userMarkupPercent);
 const syp = Math.round(usd * rate);
-const name = override?.customName ?? p.name;
+const name = p.custom_name ?? p.name;
 return Markup.button.callback(`🛒 ${name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `api2prod:${p.id}:${catId}`);
 }))).filter(Boolean);
 
@@ -2150,7 +2183,7 @@ backBtn = parentIsCat ? Markup.button.callback(backLabel, `api2cat:${backTo}:1:0
 
 const pRes = await q("SELECT * FROM api_source_products WHERE id=$1", [prodId]);
 const p = pRes.rows[0];
-if (!p || !p.available) { await sendOrEdit(ctx, "⚠️ المنتج غير متاح.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
+if (!p || !p.available || (p.admin_hidden && !isAdmin)) { await sendOrEdit(ctx, "⚠️ المنتج غير متاح.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
 
 const [rate, display] = await Promise.all([
 getExchangeRate(),
@@ -2166,7 +2199,7 @@ let qtyInfo = qtyDisplay.kind === "fixed"
     ? `الكميات المتاحة: ${qtyDisplay.values.join(", ")}`
     : `الكمية بين ${qtyDisplay.min.toLocaleString("en-US")} و ${qtyDisplay.max.toLocaleString("en-US")}`;
 
-let text = `🛒 ${p.name}\n`;
+let text = `🛒 ${p.custom_name ?? p.name}\n`;
 if (p.category_name) text += `القسم: ${p.category_name}\n`;
 text += `السعر: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س\n`;
 if (qtyInfo) text += `${qtyInfo}\n`;
@@ -2176,7 +2209,7 @@ const rows = [
 [Markup.button.callback("🛒 طلب الآن", `api2buy:${p.id}:${backTo}`)],
 ];
 if (isAdmin) {
-rows.push([Markup.button.callback("📝 تعديل اسم المنتج", `adm:api2RenameProd:${p.id}`), Markup.button.callback("🙈 إخفاء المنتج", `adm:api2HideProd:${p.id}`)]);
+rows.push([Markup.button.callback("📝 تعديل اسم المنتج", `adm:api2RenameProd:${p.id}`), Markup.button.callback(p.admin_hidden ? "👁 إظهار المنتج" : "🙈 إخفاء المنتج", `adm:api2HideProd:${p.id}`)]);
 if (isSuperAdmin || !!u?.can_delete_products) rows.push([Markup.button.callback("🗑️ حذف المنتج", `adm:deleteApi2Prod:${p.id}`)]);
 }
 rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
@@ -2221,6 +2254,22 @@ const accepted = statuses.find(s => ACCEPT_STATUSES.has(s) || ["1","true"].inclu
 if (accepted) return accepted;
 const rejected = statuses.find(s => REJECT_STATUSES.has(s) || ["0","false"].includes(s));
 if (rejected) return rejected;
+// Some order endpoints expose an error only as a numeric code (for example
+// insufficient balance / invalid quantity) without a textual status. Treat a
+// documented 1xx-style order error with a message as a rejection so the order
+// cannot remain pending forever.
+let numericError = false;
+const walkError = value => {
+if (numericError || value == null) return;
+if (Array.isArray(value)) { for (const item of value) walkError(item); return; }
+if (typeof value !== "object") return;
+for (const [k, v] of Object.entries(value)) {
+if (/^(?:code|error_code|errorCode)$/i.test(k) && [100,105,106,109,110].includes(Number(v))) numericError = true;
+else if (typeof v === "object") walkError(v);
+}
+};
+walkError(resp);
+if (numericError) return "error";
 return statuses.find(s => !["pending","wait","waiting","processing","in_progress","in-progress","queued","queue","new"].includes(s)) || statuses[0] || "";
 }
 
@@ -2343,7 +2392,7 @@ async function askNextParam(ctx, p, unitPriceUsd, qty, paramKeys, collected, idx
 if (idx >= paramKeys.length) { await showOrderConfirmation(ctx, p, unitPriceUsd, qty, collected, backTo); return; }
 setStep(ctx.from.id, { kind: "order:params", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, qty, paramKeys, collected, idx, backTo });
 const key = paramKeys[idx];
-await ctx.reply(`📋 أدخل قيمة الحقل: *${key}*`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]]) });
+await ctx.reply(`📋 أدخل قيمة الحقل: ${key}`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]]));
 }
 
 async function showOrderConfirmation(ctx, p, unitPriceUsd, qty, collected, backTo) {
@@ -2387,26 +2436,76 @@ if (ACCEPT_STATUSES.has(status) || REJECT_STATUSES.has(status)) return { resp, f
 return { resp: lastResp, finalStatus: "timeout", completed: false };
 }
 
+const _orderExecutionLocks = new Set();
+
 async function executeOrder(ctx) {
+const userId = Number(ctx.from.id);
+if (_orderExecutionLocks.has(userId)) {
+await ctx.reply("⏳ جاري تنفيذ طلبك، انتظر قليلاً...");
+return;
+}
+_orderExecutionLocks.add(userId);
+try {
+await executeOrderLocked(ctx);
+} finally {
+_orderExecutionLocks.delete(userId);
+}
+}
+
+async function executeOrderLocked(ctx) {
 const step = getStep(ctx.from.id);
 if (step.kind !== "order:params") return;
 let all = await getCachedProducts();
 let p = all.find(x => x.id === step.productId);
+if (!p && step._api2 && step._api2_id) {
+const pRes = await q("SELECT * FROM api_source_products WHERE id=$1", [step._api2_id]);
+const row = pRes.rows[0];
+if (row) {
+p = {
+  id: `ext_${row.api_source_id}_${row.external_id}`,
+  name: row.custom_name ?? row.name,
+  category_name: row.category_name,
+  price: row.price,
+  base_price: row.base_price,
+  rate: row.rate,
+  params: row.params,
+  qty_values: row.qty_values,
+  available: row.available,
+  _source: "api2",
+  _source_id: row.api_source_id,
+  _external_id: row.external_id,
+  cancel_enabled: row.cancel_enabled,
+  cancel_seconds: row.cancel_seconds,
+  cancel_url: row.cancel_url,
+};
+}
+}
 if (!p) { all = await fetchAllProducts(); p = all.find(x => x.id === step.productId); }
 if (!p) { await ctx.reply("⚠️ المنتج غير موجود."); return; }
+if (!p.available || (p._source === "api2" && p.admin_hidden)) { await ctx.reply("⚠️ هذا المنتج لم يعد متاحاً حالياً."); return; }
 
 const totalUsd = Number((step.priceUsd * step.qty).toFixed(4));
-const u = await getUser(ctx.from.id);
-const balance = u ? Number(u.balance) : 0;
-if (balance < totalUsd) {
-await ctx.reply("❌ ليس لديك رصيد كافٍ.", Markup.inlineKeyboard([[Markup.button.callback("💳 شحن رصيد", "deposit")], [Markup.button.callback("🏠 الرئيسية", "home")]]));
+if (!Number.isFinite(totalUsd) || totalUsd <= 0) {
+await ctx.reply("⚠️ تعذر حساب قيمة الطلب.");
 setStep(ctx.from.id, { kind: "idle" });
 return;
 }
 
 await clearInlineKeyboard(ctx).catch(() => {});
 const orderUuid = crypto.randomUUID();
-await adjustBalance(ctx.from.id, -totalUsd);
+// Atomic balance deduction prevents two simultaneous confirmations from spending
+// the same balance.
+invalidateUserCache(ctx.from.id);
+const charged = await q(
+  "UPDATE users SET balance=balance-$1 WHERE id=$2 AND balance >= $1 RETURNING *",
+  [totalUsd, ctx.from.id]
+);
+if (!charged.rows.length) {
+await ctx.reply("❌ ليس لديك رصيد كافٍ.", Markup.inlineKeyboard([[Markup.button.callback("💳 شحن رصيد", "deposit")], [Markup.button.callback("🏠 الرئيسية", "home")]]));
+setStep(ctx.from.id, { kind: "idle" });
+return;
+}
+userCacheSet(ctx.from.id, charged.rows[0]);
 const execRate = await getExchangeRate();
 const totalSyp = Math.round(totalUsd * execRate);
 const params = { ...step.collected };
@@ -2603,7 +2702,7 @@ await ctx.reply("✅ تم إلغاء الطلب وإعادة قيمته إلى �
 async function checkOrderStatus(ctx, orderId) {
 const row = (await q("SELECT * FROM orders WHERE id=$1", [orderId])).rows[0];
 if (!row || Number(row.user_id) !== Number(ctx.from.id)) { await ctx.reply("⚠️ غير موجود."); return; }
-if (!row.oranos_order_id) {
+if (!row.oranos_order_id && !row.oranos_uuid) {
 await ctx.reply(`الحالة الحالية لطلبك: ${statusLabel(row.status)}`, Markup.inlineKeyboard([[Markup.button.callback("🔄 تحديث الحالة", `ord:check:${row.id}`)], [Markup.button.callback("🏠 الرئيسية", "home")]]));
 return;
 }
@@ -2612,9 +2711,27 @@ let resp;
 if (row.api_source_id) {
 const src = await getApiSource(row.api_source_id);
 if (!src) throw new Error("مصدر المنتجات غير موجود");
-resp = await checkApiSourceOrder(src, row.oranos_order_id);
+resp = await checkApiSourceOrder(src, row.oranos_order_id, false);
+const firstStatus = getBestApiStatus(resp);
+if (!ACCEPT_STATUSES.has(firstStatus) && !REJECT_STATUSES.has(firstStatus) && row.oranos_uuid) {
+  const uuidResp = await checkApiSourceOrder(src, row.oranos_uuid, true);
+  if (uuidResp) {
+    const uuidStatus = getBestApiStatus(uuidResp);
+    if (ACCEPT_STATUSES.has(uuidStatus) || REJECT_STATUSES.has(uuidStatus) || !firstStatus) resp = uuidResp;
+    else if (uuidStatus !== firstStatus) resp = uuidResp;
+  }
+}
 } else {
-resp = await checkOrder(row.oranos_order_id);
+resp = await checkOrder(row.oranos_order_id, false);
+const firstStatus = getBestApiStatus(resp);
+if (!ACCEPT_STATUSES.has(firstStatus) && !REJECT_STATUSES.has(firstStatus) && row.oranos_uuid) {
+  const uuidResp = await checkOrder(row.oranos_uuid, true);
+  if (uuidResp) {
+    const uuidStatus = getBestApiStatus(uuidResp);
+    if (ACCEPT_STATUSES.has(uuidStatus) || REJECT_STATUSES.has(uuidStatus) || !firstStatus) resp = uuidResp;
+    else if (uuidStatus !== firstStatus) resp = uuidResp;
+  }
+}
 }
 const rawNew = getBestApiStatus(resp) || String(row.status ?? "").toLowerCase();
 const isRejected = REJECT_STATUSES.has(rawNew);
@@ -2655,7 +2772,7 @@ await ctx.reply("⚠️ تعذّر فحص الحالة الآن.", Markup.inline
 async function pollOneOrder(bot, order) {
 const identifiers = [];
 if (order.oranos_order_id) identifiers.push({ value: String(order.oranos_order_id), byUuid: false });
-if (order.oranos_uuid && !identifiers.some(x => x.value === String(order.oranos_uuid))) identifiers.push({ value: String(order.oranos_uuid), byUuid: true });
+if (order.oranos_uuid) identifiers.push({ value: String(order.oranos_uuid), byUuid: true });
 for (const ident of identifiers) {
   let resp = null;
   if (order.api_source_id) {
@@ -3249,6 +3366,7 @@ const backTo = Number(ctx.match[2]);
 const pRes = await q("SELECT * FROM api_source_products WHERE id=$1", [prodId]);
 const p = pRes.rows[0];
 if (!p) { await ctx.reply("⚠️ المنتج غير موجود."); return; }
+if (!p.available || p.admin_hidden) { await ctx.reply("⚠️ المنتج غير متاح حالياً."); return; }
 
 const [rate, display] = await Promise.all([
 getExchangeRate(),
@@ -3258,21 +3376,21 @@ const unitPriceUsd = display.priceUsd;
 const paramKeys = Array.isArray(p.params) ? p.params : [];
 const parsed = parseQtyValues(p.qty_values);
 if (parsed.kind === "fixed") {
-setStep(ctx.from.id, { kind: "order:params", productId: `ext_${p.api_source_id}_${p.external_id}`, productName: p.name, priceUsd: unitPriceUsd, qty: 1, paramKeys, collected: {}, idx: 0, backTo, _api2: true, _api2_id: p.id });
-await askNextParam(ctx, { id: `ext_${p.api_source_id}_${p.external_id}`, name: p.name, params: paramKeys }, unitPriceUsd, 1, paramKeys, {}, 0, backTo);
+setStep(ctx.from.id, { kind: "order:params", productId: `ext_${p.api_source_id}_${p.external_id}`, productName: p.custom_name ?? p.name, priceUsd: unitPriceUsd, qty: 1, paramKeys, collected: {}, idx: 0, backTo, _api2: true, _api2_id: p.id });
+await askNextParam(ctx, { id: `ext_${p.api_source_id}_${p.external_id}`, name: p.custom_name ?? p.name, params: paramKeys }, unitPriceUsd, 1, paramKeys, {}, 0, backTo);
 return;
 }
 if (parsed.kind === "list") {
-setStep(ctx.from.id, { kind: "order:qty", productId: `ext_${p.api_source_id}_${p.external_id}`, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: parsed.values, backTo, _api2: true, _api2_id: p.id });
+setStep(ctx.from.id, { kind: "order:qty", productId: `ext_${p.api_source_id}_${p.external_id}`, productName: p.custom_name ?? p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: parsed.values, backTo, _api2: true, _api2_id: p.id });
 const rows = parsed.values.slice(0, 24).map(v => {
 const label = formatPriceLabel(v, unitPriceUsd);
 return [Markup.button.callback(label, `ord:qty:${v}`)];
 });
 rows.push([Markup.button.callback("❌ إلغاء", "ord:cancel")]);
-await sendOrEdit(ctx, `🛒 ${p.name}\nاختر الكمية:`, Markup.inlineKeyboard(rows)); return;
+await sendOrEdit(ctx, `🛒 ${p.custom_name ?? p.name}\nاختر الكمية:`, Markup.inlineKeyboard(rows)); return;
 }
-setStep(ctx.from.id, { kind: "order:qty", productId: `ext_${p.api_source_id}_${p.external_id}`, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: { min: parsed.min, max: parsed.max }, backTo, _api2: true, _api2_id: p.id });
-await sendOrEdit(ctx, `🛒 ${p.name}\nأرسل الكمية (بين ${parsed.min} و ${parsed.max}):`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]]));
+setStep(ctx.from.id, { kind: "order:qty", productId: `ext_${p.api_source_id}_${p.external_id}`, productName: p.custom_name ?? p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: { min: parsed.min, max: parsed.max }, backTo, _api2: true, _api2_id: p.id });
+await sendOrEdit(ctx, `🛒 ${p.custom_name ?? p.name}\nأرسل الكمية (بين ${parsed.min} و ${parsed.max}):`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]]));
 });
 bot.action(/^ord:qty:(\d+\.?\d*)$/, async ctx => {
 const step = getStep(ctx.from.id);
@@ -3284,7 +3402,7 @@ if (!p && step._api2) {
 const pRes = await q("SELECT * FROM api_source_products WHERE id=$1", [step._api2_id]);
 if (pRes.rows[0]) {
 const row = pRes.rows[0];
-p = { id: step.productId, name: row.name, category_name: row.category_name, params: row.params, qty_values: row.qty_values, available: row.available, _source: 'api2', _source_id: row.api_source_id, _external_id: row.external_id };
+p = { id: step.productId, name: row.custom_name ?? row.name, category_name: row.category_name, params: row.params, qty_values: row.qty_values, available: row.available, admin_hidden: row.admin_hidden, _source: 'api2', _source_id: row.api_source_id, _external_id: row.external_id };
 }
 }
 if (!p) { all = await fetchAllProducts(); p = all.find(x => x.id === step.productId); }
@@ -3299,23 +3417,64 @@ bot.action(/^api2cancel:(\d+)$/, async ctx => { await cancelApi2Order(ctx, Numbe
 // ── Manual product buy (NO NOTE REQUIRED) ─────────────────────────────
 bot.action(/^mbuy:(\d+)$/, async ctx => {
 const mid = Number(ctx.match[1]);
-const m = (await q("SELECT * FROM manual_products WHERE id=$1 AND active=true", [mid])).rows[0];
-if (!m) { await ctx.reply("⚠️ المنتج غير متاح."); return; }
-const u = await getUser(ctx.from.id);
+const client = await pool.connect();
+let m;
+let ord;
+let priceUsd = 0;
+try {
+await client.query("BEGIN");
+const mRes = await client.query("SELECT * FROM manual_products WHERE id=$1 AND active=true FOR UPDATE", [mid]);
+m = mRes.rows[0];
+if (!m) {
+await client.query("ROLLBACK");
+await ctx.reply("⚠️ المنتج غير متاح.");
+return;
+}
 const markup = m.markup_percent != null ? Number(m.markup_percent) : 0;
-const priceUsd = Number(m.price_usd) * (1 + markup / 100);
-if (!u || Number(u.balance) < priceUsd) { await ctx.reply("❌ رصيد غير كافٍ.", Markup.inlineKeyboard([[Markup.button.callback("💳 شحن رصيد", "deposit")]])); return; }
-if (m.stock_qty === 0) { await ctx.reply("❌ نفذ المخزون."); return; }
-
-// Deduct stock if limited
-if (m.stock_qty > 0) {
-await q("UPDATE manual_products SET stock_qty=stock_qty-1 WHERE id=$1", [mid]);
+priceUsd = Number((Number(m.price_usd) * (1 + markup / 100)).toFixed(4));
+if (!Number.isFinite(priceUsd) || priceUsd <= 0) {
+await client.query("ROLLBACK");
+await ctx.reply("⚠️ سعر المنتج غير صالح حالياً.");
+return;
+}
+if (Number(m.stock_qty) === 0) {
+await client.query("ROLLBACK");
+await ctx.reply("❌ نفذ المخزون.");
+return;
+}
+const uRes = await client.query("SELECT * FROM users WHERE id=$1 FOR UPDATE", [ctx.from.id]);
+const u = uRes.rows[0];
+if (!u || Number(u.balance) < priceUsd) {
+await client.query("ROLLBACK");
+await ctx.reply("❌ رصيد غير كافٍ.", Markup.inlineKeyboard([[Markup.button.callback("💳 شحن رصيد", "deposit")]]));
+return;
+}
+if (Number(m.stock_qty) > 0) {
+const stockRes = await client.query("UPDATE manual_products SET stock_qty=stock_qty-1, updated_at=NOW() WHERE id=$1 AND stock_qty > 0 RETURNING stock_qty", [mid]);
+if (!stockRes.rows.length) {
+await client.query("ROLLBACK");
+await ctx.reply("❌ نفذ المخزون.");
+return;
+}
+}
+const chargeRes = await client.query("UPDATE users SET balance=balance-$1 WHERE id=$2 AND balance >= $1 RETURNING *", [priceUsd, ctx.from.id]);
+if (!chargeRes.rows.length) {
+await client.query("ROLLBACK");
+await ctx.reply("❌ رصيد غير كافٍ.", Markup.inlineKeyboard([[Markup.button.callback("💳 شحن رصيد", "deposit")]]));
+return;
+}
+const ins = await client.query("INSERT INTO manual_orders(user_id,product_id,product_name,price_usd,status) VALUES($1,$2,$3,$4,'pending') RETURNING *", [ctx.from.id, m.id, m.name, priceUsd]);
+ord = ins.rows[0];
+await client.query("COMMIT");
+invalidateUserCache(ctx.from.id);
+userCacheSet(ctx.from.id, chargeRes.rows[0]);
+} catch (e) {
+try { await client.query("ROLLBACK"); } catch {}
+throw e;
+} finally {
+client.release();
 }
 
-await adjustBalance(ctx.from.id, -priceUsd);
-const ins = await q("INSERT INTO manual_orders(user_id,product_id,product_name,price_usd,status) VALUES($1,$2,$3,$4,'pending') RETURNING *",
-[ctx.from.id, m.id, m.name, priceUsd]);
-const ord = ins.rows[0];
 setStep(ctx.from.id, { kind: "idle" });
 await ctx.reply(`✅ تم استلام طلبك\n🛒 ${m.name}\nسيتم التنفيذ في أقرب وقت.`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
 
@@ -3474,7 +3633,7 @@ await ctx.reply("✅ تم حذف الصورة.");
 });
 
 // ── Admin: product management ─────────────────────────────────────────
-bot.action(/^adm:editPrice:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editPrice", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`✏️ سعر: ${p?.name ?? pid}\nأرسل: %5 ربح أو $2.5 ثابت أو reset`, { parse_mode: "Markdown" }); });
+bot.action(/^adm:editPrice:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editPrice", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`✏️ سعر: ${p?.name ?? pid}\nأرسل: %5 ربح أو $2.5 ثابت أو reset`); });
 bot.action(/^adm:editInstr:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:editProductInstructions", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`📋 أرسل تعليمات ${p?.name ?? pid} أو clear للمسح:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `prod:${pid}:0`)]])); });
 bot.action(/^adm:renameProd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:renameProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`📝 الاسم الجديد لـ "${p?.name ?? pid}" أو reset:`); });
 bot.action(/^adm:moveProd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const pid = Number(ctx.match[1]); const all = await fetchAllProducts(); const p = all.find(x => x.id === pid); setStep(ctx.from.id, { kind: "admin:moveProduct", productId: pid, productName: p?.name ?? "" }); await ctx.reply(`🚚 نقل "${p?.name ?? pid}"\nأرسل اسم القسم أو reset:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `prod:${pid}:0`)]])); });
@@ -3516,7 +3675,68 @@ bot.action(/^adm:moveCatToParent:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const cid = Number(ctx.match[1]);
 setStep(ctx.from.id, { kind: "admin:moveCatToParent", categoryId: cid });
-await ctx.reply(`📁 نقل القسم إلى داخل قسم آخر\nأرسل **اسم القسم الهدف** كما يظهر في المتجر، أو اكتب "0" للجذر أو "cancel" للإلغاء:`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${cid}:1:0`)]]) });
+const source = await findApi1CategoryById(cid);
+const sourceName = source?.name || `قسم ${cid}`;
+const all = [];
+const visited = new Set();
+const walk = async parentId => {
+  const key = Number(parentId);
+  if (visited.has(key)) return;
+  visited.add(key);
+  const content = await getCachedContent(parentId);
+  for (const c of content.categories || []) {
+    if (Number(c.id) !== cid) all.push(c);
+    await walk(c.id);
+  }
+};
+try { await walk(0); } catch (e) { console.error("Move-category target list failed:", e); }
+const targetIds = new Set();
+// Exclude the source and every descendant so the move can never create a cycle.
+const parentMap = new Map(all.map(c => [Number(c.id), Number(c.parent_id ?? 0)]));
+const descendants = new Set([cid]);
+let changed = true;
+while (changed) {
+  changed = false;
+  for (const c of all) {
+    const id = Number(c.id);
+    const parent = Number(c.parent_id ?? 0);
+    if (!descendants.has(id) && descendants.has(parent)) { descendants.add(id); changed = true; }
+  }
+}
+const buttons = all.filter(c => !descendants.has(Number(c.id))).filter(c => {
+  const id = Number(c.id); if (targetIds.has(id)) return false; targetIds.add(id); return true;
+}).slice(0, 80).map(c => Markup.button.callback(`📂 ${String(c.name ?? `قسم ${c.id}`).slice(0, 48)}`, `adm:moveCatTarget:${cid}:${c.id}`));
+const rows = [];
+for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2));
+rows.unshift([Markup.button.callback("📁 الجذر", `adm:moveCatTarget:${cid}:0`)]);
+rows.push([Markup.button.callback("❌ إلغاء", `cat:${cid}:1:0`)]);
+await ctx.reply(`📁 نقل القسم «${sourceName}»\nاختر القسم الهدف مباشرة، أو أرسل اسم القسم في رسالة:`, Markup.inlineKeyboard(rows));
+});
+
+bot.action(/^adm:moveCatTarget:(\d+):(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const sourceId = Number(ctx.match[1]);
+const targetId = Number(ctx.match[2]);
+if (!Number.isFinite(sourceId) || sourceId <= 0) { await ctx.reply("⚠️ القسم المصدر غير صالح."); return; }
+if (targetId === sourceId) { await ctx.reply("⚠️ لا يمكن نقل القسم إلى نفسه."); return; }
+if (targetId > 0) {
+  const target = await findApi1CategoryById(targetId);
+  if (!target) { await ctx.reply("⚠️ القسم الهدف غير موجود."); return; }
+  let cursor = targetId;
+  const seen = new Set([sourceId]);
+  while (cursor > 0) {
+    if (seen.has(cursor)) { await ctx.reply("⚠️ لا يمكن نقل القسم إلى داخل أحد أقسامه الفرعية."); return; }
+    seen.add(cursor);
+    const row = (await q("SELECT custom_parent_id FROM category_overrides WHERE category_id=$1", [cursor])).rows[0];
+    const provider = await findApi1CategoryById(cursor);
+    cursor = Number(row?.custom_parent_id ?? provider?.parent_id ?? 0);
+  }
+}
+await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=$2, updated_at=NOW()", [sourceId, targetId === 0 ? null : targetId]);
+invalidateCaches();
+setStep(ctx.from.id, { kind: "idle" });
+const targetName = targetId === 0 ? "الجذر" : (await findApi1CategoryById(targetId))?.name || `قسم ${targetId}`;
+await ctx.reply(`✅ تم نقل القسم إلى «${targetName}».`);
 });
 bot.action(/^adm:moveApi2CatToParent:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
@@ -3524,7 +3744,7 @@ const cid = Number(ctx.match[1]);
 const cat = (await q("SELECT * FROM api_source_categories WHERE id=$1", [cid])).rows[0];
 if (!cat) { await ctx.reply("⚠️ القسم غير موجود."); return; }
 setStep(ctx.from.id, { kind: "admin:moveApi2CatToParent", categoryId: cid });
-await ctx.reply(`📁 نقل «${cat.name}» إلى داخل قسم آخر\nأرسل **اسم القسم الهدف** كما يظهر في المتجر، أو اكتب "0" للجذر أو "cancel" للإلغاء:`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `api2cat:${cid}:1:0`) ]]) });
+await ctx.reply(`📁 نقل «${cat.name}» إلى داخل قسم آخر\nأرسل اسم القسم الهدف كما يظهر في المتجر، أو اكتب "0" للجذر أو "cancel" للإلغاء:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `api2cat:${cid}:1:0`) ]]));
 });
 bot.action(/^adm:deleteApi2Cat:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
@@ -3544,9 +3764,12 @@ await ctx.reply("🗑️ تم حذف المنتج من واجهة المتجر."
 bot.action(/^adm:api2HideProd:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const pid = Number(ctx.match[1]);
-await q("UPDATE api_source_products SET available=false, updated_at=NOW() WHERE id=$1", [pid]);
+const row = (await q("SELECT name, admin_hidden FROM api_source_products WHERE id=$1", [pid])).rows[0];
+if (!row) { await ctx.reply("⚠️ المنتج غير موجود."); return; }
+const nextHidden = !row.admin_hidden;
+await q("UPDATE api_source_products SET admin_hidden=$1, updated_at=NOW() WHERE id=$2", [nextHidden, pid]);
 invalidateCaches();
-await ctx.reply("🙈 تم إخفاء المنتج من المتجر.");
+await ctx.reply(nextHidden ? "🙈 تم إخفاء المنتج من المتجر." : "👁 تم إظهار المنتج من المتجر.");
 });
 bot.action(/^adm:api2RenameProd:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
@@ -3567,7 +3790,7 @@ bot.action("adm:changeLoginCmd", async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const cur = await getAdminLoginCommand();
 setStep(ctx.from.id, { kind: "admin:changeLoginCmd" });
-await ctx.reply(`🔐 الأمر الحالي: \${cur}\\nأرسل الأمر الجديد:`, { parse_mode: "Markdown" });
+await ctx.reply(`🔐 الأمر الحالي: ${cur}\nأرسل الأمر الجديد:`);
 });
 bot.action("adm:toggleStatus", async ctx => {
 if (!(await requireAdmin(ctx))) return;
@@ -3737,8 +3960,11 @@ await ctx.reply(`'✏️ أرسل رسالة التسليم أو "skip":'`);
 });
 bot.action(/^adm:mordReject:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
-const oid = Number(ctx.match[1]); const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0]; if (!o || o.status !== "pending") { await ctx.reply("⚠️ تم معالجته."); return; }
-await q("UPDATE manual_orders SET status='rejected', updated_at=NOW() WHERE id=$1", [oid]);
+const oid = Number(ctx.match[1]);
+const o = (await q("SELECT * FROM manual_orders WHERE id=$1", [oid])).rows[0];
+if (!o || o.status !== "pending") { await ctx.reply("⚠️ تم معالجته."); return; }
+const updated = await q("UPDATE manual_orders SET status='rejected', updated_at=NOW() WHERE id=$1 AND status='pending' RETURNING *", [oid]);
+if (!updated.rows.length) { await ctx.reply("⚠️ تم معالجة الطلب مسبقاً."); return; }
 await adjustBalance(Number(o.user_id), Number(o.price_usd));
 await ctx.reply("✅ تم الرفض وإعادة الرصيد.");
 const rate = await getExchangeRate(); const syp = Math.round(Number(o.price_usd) * rate);
@@ -4017,7 +4243,12 @@ setStep(ctx.from.id, { kind: "idle" });
 await ctx.reply("⚠️ الطلب غير موجود أو تمت معالجته مسبقاً.");
 return;
 }
-await q("UPDATE manual_orders SET status='accepted', admin_note=$1, updated_at=NOW() WHERE id=$2", [delivery, step.orderId]);
+const updated = await q("UPDATE manual_orders SET status='accepted', admin_note=$1, updated_at=NOW() WHERE id=$2 AND status='pending' RETURNING id", [delivery, step.orderId]);
+if (!updated.rows.length) {
+setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply("⚠️ تم معالجة الطلب مسبقاً.");
+return;
+}
 setStep(ctx.from.id, { kind: "idle" });
 await ctx.reply("✅ تم قبول وتسليم الطلب.");
 const message = `✅ تم تنفيذ طلبك\n🛒 ${order.product_name}${delivery ? `\n\n🔑 تفاصيل الطلب:\n${delivery}` : ""}`;
@@ -4046,8 +4277,8 @@ if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); aw
 const sourceId = Number(step.categoryId);
 if (!Number.isFinite(sourceId) || sourceId <= 0) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("⚠️ القسم المصدر غير صالح."); return; }
 if (txt === "0" || txt.toLowerCase() === "reset") {
-await q("DELETE FROM category_overrides WHERE category_id=$1", [sourceId]);
-invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم إعادة القسم إلى الجذر/مكانه الأصلي."); return;
+await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,NULL) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=NULL, updated_at=NOW()", [sourceId]);
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم نقل القسم إلى الجذر."); return;
 }
 const visited = new Set();
 const matches = [];
@@ -4334,7 +4565,7 @@ if (catId > 0) {
 }
 setStep(ctx.from.id, { kind: "admin:addManualProduct:category", name: step.name, price });
 const cats = (await q("SELECT id,name FROM manual_categories WHERE active=true ORDER BY id")).rows;
-await ctx.reply(cats.length ? `📂 أرسل رقم القسم اليدوي، أو 0 للقائمة العامة:\n\n${cats.map(c => `${c.id}: ${c.name}`).join("\\n")}` : "📂 أرسل 0 للقائمة العامة:"); return;
+await ctx.reply(cats.length ? `📂 أرسل رقم القسم اليدوي، أو 0 للقائمة العامة:\n\n${cats.map(c => `${c.id}: ${c.name}`).join("\n")}` : "📂 أرسل 0 للقائمة العامة:"); return;
 }
 case "admin:addManualProduct:category": {
 const categoryId = Number(txt);
