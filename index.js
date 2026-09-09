@@ -344,6 +344,11 @@ for (const r of res.rows) settingsCache.set(r.key, r.value);
 
 async function ensureDefaults() {
 await loadAllSettings();
+// تصحيح تسمية زر الرئيسية القديمة دون التأثير على باقي الإعدادات.
+if (settingsCache.has("btn_home_label") && /عد\s+الرئيسية|الرئيسيه/i.test(String(settingsCache.get("btn_home_label")))) {
+  await q("UPDATE bot_settings SET value=$1 WHERE key=$2", [DEFAULTS.btn_home_label, "btn_home_label"]);
+  settingsCache.set("btn_home_label", DEFAULTS.btn_home_label);
+}
 for (const [k, v] of Object.entries(DEFAULTS)) {
 if (!settingsCache.has(k)) {
 await q("INSERT INTO bot_settings(key,value) VALUES($1,$2) ON CONFLICT DO NOTHING", [k, v]);
@@ -377,7 +382,14 @@ async function getSocialMaxQty() { const n = Number(await getSetting("social_max
 async function getAdminPassword() { return getSetting("admin_password"); }
 async function getAdminLoginCommand() { return getSetting("admin_login_command"); }
 async function getBtnBackLabel() { return getSetting("btn_back_label"); }
-async function getBtnHomeLabel() { return getSetting("btn_home_label"); }
+async function getBtnHomeLabel() {
+  const label = await getSetting("btn_home_label");
+  // إصلاح أي قيمة قديمة/خاطئة مثل "عد الرئيسية" من الإصدارات السابقة.
+  if (!label || /عد\s+الرئيسية|الرئيسيه/i.test(String(label)) || !String(label).includes("الرئيسية")) {
+    return DEFAULTS.btn_home_label;
+  }
+  return String(label).trim();
+}
 async function getBtnPrevLabel() { return getSetting("btn_prev_label"); }
 async function getBtnNextLabel() { return getSetting("btn_next_label"); }
 
@@ -3674,10 +3686,15 @@ bot.action(/^adm:moveCatAll:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx
 bot.action(/^adm:moveCatToParent:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const cid = Number(ctx.match[1]);
+if (!Number.isInteger(cid) || cid <= 0) { await ctx.reply("⚠️ القسم المصدر غير صالح."); return; }
 setStep(ctx.from.id, { kind: "admin:moveCatToParent", categoryId: cid });
 const source = await findApi1CategoryById(cid);
 const sourceName = source?.name || `قسم ${cid}`;
+
+// نبني قائمة الهدف من قاعدة البيانات/الكاش مع إعطاء الأقسام الرئيسية أولوية،
+// حتى يستطيع المدير نقل «بطاقات الألعاب» من القسم 3 إلى القسم 1 بسهولة.
 const all = [];
+const seenIds = new Set();
 const visited = new Set();
 const walk = async parentId => {
   const key = Number(parentId);
@@ -3685,14 +3702,16 @@ const walk = async parentId => {
   visited.add(key);
   const content = await getCachedContent(parentId);
   for (const c of content.categories || []) {
-    if (Number(c.id) !== cid) all.push(c);
-    await walk(c.id);
+    const id = Number(c.id);
+    if (!Number.isInteger(id) || id <= 0 || id === cid || seenIds.has(id)) continue;
+    seenIds.add(id);
+    all.push({ ...c, _root: key === 0 });
+    await walk(id);
   }
 };
 try { await walk(0); } catch (e) { console.error("Move-category target list failed:", e); }
-const targetIds = new Set();
-// Exclude the source and every descendant so the move can never create a cycle.
-const parentMap = new Map(all.map(c => [Number(c.id), Number(c.parent_id ?? 0)]));
+
+// استبعاد القسم نفسه وجميع أحفاده لمنع إنشاء حلقة في شجرة الأقسام.
 const descendants = new Set([cid]);
 let changed = true;
 while (changed) {
@@ -3700,17 +3719,27 @@ while (changed) {
   for (const c of all) {
     const id = Number(c.id);
     const parent = Number(c.parent_id ?? 0);
-    if (!descendants.has(id) && descendants.has(parent)) { descendants.add(id); changed = true; }
+    if (!descendants.has(id) && descendants.has(parent)) {
+      descendants.add(id);
+      changed = true;
+    }
   }
 }
-const buttons = all.filter(c => !descendants.has(Number(c.id))).filter(c => {
-  const id = Number(c.id); if (targetIds.has(id)) return false; targetIds.add(id); return true;
-}).slice(0, 80).map(c => Markup.button.callback(`📂 ${String(c.name ?? `قسم ${c.id}`).slice(0, 48)}`, `adm:moveCatTarget:${cid}:${c.id}`));
+
+const candidates = all
+  .filter(c => !descendants.has(Number(c.id)))
+  .sort((a, b) => Number(b._root) - Number(a._root) || String(a.name ?? "").localeCompare(String(b.name ?? ""), "ar"))
+  .slice(0, 80);
+
+const buttons = candidates.map(c => Markup.button.callback(`📂 ${String(c.name ?? `قسم ${c.id}`).slice(0, 48)}`, `adm:moveCatTarget:${cid}:${c.id}`));
 const rows = [];
 for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2));
-rows.unshift([Markup.button.callback("📁 الجذر", `adm:moveCatTarget:${cid}:0`)]);
+rows.unshift([Markup.button.callback("📁 الجذر (خارج الأقسام)", `adm:moveCatTarget:${cid}:0`)]);
 rows.push([Markup.button.callback("❌ إلغاء", `cat:${cid}:1:0`)]);
-await ctx.reply(`📁 نقل القسم «${sourceName}»\nاختر القسم الهدف مباشرة، أو أرسل اسم القسم في رسالة:`, Markup.inlineKeyboard(rows));
+await ctx.reply(`📁 نقل القسم «${sourceName}»
+اختر القسم الهدف مباشرة، أو أرسل اسم القسم الهدف في رسالة.
+
+مثال: إذا أردت نقل «بطاقات الألعاب» إلى القسم 1، اختر اسم القسم 1 من الأزرار أدناه.`, Markup.inlineKeyboard(rows));
 });
 
 bot.action(/^adm:moveCatTarget:(\d+):(\d+)$/, async ctx => {
