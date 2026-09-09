@@ -755,6 +755,42 @@ if (Array.isArray(children) && children.length) flattenApiCategories(children, i
 return out;
 }
 
+function normalizeProviderQty(raw) {
+if (raw == null || raw === "") return null;
+if (Array.isArray(raw)) {
+  const values = raw.map(v => Number(v)).filter(Number.isFinite);
+  return values.length ? values : null;
+}
+if (typeof raw === "number") return Number.isFinite(raw) && raw > 0 ? [raw] : null;
+if (typeof raw === "string") {
+  const text = raw.trim();
+  if (!text) return null;
+  try { return normalizeProviderQty(JSON.parse(text)); } catch {}
+  const range = text.match(/^(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)$/);
+  if (range) return { min: Number(range[1]), max: Number(range[2]) };
+  const n = Number(text.replace(/,/g, ""));
+  return Number.isFinite(n) && n > 0 ? [n] : null;
+}
+if (typeof raw === "object") {
+  const min = raw.min ?? raw.minimum ?? raw.min_qty ?? raw.min_quantity ?? raw.from;
+  const max = raw.max ?? raw.maximum ?? raw.max_qty ?? raw.max_quantity ?? raw.to;
+  if (min != null || max != null) {
+    const a = Number(min); const b = Number(max ?? min);
+    if (Number.isFinite(a) && Number.isFinite(b) && a > 0 && b > 0) return { min: Math.min(a,b), max: Math.max(a,b) };
+  }
+  for (const key of ["values", "options", "quantities", "qty_values", "quantity"]) {
+    if (raw[key] != null) { const v = normalizeProviderQty(raw[key]); if (v) return v; }
+  }
+}
+return null;
+}
+
+function normalizeProviderParams(raw) {
+if (Array.isArray(raw)) return raw.map(v => typeof v === "string" ? v : (v?.name ?? v?.key ?? v?.id ?? v)).filter(v => v != null).map(String);
+if (raw && typeof raw === "object") return Object.keys(raw);
+return [];
+}
+
 async function fetchApiSourceProducts(source) {
 const client = getApiSourceClient(source);
 const res = await client.get("/api/v2/products");
@@ -766,9 +802,9 @@ category_id: p?.category_id ?? p?.categoryId ?? p?.category?.id ?? null,
 category_name: p?.category_name ?? p?.category?.name ?? null,
 price: p?.price ?? p?.base_price ?? null,
 base_price: p?.base_price ?? p?.price ?? null,
-params: Array.isArray(p?.params) ? p.params : Array.isArray(p?.parameters) ? p.parameters : [],
-qty_values: p?.qty_values ?? p?.quantity ?? null,
-available: p?.available !== false,
+params: normalizeProviderParams(p?.params ?? p?.parameters ?? p?.fields ?? p?.requirements),
+qty_values: normalizeProviderQty(p?.qty_values ?? p?.quantity ?? p?.qty ?? p?.quantities ?? p?.quantity_range ?? (p?.min_qty != null || p?.max_qty != null ? { min: p?.min_qty, max: p?.max_qty } : null)),
+available: p?.available !== false && p?.active !== false && p?.enabled !== false,
 }));
 }
 
@@ -849,7 +885,7 @@ const allProducts = [];
 const categorySeen = new Set();
 const productSeen = new Set();
 let calls = 0;
-const MAX_CATEGORIES = 2000;
+const MAX_CATEGORIES = 200;
 
 while (queue.length && calls < MAX_CATEGORIES) {
   const parentId = queue.shift();
@@ -952,6 +988,27 @@ for (const c of pendingCategories) {
   seenCategories.add(extId);
 }
 
+// بعض مزوّدي المنتجات لا يعيدون قائمة الأقسام من /content/0، لكنهم يضعون
+// category_id/category_name داخل كل منتج. ننشئ/نحدّث هذه الأقسام من نفس بيانات المصدر
+// حتى لا تختفي منتجات المصدر الثاني من المتجر.
+for (const raw of products) {
+  const extCat = raw?.category_id ?? raw?.categoryId ?? raw?.category?.id;
+  const catName = raw?.category_name ?? raw?.category?.name ?? (extCat != null ? `قسم ${extCat}` : null);
+  if (extCat == null || !catName) continue;
+  const extKey = String(extCat);
+  if (categoryMap.has(extKey)) continue;
+  const existing = (await q("SELECT id FROM api_source_categories WHERE api_source_id=$1 AND external_id=$2 LIMIT 1", [src.id, extKey])).rows[0];
+  let localId;
+  if (existing) {
+    const r = await q("UPDATE api_source_categories SET name=CASE WHEN admin_deleted THEN name ELSE $1 END, active=CASE WHEN admin_deleted THEN false ELSE true END, updated_at=NOW() WHERE id=$2 RETURNING id", [catName, existing.id]);
+    localId = r.rows[0].id;
+  } else {
+    const r = await q("INSERT INTO api_source_categories(api_source_id,external_id,name,parent_id,custom_parent_id,active) VALUES($1,$2,$3,0,NULL,true) RETURNING id", [src.id, extKey, catName]);
+    localId = r.rows[0].id;
+  }
+  categoryMap.set(extKey, localId);
+}
+
 const seenProductIds = new Set();
 for (const raw of products) {
   const externalId = String(raw?.id ?? raw?.product_id ?? "").trim();
@@ -959,8 +1016,8 @@ for (const raw of products) {
   seenProductIds.add(externalId);
   const categoryExternalId = raw?.category_id ?? raw?.categoryId ?? raw?.category?.id ?? null;
   const categoryLocalId = categoryExternalId == null ? null : (categoryMap.get(String(categoryExternalId)) ?? null);
-  const qtyValues = raw?.qty_values ?? raw?.quantity ?? raw?.qty ?? null;
-  const params = Array.isArray(raw?.params) ? raw.params : Array.isArray(raw?.parameters) ? raw.parameters : [];
+  const qtyValues = normalizeProviderQty(raw?.qty_values ?? raw?.quantity ?? raw?.qty ?? raw?.quantities ?? raw?.quantity_range ?? (raw?.min_qty != null || raw?.max_qty != null ? { min: raw?.min_qty, max: raw?.max_qty } : null));
+  const params = normalizeProviderParams(raw?.params ?? raw?.parameters ?? raw?.fields ?? raw?.requirements);
   const cancel = extractCancelMeta(raw);
   const available = raw?.available !== false && raw?.active !== false && raw?.enabled !== false;
   const parentId = categoryLocalId;
@@ -1341,6 +1398,40 @@ rawPrice = isSocial ? rateVal / 1000 : rateVal;
 return Number((rawPrice * (1 + m / 100)).toFixed(6));
 }
 
+// API2 products inherit the same store rules as the rest of the catalog.
+// Provider data remains authoritative for name/price/quantity/params/availability,
+// while local store settings (source/category/user/product markup, hidden/name overrides,
+// social markup) are applied on top without hard-coding provider quantities.
+async function getApi2DisplayData(row, userId, preloaded = {}) {
+  const p = {
+    id: `ext_${row.api_source_id}_${row.external_id}`,
+    api_source_product_id: row.id,
+    name: row.name,
+    category_name: row.category_name,
+    category_id: row.category_id,
+    parent_id: row.parent_id,
+    price: row.price,
+    base_price: row.base_price,
+    rate: row.rate,
+    _source: "api2",
+    _source_id: row.api_source_id,
+  };
+  const [src, user, ovRes, catOvRes, markup, socialMarkup, socialKws] = await Promise.all([
+    preloaded.source ?? getApiSource(row.api_source_id),
+    preloaded.user ?? getUser(userId),
+    preloaded.override ?? loadOverrideMap([Number(row.id)]),
+    preloaded.categoryOverride ?? q("SELECT custom_markup_percent, custom_name, hidden FROM category_overrides WHERE category_id=$1", [Number(row.category_id)]).then(r => r.rows[0] ?? null),
+    preloaded.markup ?? getMarkupPercent(),
+    preloaded.socialMarkup ?? getSocialMarkupPercent(),
+    preloaded.socialKws ?? getSocialKeywords(),
+  ]);
+  const override = preloaded.override && !preloaded.override.get ? preloaded.override : (ovRes instanceof Map ? ovRes.get(Number(row.id)) : ovRes);
+  const userMarkupPercent = user?.custom_markup_percent != null ? Number(user.custom_markup_percent) : null;
+  const categoryMarkupPercent = catOvRes?.custom_markup_percent != null ? Number(catOvRes.custom_markup_percent) : null;
+  const priceUsd = await effectivePriceUsd(p, override, Number(src?.markup_percent ?? markup), socialMarkup, socialKws, categoryMarkupPercent, userMarkupPercent);
+  return { priceUsd, override, categoryOverride: catOvRes, source: src, user, userMarkupPercent };
+}
+
 const BOT_MAINTENANCE_MSG = "🔧 البوت قيد الصيانة حالياً.\nسيعود للعمل بأقرب وقت ممكن. نشكر صبركم! 🙏";
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME ?? "admin").split(",")[0].trim();
 
@@ -1672,15 +1763,22 @@ return Markup.button.callback(`${ov?.hidden ? "🔒 " : "🛒 "}${name} • ${us
 const api2SourceIds = [...new Set(api2Prods.rows.map(p => Number(p.api_source_id)).filter(Boolean))];
 const api2Sources = api2SourceIds.length ? (await q("SELECT id, markup_percent FROM api_sources WHERE id = ANY($1)", [api2SourceIds])).rows : [];
 const api2MarkupMap = new Map(api2Sources.map(src => [Number(src.id), Number(src.markup_percent ?? markup)]));
-const api2ProdBtns = api2Prods.rows.map(p => {
+const api2Overrides = api2Prods.rows.length ? await loadOverrideMap(api2Prods.rows.map(p => Number(p.id))) : new Map();
+const api2CatOvRes = api2Prods.rows.length ? await q("SELECT category_id, custom_markup_percent FROM category_overrides WHERE category_id = ANY($1)", [[...new Set(api2Prods.rows.map(p => Number(p.category_id)).filter(Boolean))]]) : { rows: [] };
+const api2CatMarkupMap = new Map(api2CatOvRes.rows.map(r => [Number(r.category_id), r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null]));
+const api2ProdBtns = await Promise.all(api2Prods.rows.map(async p => {
+const override = api2Overrides.get(Number(p.id));
+const categoryMarkup = api2CatMarkupMap.get(Number(p.category_id)) ?? null;
 const srcMarkup = api2MarkupMap.get(Number(p.api_source_id)) ?? markup;
-const rawPrice = Number(p.price) || Number(p.base_price) || 0;
-const usd = Number((rawPrice * (1 + srcMarkup / 100)).toFixed(6));
+const usd = await effectivePriceUsd({ ...p, _source: "api2", _source_id: p.api_source_id, id: `ext_${p.api_source_id}_${p.external_id}` }, override, srcMarkup, socialMarkup, socialKws, categoryMarkup, userMarkupPercent);
+if (override?.hidden && !isAdmin) return null;
+const name = override?.customName ?? p.name;
 const syp = Math.round(usd * rate);
-return Markup.button.callback(`🛒 ${p.name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `api2prod:${p.id}:${parentId}`);
-});
+return Markup.button.callback(`🛒 ${name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `api2prod:${p.id}:${parentId}`);
+}));
+const api2ProdBtnsSafe = api2ProdBtns.filter(Boolean);
 
-const all = [...catBtns, ...prodBtns, ...manualBtns, ...api2ProdBtns];
+const all = [...catBtns, ...prodBtns, ...manualBtns, ...api2ProdBtnsSafe];
 const totalPages = Math.max(1, Math.ceil(all.length / PAGE_SIZE));
 const safe = Math.min(Math.max(1, page), totalPages);
 saveNavPage(ctx.from.id, parentId, safe);
@@ -1754,16 +1852,10 @@ const usd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws, null
 const syp = Math.round(usd * rate);
 
 let qtyInfo = "";
-if (isSocial) {
-const parsed = p.qty_values;
-if (parsed && !Array.isArray(parsed) && Number(parsed.min) > 0 && Number(parsed.max) > 0)
-qtyInfo = `الكمية بين ${Number(parsed.min).toLocaleString("en-US")} و ${Number(parsed.max).toLocaleString("en-US")}`;
-else if (parsed && Array.isArray(parsed) && parsed.length > 0)
-qtyInfo = `الكميات المتاحة: ${parsed.join(", ")}`;
-else { const [min, max] = await Promise.all([getSocialMinQty(), getSocialMaxQty()]); qtyInfo = `الكمية بين ${min.toLocaleString("en-US")} و ${max.toLocaleString("en-US")}`; }
-} else if (!p.qty_values) { qtyInfo = "الكمية: 1 (ثابتة)"; }
-else if (Array.isArray(p.qty_values)) { qtyInfo = `الكميات المتاحة: ${p.qty_values.join(", ")}`; }
-else { qtyInfo = `الكمية بين ${p.qty_values.min} و ${p.qty_values.max}`; }
+const qtyDisplay = parseQtyValues(p.qty_values);
+if (qtyDisplay.kind === "fixed") qtyInfo = "الكمية: 1 (ثابتة)";
+else if (qtyDisplay.kind === "list") qtyInfo = `الكميات المتاحة: ${qtyDisplay.values.join(", ")}`;
+else qtyInfo = `الكمية بين ${qtyDisplay.min.toLocaleString("en-US")} و ${qtyDisplay.max.toLocaleString("en-US")}`;
 
 const displayName = ov?.customName ?? p.name;
 const instructions = ov?.instructions?.trim() || getProductApiNotes(p);
@@ -2008,14 +2100,22 @@ const subBtns = subRes.rows.map(c => Markup.button.callback(`📂 ${c.name}`.sli
 // Products
 const prodRes = await q("SELECT * FROM api_source_products WHERE category_id=$1 AND available=true", [catId]);
 const src = await getApiSource(cat.api_source_id);
-const srcMarkup = src?.markup_percent ?? 3;
+const [markup, socialMarkup, socialKws, user, catOvRes] = await Promise.all([
+getMarkupPercent(), getSocialMarkupPercent(), getSocialKeywords(), getUser(ctx.from.id),
+q("SELECT custom_markup_percent FROM category_overrides WHERE category_id=$1", [catId]),
+]);
+const categoryMarkup = catOvRes.rows[0]?.custom_markup_percent != null ? Number(catOvRes.rows[0].custom_markup_percent) : null;
+const api2Overrides = prodRes.rows.length ? await loadOverrideMap(prodRes.rows.map(p => Number(p.id))) : new Map();
+const userMarkupPercent = user?.custom_markup_percent != null ? Number(user.custom_markup_percent) : null;
 
-const prodBtns = prodRes.rows.map(p => {
-const rawPrice = Number(p.price) || Number(p.base_price) || 0;
-const usd = Number((rawPrice * (1 + srcMarkup / 100)).toFixed(6));
+const prodBtns = (await Promise.all(prodRes.rows.map(async p => {
+const override = api2Overrides.get(Number(p.id));
+if (override?.hidden && !isAdmin) return null;
+const usd = await effectivePriceUsd({ ...p, _source: "api2", _source_id: p.api_source_id, id: `ext_${p.api_source_id}_${p.external_id}` }, override, Number(src?.markup_percent ?? markup), socialMarkup, socialKws, categoryMarkup, userMarkupPercent);
 const syp = Math.round(usd * rate);
-return Markup.button.callback(`🛒 ${p.name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `api2prod:${p.id}:${catId}`);
-});
+const name = override?.customName ?? p.name;
+return Markup.button.callback(`🛒 ${name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `api2prod:${p.id}:${catId}`);
+}))).filter(Boolean);
 
 const allBtns = [...subBtns, ...prodBtns];
 const totalPages = Math.max(1, Math.ceil(allBtns.length / PAGE_SIZE));
@@ -2052,17 +2152,19 @@ const pRes = await q("SELECT * FROM api_source_products WHERE id=$1", [prodId]);
 const p = pRes.rows[0];
 if (!p || !p.available) { await sendOrEdit(ctx, "⚠️ المنتج غير متاح.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
 
-const [rate, src] = await Promise.all([getExchangeRate(), getApiSource(p.api_source_id)]);
-const srcMarkup = src?.markup_percent ?? 3;
-const rawPrice = Number(p.price) || Number(p.base_price) || 0;
-const usd = Number((rawPrice * (1 + srcMarkup / 100)).toFixed(6));
+const [rate, display] = await Promise.all([
+getExchangeRate(),
+getApi2DisplayData(p, ctx.from.id),
+]);
+const usd = display.priceUsd;
 const syp = Math.round(usd * rate);
 
-let qtyInfo = "";
-if (p.qty_values) {
-if (Array.isArray(p.qty_values)) qtyInfo = `الكميات المتاحة: ${p.qty_values.join(", ")}`;
-else if (p.qty_values.min != null && p.qty_values.max != null) qtyInfo = `الكمية بين ${p.qty_values.min} و ${p.qty_values.max}`;
-}
+const qtyDisplay = parseQtyValues(p.qty_values);
+let qtyInfo = qtyDisplay.kind === "fixed"
+  ? "الكمية: 1 (ثابتة)"
+  : qtyDisplay.kind === "list"
+    ? `الكميات المتاحة: ${qtyDisplay.values.join(", ")}`
+    : `الكمية بين ${qtyDisplay.min.toLocaleString("en-US")} و ${qtyDisplay.max.toLocaleString("en-US")}`;
 
 let text = `🛒 ${p.name}\n`;
 if (p.category_name) text += `القسم: ${p.category_name}\n`;
@@ -2161,9 +2263,27 @@ return formatApiResponseClean(resp);
 }
 
 function parseQtyValues(qv) {
-if (!qv) return { kind: "fixed" };
-if (Array.isArray(qv)) return { kind: "list", values: qv.map(v => Number(v)).filter(Number.isFinite) };
-return { kind: "range", min: Number(qv.min), max: Number(qv.max) };
+if (qv == null || qv === "") return { kind: "fixed" };
+if (typeof qv === "string") {
+  const text = qv.trim();
+  if (!text) return { kind: "fixed" };
+  try { return parseQtyValues(JSON.parse(text)); } catch {}
+  const n = Number(text.replace(/,/g, ""));
+  if (Number.isFinite(n) && n > 0) return { kind: "list", values: [n] };
+  const m = text.match(/^(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)$/);
+  if (m) return { kind: "range", min: Math.min(Number(m[1]), Number(m[2])), max: Math.max(Number(m[1]), Number(m[2])) };
+  return { kind: "fixed" };
+}
+if (Array.isArray(qv)) {
+  const values = qv.map(v => Number(v)).filter(Number.isFinite).filter(v => v > 0);
+  if (!values.length) return { kind: "fixed" };
+  return { kind: "list", values };
+}
+if (typeof qv === "number") return qv > 0 ? { kind: "list", values: [qv] } : { kind: "fixed" };
+const min = Number(qv.min ?? qv.minimum ?? qv.min_qty ?? qv.min_quantity ?? qv.from);
+const max = Number(qv.max ?? qv.maximum ?? qv.max_qty ?? qv.max_quantity ?? qv.to ?? qv.min ?? qv.minimum);
+if (Number.isFinite(min) && min > 0 && Number.isFinite(max) && max > 0) return { kind: "range", min: Math.min(min,max), max: Math.max(min,max) };
+return { kind: "fixed" };
 }
 
 function statusLabel(s) {
@@ -2203,28 +2323,7 @@ getUser(ctx.from.id),
 const ov = ovMap.get(p.id);
 const userMarkup = user?.custom_markup_percent != null ? Number(user.custom_markup_percent) : null;
 const unitPriceUsd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws, null, userMarkup);
-const isSocial = isSocialProduct(p.name, p.category_name, socialKws);
 const paramKeys = Array.isArray(p.params) ? p.params : [];
-
-if (isSocial) {
-const parsedSocial = parseQtyValues(p.qty_values);
-if (parsedSocial.kind === "list" && parsedSocial.values.length > 0) {
-setStep(ctx.from.id, { kind: "order:qty", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: parsedSocial.values, backTo });
-const rows = parsedSocial.values.slice(0, 24).map(v => {
-const label = formatPriceLabel(v, unitPriceUsd);
-return [Markup.button.callback(label, `ord:qty:${v}`)];
-});
-rows.push([Markup.button.callback("❌ إلغاء", "ord:cancel")]);
-await sendOrEdit(ctx, `🛒 ${p.name}\n\nاختر الكمية:`, Markup.inlineKeyboard(rows)); return;
-}
-let min, max;
-if (parsedSocial.kind === "range" && Number.isFinite(parsedSocial.min) && parsedSocial.min > 0)
-{ min = parsedSocial.min; max = parsedSocial.max; }
-else { min = await getSocialMinQty(); max = await getSocialMaxQty(); }
-setStep(ctx.from.id, { kind: "order:qty", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: { min, max }, backTo });
-await sendOrEdit(ctx, `🛒 ${p.name}\n\nأرسل الكمية (بين ${min.toLocaleString("en-US")} و ${max.toLocaleString("en-US")}):`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]])); return;
-}
-
 const parsed = parseQtyValues(p.qty_values);
 if (parsed.kind === "fixed") { await askNextParam(ctx, p, unitPriceUsd, 1, paramKeys, {}, 0, backTo); return; }
 if (parsed.kind === "list") {
@@ -2554,50 +2653,46 @@ await ctx.reply("⚠️ تعذّر فحص الحالة الآن.", Markup.inline
 }
 
 async function pollOneOrder(bot, order) {
-let resp = null;
-if (order.oranos_order_id) {
+const identifiers = [];
+if (order.oranos_order_id) identifiers.push({ value: String(order.oranos_order_id), byUuid: false });
+if (order.oranos_uuid && !identifiers.some(x => x.value === String(order.oranos_uuid))) identifiers.push({ value: String(order.oranos_uuid), byUuid: true });
+for (const ident of identifiers) {
+  let resp = null;
   if (order.api_source_id) {
     const src = await getApiSource(order.api_source_id).catch(() => null);
-    if (src) resp = await checkApiSourceOrder(src, order.oranos_order_id, String(order.oranos_order_id) === String(order.oranos_uuid)).catch(() => null);
+    if (src) resp = await checkApiSourceOrder(src, ident.value, ident.byUuid).catch(() => null);
   } else {
-    resp = await checkOrder(order.oranos_order_id).catch(() => null);
+    resp = await checkOrder(ident.value, ident.byUuid).catch(() => null);
   }
-}
-if ((!resp || !getBestApiStatus(resp) || ["err","error"].includes(getBestApiStatus(resp))) && order.oranos_uuid) {
-  if (order.api_source_id) {
-    const src = await getApiSource(order.api_source_id).catch(() => null);
-    if (src) resp = await checkApiSourceOrder(src, order.oranos_uuid, true).catch(() => null);
-  } else {
-    resp = await checkOrder(order.oranos_uuid, true).catch(() => null);
-  }
-}
-if (!resp) return false;
-const rawNew = getBestApiStatus(resp);
-if (!rawNew) return false;
-const isRejected = REJECT_STATUSES.has(rawNew) || ["0","false"].includes(rawNew);
-const isAccepted = ACCEPT_STATUSES.has(rawNew) || ["1","true"].includes(rawNew);
-if (!isRejected && !isAccepted) return false;
-const finalStatus = isRejected ? "reject" : "accept";
-const code = extractDeliveredCode(resp);
-const updateSql = "UPDATE orders SET status=$1, api_response=$2" + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3") + " AND status=$" + (code ? "5" : "4") + " RETURNING id";
-const updateParams = code ? [finalStatus, JSON.stringify(resp), code, order.id, order.status] : [finalStatus, JSON.stringify(resp), order.id, order.status];
-const updated = await q(updateSql, updateParams);
-if (!updated.rows.length) return false;
+  if (!resp) continue;
+  const rawNew = getBestApiStatus(resp);
+  if (!rawNew || ["err","error"].includes(String(rawNew).toLowerCase())) continue;
+  const isRejected = REJECT_STATUSES.has(rawNew) || ["0","false"].includes(rawNew);
+  const isAccepted = ACCEPT_STATUSES.has(rawNew) || ["1","true"].includes(rawNew);
+  if (!isRejected && !isAccepted) continue;
+  const finalStatus = isRejected ? "reject" : "accept";
+  const code = extractDeliveredCode(resp);
+  const updateSql = "UPDATE orders SET status=$1, api_response=$2" + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3") + " AND status=$" + (code ? "5" : "4") + " RETURNING id";
+  const updateParams = code ? [finalStatus, JSON.stringify(resp), code, order.id, order.status] : [finalStatus, JSON.stringify(resp), order.id, order.status];
+  const updated = await q(updateSql, updateParams);
+  if (!updated.rows.length) return false;
 
-const priceUsd = Number(order.price_usd);
-const rate = await getExchangeRate();
-if (isRejected) {
-  await adjustBalance(order.user_id, priceUsd);
-  const refundSyp = Math.round(priceUsd * rate);
-  await bot.telegram.sendMessage(order.user_id, `❌ تم رفض طلبك.\n💰 تمت إعادة ${priceUsd.toFixed(2)}$ | ${refundSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
-} else {
-  const priceSyp = Math.round(priceUsd * rate);
-  const message = code
-    ? `✅ تم تنفيذ طلبك بنجاح!\n🛒 المنتج: ${order.product_name}\n💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س\n\n🔑 تفاصيل الطلب:\n\n${code}`
-    : `✅ تم تنفيذ طلبك بنجاح!\n🛒 المنتج: ${order.product_name}\n💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`;
-  await bot.telegram.sendMessage(order.user_id, message, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+  const priceUsd = Number(order.price_usd);
+  const rate = await getExchangeRate();
+  if (isRejected) {
+    await adjustBalance(order.user_id, priceUsd);
+    const refundSyp = Math.round(priceUsd * rate);
+    await bot.telegram.sendMessage(order.user_id, `❌ تم رفض طلبك.\n💰 تمت إعادة ${priceUsd.toFixed(2)}$ | ${refundSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+  } else {
+    const priceSyp = Math.round(priceUsd * rate);
+    const message = code
+      ? `✅ تم تنفيذ طلبك بنجاح!\n🛒 ${order.product_name} × ${order.qty}\n💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س\n\n🔑 تفاصيل الطلب:\n\n${code}`
+      : `✅ تم تنفيذ طلبك بنجاح!\n🛒 ${order.product_name} × ${order.qty}\n💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`;
+    await bot.telegram.sendMessage(order.user_id, message, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+  }
+  return true;
 }
-return true;
+return false;
 }
 
 async function fastPollOrder(orderId, attempts = 5, delayMs = 1200) {
@@ -2964,12 +3059,21 @@ await ensureTables();
 await ensureDefaults();
 await ensureDefaultDepositMethods();
 const defaultApi2Id = await ensureDefaultApi2();
-// Build a local snapshot before Telegram starts. Normal users then open Products from DB in milliseconds.
-await warmFirstCatalogSnapshot();
+// نفّذ مزامنة أولية قصيرة قبل تشغيل البوت حتى لا يظهر المتجر فارغاً من المصدر الثاني.
+// إذا كان المصدر متوقفاً مؤقتاً، نكمل تشغيل البوت ونحاول تلقائياً في الخلفية لاحقاً.
 if (defaultApi2Id) {
-// Sync the supplied Source2 in the background; never block the first user interaction on this network call.
-syncApiSource(defaultApi2Id).then(count => { console.log(`المصدر الثاني initial sync completed: ${count} products`); invalidateCaches(); }).catch(e => console.error("Default Source2 initial sync failed:", e.message));
+  try {
+    const result = await Promise.race([
+      syncApiSource(defaultApi2Id),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("initial sync timeout")), 30000))
+    ]);
+    console.log(`المصدر الثاني initial sync completed: ${result} products`);
+  } catch (e) {
+    console.error("Default Source2 initial sync failed:", e.message);
+  }
 }
+// Build a local snapshot before Telegram starts.
+await warmFirstCatalogSnapshot();
 // لا ننتظر مزامنة الـAPI قبل تشغيل البوت. المزامنة تعمل بالخلفية
 // حتى يستطيع المستخدم فتح البوت فوراً، وتُحفظ النتائج في قاعدة البيانات.
 const bot = new Telegraf(token, { handlerTimeout: 90_000 });
@@ -3146,36 +3250,12 @@ const pRes = await q("SELECT * FROM api_source_products WHERE id=$1", [prodId]);
 const p = pRes.rows[0];
 if (!p) { await ctx.reply("⚠️ المنتج غير موجود."); return; }
 
-const [src, rate, user] = await Promise.all([
-getApiSource(p.api_source_id),
+const [rate, display] = await Promise.all([
 getExchangeRate(),
-getUser(ctx.from.id),
+getApi2DisplayData(p, ctx.from.id),
 ]);
-const srcMarkup = src?.markup_percent ?? 3;
-const rawPrice = Number(p.price) || Number(p.base_price) || 0;
-const unitPriceUsd = Number((rawPrice * (1 + srcMarkup / 100)).toFixed(6));
-const isSocial = isSocialProduct(p.name, p.category_name, await getSocialKeywords());
+const unitPriceUsd = display.priceUsd;
 const paramKeys = Array.isArray(p.params) ? p.params : [];
-
-if (isSocial) {
-const parsedSocial = parseQtyValues(p.qty_values);
-if (parsedSocial.kind === "list" && parsedSocial.values.length > 0) {
-setStep(ctx.from.id, { kind: "order:qty", productId: `ext_${p.api_source_id}_${p.external_id}`, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: parsedSocial.values, backTo, _api2: true, _api2_id: p.id });
-const rows = parsedSocial.values.slice(0, 24).map(v => {
-const label = formatPriceLabel(v, unitPriceUsd);
-return [Markup.button.callback(label, `ord:qty:${v}`)];
-});
-rows.push([Markup.button.callback("❌ إلغاء", "ord:cancel")]);
-await sendOrEdit(ctx, `🛒 ${p.name}\n\nاختر الكمية:`, Markup.inlineKeyboard(rows)); return;
-}
-let min, max;
-if (parsedSocial.kind === "range" && Number.isFinite(parsedSocial.min) && parsedSocial.min > 0)
-{ min = parsedSocial.min; max = parsedSocial.max; }
-else { min = await getSocialMinQty(); max = await getSocialMaxQty(); }
-setStep(ctx.from.id, { kind: "order:qty", productId: `ext_${p.api_source_id}_${p.external_id}`, productName: p.name, priceUsd: unitPriceUsd, paramKeys, qtyValues: { min, max }, backTo, _api2: true, _api2_id: p.id });
-await sendOrEdit(ctx, `🛒 ${p.name}\n\nأرسل الكمية (بين ${min.toLocaleString("en-US")} و ${max.toLocaleString("en-US")}):`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]])); return;
-}
-
 const parsed = parseQtyValues(p.qty_values);
 if (parsed.kind === "fixed") {
 setStep(ctx.from.id, { kind: "order:params", productId: `ext_${p.api_source_id}_${p.external_id}`, productName: p.name, priceUsd: unitPriceUsd, qty: 1, paramKeys, collected: {}, idx: 0, backTo, _api2: true, _api2_id: p.id });
