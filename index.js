@@ -1,5 +1,5 @@
 // ============================================================
-//  متجر المروان — بوت تيليجرام v4.4 (تدقيق وإصلاح شامل)
+//  متجر المروان — بوت تيليجرام v4.7 (تدقيق وإصلاح شامل)
 //  إضافات: API ثاني، منتجات يدوية متكاملة، أقسام يدوية، ردود متعددة
 // ============================================================
 "use strict";
@@ -24,14 +24,17 @@ const _needSSL =
   _dbUrl.includes("railway") ||
   _dbUrl.includes("neon") ||
   _dbUrl.includes("supabase");
+const DB_POOL_MAX = Math.max(2, Math.min(100, Number(process.env.DB_POOL_MAX) || 10));
+const DB_POOL_MIN = Math.max(0, Math.min(DB_POOL_MAX, Number(process.env.DB_POOL_MIN) || 2));
 const pool = new Pool({
 connectionString: _dbUrl,
 ssl: _needSSL ? { rejectUnauthorized: false } : false,
-max: 10,
-min: 2,
-idleTimeoutMillis: 30_000,
-connectionTimeoutMillis: 5_000,
-statement_timeout: 15_000,
+max: DB_POOL_MAX,
+min: DB_POOL_MIN,
+idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT_MS) || 30_000,
+connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT_MS) || 5_000,
+statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS) || 15_000,
+allowExitOnIdle: false,
 });
 
 async function q(text, params = []) {
@@ -102,8 +105,8 @@ cancel_seconds INTEGER,
 cancel_url TEXT,
 cancel_available_at TIMESTAMPTZ,
 refunded_at TIMESTAMPTZ,
-created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-pending_notice_sent_at TIMESTAMPTZ
+pending_notice_sent_at TIMESTAMPTZ,
+created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS product_overrides (
 product_id INTEGER PRIMARY KEY,
@@ -268,7 +271,6 @@ const migrations = [
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_available_at TIMESTAMPTZ",
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ",
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS pending_notice_sent_at TIMESTAMPTZ",
-"CREATE INDEX IF NOT EXISTS idx_orders_pending_created ON orders(status, created_at) WHERE status='pending'",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS manual_category_id INTEGER",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS description TEXT",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS image_file_id TEXT",
@@ -301,6 +303,10 @@ const migrations = [
 "CREATE INDEX IF NOT EXISTS idx_api_source_products_source_available ON api_source_products(api_source_id, available)",
 "CREATE INDEX IF NOT EXISTS idx_api_source_products_source_category_available ON api_source_products(api_source_id, category_id, available)",
 "CREATE INDEX IF NOT EXISTS idx_api_source_categories_parent_active ON api_source_categories(api_source_id, parent_id, active)",
+"CREATE INDEX IF NOT EXISTS idx_orders_pending_created ON orders(created_at DESC) WHERE status='pending'",
+"CREATE INDEX IF NOT EXISTS idx_deposit_requests_pending_created ON deposit_requests(created_at DESC) WHERE status='pending'",
+"CREATE INDEX IF NOT EXISTS idx_manual_orders_pending_created ON manual_orders(created_at DESC) WHERE status='pending'",
+"CREATE INDEX IF NOT EXISTS idx_processed_updates_created_at ON processed_telegram_updates(created_at)",
 ];
 for (const mig of migrations) {
 try { await q(mig); }
@@ -387,11 +393,12 @@ async function getAdminLoginCommand() { return getSetting("admin_login_command")
 async function getBtnBackLabel() { return getSetting("btn_back_label"); }
 async function getBtnHomeLabel() {
   const label = await getSetting("btn_home_label");
-  // إصلاح أي قيمة قديمة/خاطئة مثل "عد الرئيسية" من الإصدارات السابقة.
-  if (!label || /عد\s+الرئيسية|الرئيسيه/i.test(String(label)) || !String(label).includes("الرئيسية")) {
+  // زر الرئيسية يجب أن يظهر دائماً بالشكل الموحد المطلوب: بيت + الرئيسية.
+  // أي قيمة قديمة أو مشوهة مثل "عد الرئيسية" يتم تجاهلها.
+  if (!label || !String(label).includes("الرئيسية") || /عد\s+الرئيسية|الرئيسيه/i.test(String(label))) {
     return DEFAULTS.btn_home_label;
   }
-  return String(label).trim();
+  return DEFAULTS.btn_home_label;
 }
 async function getBtnPrevLabel() { return getSetting("btn_prev_label"); }
 async function getBtnNextLabel() { return getSetting("btn_next_label"); }
@@ -1213,12 +1220,15 @@ return "📞 استخدم زر الدعم من القائمة للتواصل م�
 const PRODUCTS_TTL = 5 * 60_000;
 const CONTENT_TTL = 5 * 60_000;
 const OVERRIDES_TTL = 2 * 60_000;
+const CATEGORY_OVERRIDES_TTL = 2 * 60_000;
 const PAGE_SIZE = 8;
-const CATALOG_REFRESH_MS = 60_000;
+const CATALOG_REFRESH_MS = Math.max(30_000, Number(process.env.CATALOG_REFRESH_MS) || 60_000);
 
 let productsCache = null;
 const contentCache = new Map();
 let allOverridesCache = null;
+let allCategoryOverridesCache = null;
+let _categoryOverridesInFlight = null;
 let _productsInFlight = null;
 const _contentInFlight = new Map();
 let _overridesInFlight = null;
@@ -1326,6 +1336,25 @@ return map;
 return _overridesInFlight;
 }
 
+async function getAllCategoryOverridesCached() {
+if (allCategoryOverridesCache && allCategoryOverridesCache.expiry > Date.now()) return allCategoryOverridesCache.map;
+if (_categoryOverridesInFlight) return _categoryOverridesInFlight;
+_categoryOverridesInFlight = (async () => {
+const res = await q("SELECT category_id, custom_name, hidden, sort_order, custom_markup_percent, custom_parent_id FROM category_overrides");
+const map = new Map();
+for (const r of res.rows) map.set(Number(r.category_id), {
+customName: r.custom_name,
+hidden: !!r.hidden,
+sortOrder: r.sort_order != null ? Number(r.sort_order) : null,
+customMarkupPercent: r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null,
+customParentId: r.custom_parent_id != null ? Number(r.custom_parent_id) : null,
+});
+allCategoryOverridesCache = { map, expiry: Date.now() + CATEGORY_OVERRIDES_TTL };
+return map;
+})().finally(() => { _categoryOverridesInFlight = null; });
+return _categoryOverridesInFlight;
+}
+
 async function refreshCatalogCache() {
 if (_catalogRefreshInFlight) return _catalogRefreshInFlight;
 _catalogRefreshInFlight = (async () => {
@@ -1364,9 +1393,19 @@ function invalidateCaches() {
 productsCache = null;
 contentCache.clear();
 allOverridesCache = null;
+allCategoryOverridesCache = null;
 }
 
 let refresherStarted = false;
+let updateCleanupStarted = false;
+function startUpdateCleanup() {
+if (updateCleanupStarted) return;
+updateCleanupStarted = true;
+const cleanup = () => q("DELETE FROM processed_telegram_updates WHERE created_at < NOW() - INTERVAL '24 hours'").catch(() => {});
+setInterval(cleanup, 60 * 60_000).unref();
+cleanup();
+}
+
 function startBackgroundRefresher() {
 if (refresherStarted) return;
 refresherStarted = true;
@@ -1528,6 +1567,8 @@ try { await ctx.editMessageReplyMarkup(undefined); } catch { /* ignore */ }
 async function ensureUser(ctx) {
 const f = ctx.from;
 if (!f) return null;
+const cached = userCacheGet(f.id);
+if (cached !== undefined) return cached;
 return upsertUser({ id: f.id, username: f.username, first_name: f.first_name, last_name: f.last_name });
 }
 
@@ -1699,7 +1740,7 @@ const [u, _catSessActive] = await Promise.all([getUser(ctx.from.id), isAdminSess
 const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || _catSessActive);
 const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
-const [kws, excludedStr, content, socialKws, socialMarkup, markup, ovMap] = await Promise.all([
+const [kws, excludedStr, content, socialKws, socialMarkup, markup, ovMap, categoryOvMap] = await Promise.all([
 getExcludedKeywords(),
 getSetting("excluded_category_ids"),
 getCachedContent(parentId),
@@ -1707,9 +1748,10 @@ getSocialKeywords(),
 getSocialMarkupPercent(),
 getMarkupPercent(),
 getAllOverridesCached(),
+getAllCategoryOverridesCached(),
 ]);
 const excludedCats = new Set(excludedStr.split(",").map(s => Number(s.trim())).filter(Number.isFinite));
-const catOv = await loadCategoryOverrides([...content.categories.map(c => c.id), parentId]);
+const catOv = categoryOvMap;
 
 // لا نفحص كل قسم عبر API عند كل ضغطة. content نفسه محفوظ في قاعدة البيانات،
 // لذلك نعرض الأقسام مباشرة ونترك التحديث للمزامنة الخلفية. هذا يمنع البطء
@@ -1835,10 +1877,10 @@ const slice = all.slice((safe - 1) * PAGE_SIZE, safe * PAGE_SIZE);
 
 const rows = [];
 if (isAdmin && parentId !== 0) {
-const curOv = (await q("SELECT * FROM category_overrides WHERE category_id=$1", [parentId])).rows[0];
+const curOv = catOv.get(Number(parentId));
 rows.push([Markup.button.callback("✏️ تعديل اسم القسم", `adm:catEdit:${parentId}`), Markup.button.callback(curOv?.hidden ? "👁 إظهار" : "🙈 إخفاء", `adm:catToggle:${parentId}`)]);
 rows.push([Markup.button.callback("% نسبة ربح القسم", `adm:catMarkup:${parentId}`)]);
-rows.push([Markup.button.callback("🚚 نقل كل منتجات القسم", `adm:moveCatAll:${parentId}`), Markup.button.callback("📁 نقل القسم إلى قسم", `adm:moveCatToParent:${parentId}`)]);
+rows.push([Markup.button.callback("🚚 نقل كل منتجات القسم", `adm:moveCatAll:${parentId}`), Markup.button.callback("🔀 تغيير ترتيب القسم", `adm:reorderCat:${parentId}`)]);
 rows.push([Markup.button.callback("🗑️ حذف القسم", `adm:catDelete:${parentId}`)]);
 }
 for (const b of slice) rows.push([b]);
@@ -1851,6 +1893,7 @@ if (nav.length > 1) rows.push(nav);
 
 if (parentId === 0) {
 if (isAdmin) {
+rows.push([Markup.button.callback("🔀 تغيير ترتيب القسم", "adm:reorderCat:0")]);
 rows.push([Markup.button.callback(backLabel, "admin:menu"), Markup.button.callback(homeLabel, "home")]);
 } else {
 rows.push([Markup.button.callback(homeLabel, "home")]);
@@ -2558,25 +2601,6 @@ await _botRef?.telegram.sendMessage(order.user_id, `❌ تعذر تنفيذ ال
 });
 }
 
-async function notifyPendingOrderAfterTwoMinutes(bot, order) {
-try {
-const updated = await q(
-"UPDATE orders SET pending_notice_sent_at=NOW() WHERE id=$1 AND status='pending' AND pending_notice_sent_at IS NULL AND created_at <= NOW() - INTERVAL '2 minutes' RETURNING id",
-[order.id]
-);
-if (!updated.rows.length) return false;
-await bot?.telegram?.sendMessage(
-order.user_id,
-"⏳ سأُعلمك تلقائياً عند اكتمال طلبك.",
-Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])
-).catch(() => {});
-return true;
-} catch (e) {
-console.error("Pending order notice failed:", e.message);
-return false;
-}
-}
-
 async function processOrderInBackground(order, p, params, totalUsd, totalSyp) {
 let resp;
 try {
@@ -2640,7 +2664,6 @@ const lines = slice.map(r => `🛒 ${r.product_name} ×${r.qty} • ${Number(r.p
 const orderRows = [];
 for (const r of slice) {
 const row = [];
-if (r.status === "pending") row.push(Markup.button.callback("🔄 الحالة", `ord:check:${r.id}`));
 if (r.status === "pending" && r.cancel_enabled && r.cancel_url && r.cancel_available_at && new Date(r.cancel_available_at).getTime() <= Date.now()) row.push(Markup.button.callback("❌ إلغاء الطلب", `api2cancel:${r.id}`));
 if (row.length) orderRows.push(row);
 }
@@ -2803,6 +2826,27 @@ await ctx.reply("⚠️ تعذّر فحص الحالة الآن.", Markup.inline
 }
 }
 
+async function sendPendingOrderNoticeIfDue(bot, order) {
+  if (!order || order.status !== "pending") return false;
+  if (order.pending_notice_sent_at) return false;
+  const createdAt = new Date(order.created_at).getTime();
+  if (!Number.isFinite(createdAt) || Date.now() - createdAt < 2 * 60 * 1000) return false;
+
+  // Atomic guard: even with multiple poll attempts, only one worker can send the 2-minute notice.
+  const marked = await q(
+    "UPDATE orders SET pending_notice_sent_at=NOW() WHERE id=$1 AND status='pending' AND pending_notice_sent_at IS NULL RETURNING id",
+    [order.id]
+  );
+  if (!marked.rows.length) return false;
+
+  await bot.telegram.sendMessage(
+    order.user_id,
+    "⏳ سأُعلمك تلقائياً عند اكتمال طلبك.",
+    Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])
+  ).catch(() => {});
+  return true;
+}
+
 async function pollOneOrder(bot, order) {
 const identifiers = [];
 if (order.oranos_order_id) identifiers.push({ value: String(order.oranos_order_id), byUuid: false });
@@ -2843,6 +2887,7 @@ for (const ident of identifiers) {
   }
   return true;
 }
+await sendPendingOrderNoticeIfDue(bot, order).catch(() => false);
 return false;
 }
 
@@ -2854,10 +2899,6 @@ for (let i = 0; i < attempts; i++) {
   if (!row || row.status !== "pending") return;
   const done = await pollOneOrder(_botRef, row).catch(() => false);
   if (done) return;
-  const latest = (await q("SELECT * FROM orders WHERE id=$1", [orderId])).rows[0];
-  if (latest?.status === "pending" && Date.now() - new Date(latest.created_at).getTime() >= 2 * 60 * 1000) {
-    await notifyPendingOrderAfterTwoMinutes(_botRef, latest).catch(() => {});
-  }
 }
 }
 
@@ -2868,25 +2909,21 @@ if (polling) return;
 polling = true;
 try {
 const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+const batchSize = Math.max(20, Math.min(1000, Number(process.env.ORDER_POLL_BATCH) || 200));
 const res = await q(
-"SELECT * FROM orders WHERE status='pending' AND created_at > $1 ORDER BY created_at ASC LIMIT 200",
-[cutoff]
+"SELECT * FROM orders WHERE status='pending' AND created_at > $1 ORDER BY created_at ASC LIMIT $2",
+[cutoff, batchSize]
 );
-const CHUNK = 10;
+const CHUNK = Math.max(5, Math.min(50, Number(process.env.ORDER_POLL_CONCURRENCY) || 10));
 for (let i = 0; i < res.rows.length; i += CHUNK) {
-await Promise.allSettled(res.rows.slice(i, i + CHUNK).map(async order => {
-  const done = await pollOneOrder(bot, order).catch(() => false);
-  if (done) return;
-  const latest = (await q("SELECT * FROM orders WHERE id=$1", [order.id])).rows[0];
-  if (latest?.status === "pending") await notifyPendingOrderAfterTwoMinutes(bot, latest).catch(() => {});
-}));
+await Promise.allSettled(res.rows.slice(i, i + CHUNK).map(order => pollOneOrder(bot, order).catch(() => {})));
 }
 } catch (e) {
 console.error("Order poller failed:", e.message);
 } finally {
 polling = false;
 }
-}, 2_000).unref();
+}, Math.max(500, Number(process.env.ORDER_POLL_INTERVAL_MS) || 2_000).unref());
 }
 
 
@@ -3714,6 +3751,155 @@ invalidateCaches(); await ctx.reply(nextHidden ? "🙈 تم إخفاء القس�
 });
 bot.action(/^adm:catMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); const cur = (await q("SELECT custom_markup_percent FROM category_overrides WHERE category_id=$1", [cid])).rows[0]; setStep(ctx.from.id, { kind: "admin:setCatMarkup", categoryId: cid }); await ctx.reply(`% نسبة ربح القسم ${cid}\nالحالية: ${cur?.custom_markup_percent ?? "غير محددة"}\nأرسل النسبة أو reset:`); });
 bot.action(/^adm:moveCatAll:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:moveCatAll", sourceCategoryId: Number(ctx.match[1]) }); await ctx.reply(`🚚 نقل جميع منتجات القسم\nأرسل اسم القسم الهدف أو cancel:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${ctx.match[1]}:1:0`)]])); });
+bot.action(/^adm:reorderCat:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const parentId = Number(ctx.match[1]);
+if (!Number.isInteger(parentId) || parentId < 0) { await ctx.reply("⚠️ القسم غير صالح."); return; }
+
+// ترتيب القسم هنا يعني تغيير موضعه بين إخوته، وليس تغيير الأب.
+// مثال: إذا كان «بطاقات الألعاب» ظاهراً في الصفحة 3، يمكن وضعه في الموضع 1.
+const content = await getCachedContent(parentId);
+const ovMap = await getAllCategoryOverridesCached();
+const byId = new Map();
+for (const c of (content.categories || [])) {
+  const id = Number(c.id);
+  if (!Number.isInteger(id) || id <= 0) continue;
+  const ov = ovMap.get(id);
+  // القسم الذي نراه تحت هذا الأب فقط يدخل في قائمة الترتيب.
+  if ((ov?.customParentId ?? Number(c.parent_id ?? 0)) !== parentId) continue;
+  byId.set(id, { ...c, _sort: ov?.sortOrder ?? null, _name: ov?.customName ?? c.name });
+}
+// أضف الأقسام التي تم نقلها يدوياً إلى هذا الأب حتى يمكن ترتيبها أيضاً.
+try {
+  const moved = await q("SELECT category_id, custom_name, sort_order FROM category_overrides WHERE custom_parent_id=$1", [parentId]);
+  for (const r of moved.rows) {
+    const id = Number(r.category_id);
+    if (!byId.has(id)) {
+      const provider = await findApi1CategoryById(id);
+      if (provider) byId.set(id, { ...provider, _sort: r.sort_order ?? null, _name: r.custom_name ?? provider.name });
+    }
+  }
+} catch {}
+
+const siblings = [...byId.values()];
+if (!siblings.length) { await ctx.reply("⚠️ لا توجد أقسام يمكن ترتيبها هنا."); return; }
+
+// sort_order المخصص أولاً، ثم ترتيب المزود الأصلي كمرجع ثابت.
+siblings.sort((a, b) => {
+  const sa = a._sort == null ? Number.MAX_SAFE_INTEGER : Number(a._sort);
+  const sb = b._sort == null ? Number.MAX_SAFE_INTEGER : Number(b._sort);
+  if (sa !== sb) return sa - sb;
+  return String(a._name ?? "").localeCompare(String(b._name ?? ""), "ar");
+});
+
+const rows = [];
+for (let i = 0; i < siblings.length; i += 2) {
+  const buttons = [];
+  for (let j = i; j < Math.min(i + 2, siblings.length); j++) {
+    const c = siblings[j];
+    buttons.push(Markup.button.callback(`${j + 1}️⃣ ${String(c._name ?? `قسم ${c.id}`).slice(0, 42)}`, `adm:reorderPick:${c.id}:${j + 1}:${parentId}`));
+  }
+  rows.push(buttons);
+}
+rows.push([Markup.button.callback("❌ إلغاء", `cat:${parentId}:1:0`)]);
+await ctx.reply(
+  `🔀 تغيير ترتيب القسم\nاختر القسم الذي تريد تغيير مكانه، ثم اختر رقم مكانه الجديد.\n\nمثال: لنقل «بطاقات الألعاب» من الموضع 3 إلى الموضع 1، اختر «بطاقات الألعاب» ثم اختر 1️⃣.`,
+  Markup.inlineKeyboard(rows)
+);
+});
+
+bot.action(/^adm:reorderPick:(\d+):(\d+):(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const sourceId = Number(ctx.match[1]);
+const currentPos = Number(ctx.match[2]);
+const parentId = Number(ctx.match[3]);
+if (!Number.isInteger(sourceId) || sourceId <= 0 || !Number.isInteger(parentId) || parentId < 0) {
+  await ctx.reply("⚠️ بيانات الترتيب غير صالحة."); return;
+}
+setStep(ctx.from.id, { kind: "admin:reorderCategory", categoryId: sourceId, parentId });
+const content = await getCachedContent(parentId);
+const ovMap = await getAllCategoryOverridesCached();
+const siblings = [];
+for (const c of (content.categories || [])) {
+  const id = Number(c.id); if (!Number.isInteger(id) || id <= 0) continue;
+  const ov = ovMap.get(id);
+  if ((ov?.customParentId ?? Number(c.parent_id ?? 0)) !== parentId) continue;
+  siblings.push({ id, name: ov?.customName ?? c.name, sort: ov?.sortOrder ?? null });
+}
+const moved = await q("SELECT category_id, custom_name, sort_order FROM category_overrides WHERE custom_parent_id=$1", [parentId]).catch(() => ({ rows: [] }));
+for (const r of moved.rows) {
+  const id = Number(r.category_id); if (siblings.some(x => x.id === id)) continue;
+  const provider = await findApi1CategoryById(id); if (provider) siblings.push({ id, name: r.custom_name ?? provider.name, sort: r.sort_order ?? null });
+}
+siblings.sort((a,b) => {
+  const sa = a.sort == null ? Number.MAX_SAFE_INTEGER : Number(a.sort);
+  const sb = b.sort == null ? Number.MAX_SAFE_INTEGER : Number(b.sort);
+  return sa !== sb ? sa - sb : String(a.name).localeCompare(String(b.name), "ar");
+});
+const buttons = [];
+for (let i = 1; i <= siblings.length; i++) buttons.push(Markup.button.callback(`${i}️⃣`, `adm:reorderApply:${sourceId}:${i}:${parentId}`));
+const rows = [];
+for (let i = 0; i < buttons.length; i += 5) rows.push(buttons.slice(i, i + 5));
+rows.push([Markup.button.callback("❌ إلغاء", `cat:${parentId}:1:0`)]);
+const source = siblings.find(x => x.id === sourceId);
+await ctx.reply(`📍 «${source?.name ?? sourceId}»\nمكانه الحالي: ${currentPos}\nاختر رقم المكان الجديد:`, Markup.inlineKeyboard(rows));
+});
+
+bot.action(/^adm:reorderApply:(\d+):(\d+):(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const sourceId = Number(ctx.match[1]);
+const targetPos = Number(ctx.match[2]);
+const parentId = Number(ctx.match[3]);
+if (!Number.isInteger(sourceId) || sourceId <= 0 || !Number.isInteger(targetPos) || targetPos <= 0 || !Number.isInteger(parentId) || parentId < 0) {
+  await ctx.reply("⚠️ بيانات الترتيب غير صالحة."); return;
+}
+
+const content = await getCachedContent(parentId);
+const ovMap = await getAllCategoryOverridesCached();
+const siblings = [];
+for (const c of (content.categories || [])) {
+  const id = Number(c.id); if (!Number.isInteger(id) || id <= 0) continue;
+  const ov = ovMap.get(id);
+  if ((ov?.customParentId ?? Number(c.parent_id ?? 0)) !== parentId) continue;
+  siblings.push({ id, name: ov?.customName ?? c.name, sort: ov?.sortOrder ?? null });
+}
+const moved = await q("SELECT category_id, custom_name, sort_order FROM category_overrides WHERE custom_parent_id=$1", [parentId]).catch(() => ({ rows: [] }));
+for (const r of moved.rows) {
+  const id = Number(r.category_id); if (siblings.some(x => x.id === id)) continue;
+  const provider = await findApi1CategoryById(id); if (provider) siblings.push({ id, name: r.custom_name ?? provider.name, sort: r.sort_order ?? null });
+}
+siblings.sort((a,b) => {
+  const sa = a.sort == null ? Number.MAX_SAFE_INTEGER : Number(a.sort);
+  const sb = b.sort == null ? Number.MAX_SAFE_INTEGER : Number(b.sort);
+  return sa !== sb ? sa - sb : String(a.name).localeCompare(String(b.name), "ar");
+});
+const sourceIndex = siblings.findIndex(x => x.id === sourceId);
+if (sourceIndex < 0) { await ctx.reply("⚠️ القسم غير موجود في هذا الترتيب."); return; }
+const [source] = siblings.splice(sourceIndex, 1);
+const pos = Math.min(Math.max(1, targetPos), siblings.length + 1);
+siblings.splice(pos - 1, 0, source);
+
+// إعادة ترقيم جميع الإخوة يجعل الترتيب مستقراً حتى بعد المزامنة مع المزود.
+await q("BEGIN");
+try {
+  for (let i = 0; i < siblings.length; i++) {
+    const c = siblings[i];
+    await q(
+      "INSERT INTO category_overrides(category_id, sort_order) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET sort_order=$2, updated_at=NOW()",
+      [c.id, i + 1]
+    );
+  }
+  await q("COMMIT");
+} catch (e) {
+  await q("ROLLBACK").catch(() => {});
+  throw e;
+}
+invalidateCaches();
+setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply(`✅ تم تغيير ترتيب «${source.name}» إلى الموضع ${pos}.`);
+});
+
+// الإبقاء على أمر نقل القسم إلى أب كميزة منفصلة عند الحاجة.
 bot.action(/^adm:moveCatToParent:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const cid = Number(ctx.match[1]);
@@ -3721,83 +3907,9 @@ if (!Number.isInteger(cid) || cid <= 0) { await ctx.reply("⚠️ القسم ا�
 setStep(ctx.from.id, { kind: "admin:moveCatToParent", categoryId: cid });
 const source = await findApi1CategoryById(cid);
 const sourceName = source?.name || `قسم ${cid}`;
-
-// نبني قائمة الهدف من قاعدة البيانات/الكاش مع إعطاء الأقسام الرئيسية أولوية،
-// حتى يستطيع المدير نقل «بطاقات الألعاب» من القسم 3 إلى القسم 1 بسهولة.
-const all = [];
-const seenIds = new Set();
-const visited = new Set();
-const walk = async parentId => {
-  const key = Number(parentId);
-  if (visited.has(key)) return;
-  visited.add(key);
-  const content = await getCachedContent(parentId);
-  for (const c of content.categories || []) {
-    const id = Number(c.id);
-    if (!Number.isInteger(id) || id <= 0 || id === cid || seenIds.has(id)) continue;
-    seenIds.add(id);
-    all.push({ ...c, _root: key === 0 });
-    await walk(id);
-  }
-};
-try { await walk(0); } catch (e) { console.error("Move-category target list failed:", e); }
-
-// استبعاد القسم نفسه وجميع أحفاده لمنع إنشاء حلقة في شجرة الأقسام.
-const descendants = new Set([cid]);
-let changed = true;
-while (changed) {
-  changed = false;
-  for (const c of all) {
-    const id = Number(c.id);
-    const parent = Number(c.parent_id ?? 0);
-    if (!descendants.has(id) && descendants.has(parent)) {
-      descendants.add(id);
-      changed = true;
-    }
-  }
-}
-
-const candidates = all
-  .filter(c => !descendants.has(Number(c.id)))
-  .sort((a, b) => Number(b._root) - Number(a._root) || String(a.name ?? "").localeCompare(String(b.name ?? ""), "ar"))
-  .slice(0, 80);
-
-const buttons = candidates.map(c => Markup.button.callback(`📂 ${String(c.name ?? `قسم ${c.id}`).slice(0, 48)}`, `adm:moveCatTarget:${cid}:${c.id}`));
-const rows = [];
-for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2));
-rows.unshift([Markup.button.callback("📁 الجذر (خارج الأقسام)", `adm:moveCatTarget:${cid}:0`)]);
-rows.push([Markup.button.callback("❌ إلغاء", `cat:${cid}:1:0`)]);
-await ctx.reply(`📁 نقل القسم «${sourceName}»
-اختر القسم الهدف مباشرة، أو أرسل اسم القسم الهدف في رسالة.
-
-مثال: إذا أردت نقل «بطاقات الألعاب» إلى القسم 1، اختر اسم القسم 1 من الأزرار أدناه.`, Markup.inlineKeyboard(rows));
+await ctx.reply(`📁 نقل القسم «${sourceName}»\nأرسل اسم القسم الهدف، أو اكتب 0 للجذر.`);
 });
 
-bot.action(/^adm:moveCatTarget:(\d+):(\d+)$/, async ctx => {
-if (!(await requireAdmin(ctx))) return;
-const sourceId = Number(ctx.match[1]);
-const targetId = Number(ctx.match[2]);
-if (!Number.isFinite(sourceId) || sourceId <= 0) { await ctx.reply("⚠️ القسم المصدر غير صالح."); return; }
-if (targetId === sourceId) { await ctx.reply("⚠️ لا يمكن نقل القسم إلى نفسه."); return; }
-if (targetId > 0) {
-  const target = await findApi1CategoryById(targetId);
-  if (!target) { await ctx.reply("⚠️ القسم الهدف غير موجود."); return; }
-  let cursor = targetId;
-  const seen = new Set([sourceId]);
-  while (cursor > 0) {
-    if (seen.has(cursor)) { await ctx.reply("⚠️ لا يمكن نقل القسم إلى داخل أحد أقسامه الفرعية."); return; }
-    seen.add(cursor);
-    const row = (await q("SELECT custom_parent_id FROM category_overrides WHERE category_id=$1", [cursor])).rows[0];
-    const provider = await findApi1CategoryById(cursor);
-    cursor = Number(row?.custom_parent_id ?? provider?.parent_id ?? 0);
-  }
-}
-await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=$2, updated_at=NOW()", [sourceId, targetId === 0 ? null : targetId]);
-invalidateCaches();
-setStep(ctx.from.id, { kind: "idle" });
-const targetName = targetId === 0 ? "الجذر" : (await findApi1CategoryById(targetId))?.name || `قسم ${targetId}`;
-await ctx.reply(`✅ تم نقل القسم إلى «${targetName}».`);
-});
 bot.action(/^adm:moveApi2CatToParent:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const cid = Number(ctx.match[1]);
@@ -4729,7 +4841,7 @@ try {
 });
 
 // ── Launch ────────────────────────────────────────────────────────────
-const mode = process.env.BOT_MODE || "polling";
+const mode = process.env.BOT_MODE || (process.env.WEBHOOK_DOMAIN ? "webhook" : "polling");
 if (mode === "webhook") {
 const domain = process.env.WEBHOOK_DOMAIN?.replace(/\/+$/, "");
 const port = Number(process.env.PORT) || 3000;
@@ -4743,6 +4855,7 @@ console.log("Polling mode started");
 
 _botRef = bot;
 startBackgroundRefresher();
+startUpdateCleanup();
 startOrderPoller(bot);
 startPingScheduler(bot);
 
