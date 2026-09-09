@@ -1,5 +1,5 @@
 // ============================================================
-//  متجر المروان — بوت تيليجرام v4.4 (تدقيق وإصلاح شامل)
+//  متجر المروان — بوت تيليجرام v4.6 (تدقيق وإصلاح شامل)
 //  إضافات: API ثاني، منتجات يدوية متكاملة، أقسام يدوية، ردود متعددة
 // ============================================================
 "use strict";
@@ -24,14 +24,17 @@ const _needSSL =
   _dbUrl.includes("railway") ||
   _dbUrl.includes("neon") ||
   _dbUrl.includes("supabase");
+const DB_POOL_MAX = Math.max(2, Math.min(100, Number(process.env.DB_POOL_MAX) || 10));
+const DB_POOL_MIN = Math.max(0, Math.min(DB_POOL_MAX, Number(process.env.DB_POOL_MIN) || 2));
 const pool = new Pool({
 connectionString: _dbUrl,
 ssl: _needSSL ? { rejectUnauthorized: false } : false,
-max: 10,
-min: 2,
-idleTimeoutMillis: 30_000,
-connectionTimeoutMillis: 5_000,
-statement_timeout: 15_000,
+max: DB_POOL_MAX,
+min: DB_POOL_MIN,
+idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT_MS) || 30_000,
+connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT_MS) || 5_000,
+statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS) || 15_000,
+allowExitOnIdle: false,
 });
 
 async function q(text, params = []) {
@@ -298,6 +301,10 @@ const migrations = [
 "CREATE INDEX IF NOT EXISTS idx_api_source_products_source_available ON api_source_products(api_source_id, available)",
 "CREATE INDEX IF NOT EXISTS idx_api_source_products_source_category_available ON api_source_products(api_source_id, category_id, available)",
 "CREATE INDEX IF NOT EXISTS idx_api_source_categories_parent_active ON api_source_categories(api_source_id, parent_id, active)",
+"CREATE INDEX IF NOT EXISTS idx_orders_pending_created ON orders(created_at DESC) WHERE status='pending'",
+"CREATE INDEX IF NOT EXISTS idx_deposit_requests_pending_created ON deposit_requests(created_at DESC) WHERE status='pending'",
+"CREATE INDEX IF NOT EXISTS idx_manual_orders_pending_created ON manual_orders(created_at DESC) WHERE status='pending'",
+"CREATE INDEX IF NOT EXISTS idx_processed_updates_created_at ON processed_telegram_updates(created_at)",
 ];
 for (const mig of migrations) {
 try { await q(mig); }
@@ -1210,12 +1217,15 @@ return "📞 استخدم زر الدعم من القائمة للتواصل م�
 const PRODUCTS_TTL = 5 * 60_000;
 const CONTENT_TTL = 5 * 60_000;
 const OVERRIDES_TTL = 2 * 60_000;
+const CATEGORY_OVERRIDES_TTL = 2 * 60_000;
 const PAGE_SIZE = 8;
-const CATALOG_REFRESH_MS = 60_000;
+const CATALOG_REFRESH_MS = Math.max(30_000, Number(process.env.CATALOG_REFRESH_MS) || 60_000);
 
 let productsCache = null;
 const contentCache = new Map();
 let allOverridesCache = null;
+let allCategoryOverridesCache = null;
+let _categoryOverridesInFlight = null;
 let _productsInFlight = null;
 const _contentInFlight = new Map();
 let _overridesInFlight = null;
@@ -1323,6 +1333,25 @@ return map;
 return _overridesInFlight;
 }
 
+async function getAllCategoryOverridesCached() {
+if (allCategoryOverridesCache && allCategoryOverridesCache.expiry > Date.now()) return allCategoryOverridesCache.map;
+if (_categoryOverridesInFlight) return _categoryOverridesInFlight;
+_categoryOverridesInFlight = (async () => {
+const res = await q("SELECT category_id, custom_name, hidden, sort_order, custom_markup_percent, custom_parent_id FROM category_overrides");
+const map = new Map();
+for (const r of res.rows) map.set(Number(r.category_id), {
+customName: r.custom_name,
+hidden: !!r.hidden,
+sortOrder: r.sort_order != null ? Number(r.sort_order) : null,
+customMarkupPercent: r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null,
+customParentId: r.custom_parent_id != null ? Number(r.custom_parent_id) : null,
+});
+allCategoryOverridesCache = { map, expiry: Date.now() + CATEGORY_OVERRIDES_TTL };
+return map;
+})().finally(() => { _categoryOverridesInFlight = null; });
+return _categoryOverridesInFlight;
+}
+
 async function refreshCatalogCache() {
 if (_catalogRefreshInFlight) return _catalogRefreshInFlight;
 _catalogRefreshInFlight = (async () => {
@@ -1361,9 +1390,19 @@ function invalidateCaches() {
 productsCache = null;
 contentCache.clear();
 allOverridesCache = null;
+allCategoryOverridesCache = null;
 }
 
 let refresherStarted = false;
+let updateCleanupStarted = false;
+function startUpdateCleanup() {
+if (updateCleanupStarted) return;
+updateCleanupStarted = true;
+const cleanup = () => q("DELETE FROM processed_telegram_updates WHERE created_at < NOW() - INTERVAL '24 hours'").catch(() => {});
+setInterval(cleanup, 60 * 60_000).unref();
+cleanup();
+}
+
 function startBackgroundRefresher() {
 if (refresherStarted) return;
 refresherStarted = true;
@@ -1525,6 +1564,8 @@ try { await ctx.editMessageReplyMarkup(undefined); } catch { /* ignore */ }
 async function ensureUser(ctx) {
 const f = ctx.from;
 if (!f) return null;
+const cached = userCacheGet(f.id);
+if (cached !== undefined) return cached;
 return upsertUser({ id: f.id, username: f.username, first_name: f.first_name, last_name: f.last_name });
 }
 
@@ -1696,7 +1737,7 @@ const [u, _catSessActive] = await Promise.all([getUser(ctx.from.id), isAdminSess
 const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || _catSessActive);
 const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
-const [kws, excludedStr, content, socialKws, socialMarkup, markup, ovMap] = await Promise.all([
+const [kws, excludedStr, content, socialKws, socialMarkup, markup, ovMap, categoryOvMap] = await Promise.all([
 getExcludedKeywords(),
 getSetting("excluded_category_ids"),
 getCachedContent(parentId),
@@ -1704,9 +1745,10 @@ getSocialKeywords(),
 getSocialMarkupPercent(),
 getMarkupPercent(),
 getAllOverridesCached(),
+getAllCategoryOverridesCached(),
 ]);
 const excludedCats = new Set(excludedStr.split(",").map(s => Number(s.trim())).filter(Number.isFinite));
-const catOv = await loadCategoryOverrides([...content.categories.map(c => c.id), parentId]);
+const catOv = categoryOvMap;
 
 // لا نفحص كل قسم عبر API عند كل ضغطة. content نفسه محفوظ في قاعدة البيانات،
 // لذلك نعرض الأقسام مباشرة ونترك التحديث للمزامنة الخلفية. هذا يمنع البطء
@@ -1832,10 +1874,10 @@ const slice = all.slice((safe - 1) * PAGE_SIZE, safe * PAGE_SIZE);
 
 const rows = [];
 if (isAdmin && parentId !== 0) {
-const curOv = (await q("SELECT * FROM category_overrides WHERE category_id=$1", [parentId])).rows[0];
+const curOv = catOv.get(Number(parentId));
 rows.push([Markup.button.callback("✏️ تعديل اسم القسم", `adm:catEdit:${parentId}`), Markup.button.callback(curOv?.hidden ? "👁 إظهار" : "🙈 إخفاء", `adm:catToggle:${parentId}`)]);
 rows.push([Markup.button.callback("% نسبة ربح القسم", `adm:catMarkup:${parentId}`)]);
-rows.push([Markup.button.callback("🚚 نقل كل منتجات القسم", `adm:moveCatAll:${parentId}`), Markup.button.callback("📁 نقل القسم إلى قسم", `adm:moveCatToParent:${parentId}`)]);
+rows.push([Markup.button.callback("🚚 نقل كل منتجات القسم", `adm:moveCatAll:${parentId}`), Markup.button.callback("🔀 تغيير ترتيب القسم", `adm:moveCatToParent:${parentId}`)]);
 rows.push([Markup.button.callback("🗑️ حذف القسم", `adm:catDelete:${parentId}`)]);
 }
 for (const b of slice) rows.push([b]);
@@ -2842,11 +2884,12 @@ if (polling) return;
 polling = true;
 try {
 const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+const batchSize = Math.max(20, Math.min(1000, Number(process.env.ORDER_POLL_BATCH) || 200));
 const res = await q(
-"SELECT * FROM orders WHERE status != ALL($1) AND created_at > $2 LIMIT 200",
-[TERMINAL_STATUSES, cutoff]
+"SELECT * FROM orders WHERE status='pending' AND created_at > $1 ORDER BY created_at ASC LIMIT $2",
+[cutoff, batchSize]
 );
-const CHUNK = 10;
+const CHUNK = Math.max(5, Math.min(50, Number(process.env.ORDER_POLL_CONCURRENCY) || 10));
 for (let i = 0; i < res.rows.length; i += CHUNK) {
 await Promise.allSettled(res.rows.slice(i, i + CHUNK).map(order => pollOneOrder(bot, order).catch(() => {})));
 }
@@ -2855,7 +2898,7 @@ console.error("Order poller failed:", e.message);
 } finally {
 polling = false;
 }
-}, 2_000).unref();
+}, Math.max(500, Number(process.env.ORDER_POLL_INTERVAL_MS) || 2_000).unref());
 }
 
 
@@ -4698,7 +4741,7 @@ try {
 });
 
 // ── Launch ────────────────────────────────────────────────────────────
-const mode = process.env.BOT_MODE || "polling";
+const mode = process.env.BOT_MODE || (process.env.WEBHOOK_DOMAIN ? "webhook" : "polling");
 if (mode === "webhook") {
 const domain = process.env.WEBHOOK_DOMAIN?.replace(/\/+$/, "");
 const port = Number(process.env.PORT) || 3000;
@@ -4712,6 +4755,7 @@ console.log("Polling mode started");
 
 _botRef = bot;
 startBackgroundRefresher();
+startUpdateCleanup();
 startOrderPoller(bot);
 startPingScheduler(bot);
 
