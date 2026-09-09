@@ -1,5 +1,5 @@
 // ============================================================
-//  متجر المروان — بوت تيليجرام v4.6 (تدقيق وإصلاح شامل)
+//  متجر المروان — بوت تيليجرام v4.7 (تدقيق وإصلاح شامل)
 //  إضافات: API ثاني، منتجات يدوية متكاملة، أقسام يدوية، ردود متعددة
 // ============================================================
 "use strict";
@@ -391,11 +391,12 @@ async function getAdminLoginCommand() { return getSetting("admin_login_command")
 async function getBtnBackLabel() { return getSetting("btn_back_label"); }
 async function getBtnHomeLabel() {
   const label = await getSetting("btn_home_label");
-  // إصلاح أي قيمة قديمة/خاطئة مثل "عد الرئيسية" من الإصدارات السابقة.
-  if (!label || /عد\s+الرئيسية|الرئيسيه/i.test(String(label)) || !String(label).includes("الرئيسية")) {
+  // زر الرئيسية يجب أن يظهر دائماً بالشكل الموحد المطلوب: بيت + الرئيسية.
+  // أي قيمة قديمة أو مشوهة مثل "عد الرئيسية" يتم تجاهلها.
+  if (!label || !String(label).includes("الرئيسية") || /عد\s+الرئيسية|الرئيسيه/i.test(String(label))) {
     return DEFAULTS.btn_home_label;
   }
-  return String(label).trim();
+  return DEFAULTS.btn_home_label;
 }
 async function getBtnPrevLabel() { return getSetting("btn_prev_label"); }
 async function getBtnNextLabel() { return getSetting("btn_next_label"); }
@@ -1877,7 +1878,7 @@ if (isAdmin && parentId !== 0) {
 const curOv = catOv.get(Number(parentId));
 rows.push([Markup.button.callback("✏️ تعديل اسم القسم", `adm:catEdit:${parentId}`), Markup.button.callback(curOv?.hidden ? "👁 إظهار" : "🙈 إخفاء", `adm:catToggle:${parentId}`)]);
 rows.push([Markup.button.callback("% نسبة ربح القسم", `adm:catMarkup:${parentId}`)]);
-rows.push([Markup.button.callback("🚚 نقل كل منتجات القسم", `adm:moveCatAll:${parentId}`), Markup.button.callback("🔀 تغيير ترتيب القسم", `adm:moveCatToParent:${parentId}`)]);
+rows.push([Markup.button.callback("🚚 نقل كل منتجات القسم", `adm:moveCatAll:${parentId}`), Markup.button.callback("🔀 تغيير ترتيب القسم", `adm:reorderCat:${parentId}`)]);
 rows.push([Markup.button.callback("🗑️ حذف القسم", `adm:catDelete:${parentId}`)]);
 }
 for (const b of slice) rows.push([b]);
@@ -3726,6 +3727,155 @@ invalidateCaches(); await ctx.reply(nextHidden ? "🙈 تم إخفاء القس�
 });
 bot.action(/^adm:catMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); const cur = (await q("SELECT custom_markup_percent FROM category_overrides WHERE category_id=$1", [cid])).rows[0]; setStep(ctx.from.id, { kind: "admin:setCatMarkup", categoryId: cid }); await ctx.reply(`% نسبة ربح القسم ${cid}\nالحالية: ${cur?.custom_markup_percent ?? "غير محددة"}\nأرسل النسبة أو reset:`); });
 bot.action(/^adm:moveCatAll:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:moveCatAll", sourceCategoryId: Number(ctx.match[1]) }); await ctx.reply(`🚚 نقل جميع منتجات القسم\nأرسل اسم القسم الهدف أو cancel:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${ctx.match[1]}:1:0`)]])); });
+bot.action(/^adm:reorderCat:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const parentId = Number(ctx.match[1]);
+if (!Number.isInteger(parentId) || parentId < 0) { await ctx.reply("⚠️ القسم غير صالح."); return; }
+
+// ترتيب القسم هنا يعني تغيير موضعه بين إخوته، وليس تغيير الأب.
+// مثال: إذا كان «بطاقات الألعاب» ظاهراً في الصفحة 3، يمكن وضعه في الموضع 1.
+const content = await getCachedContent(parentId);
+const ovMap = await getAllCategoryOverridesCached();
+const byId = new Map();
+for (const c of (content.categories || [])) {
+  const id = Number(c.id);
+  if (!Number.isInteger(id) || id <= 0) continue;
+  const ov = ovMap.get(id);
+  // القسم الذي نراه تحت هذا الأب فقط يدخل في قائمة الترتيب.
+  if ((ov?.customParentId ?? Number(c.parent_id ?? 0)) !== parentId) continue;
+  byId.set(id, { ...c, _sort: ov?.sortOrder ?? null, _name: ov?.customName ?? c.name });
+}
+// أضف الأقسام التي تم نقلها يدوياً إلى هذا الأب حتى يمكن ترتيبها أيضاً.
+try {
+  const moved = await q("SELECT category_id, custom_name, sort_order FROM category_overrides WHERE custom_parent_id=$1", [parentId]);
+  for (const r of moved.rows) {
+    const id = Number(r.category_id);
+    if (!byId.has(id)) {
+      const provider = await findApi1CategoryById(id);
+      if (provider) byId.set(id, { ...provider, _sort: r.sort_order ?? null, _name: r.custom_name ?? provider.name });
+    }
+  }
+} catch {}
+
+const siblings = [...byId.values()];
+if (!siblings.length) { await ctx.reply("⚠️ لا توجد أقسام يمكن ترتيبها هنا."); return; }
+
+// sort_order المخصص أولاً، ثم ترتيب المزود الأصلي كمرجع ثابت.
+siblings.sort((a, b) => {
+  const sa = a._sort == null ? Number.MAX_SAFE_INTEGER : Number(a._sort);
+  const sb = b._sort == null ? Number.MAX_SAFE_INTEGER : Number(b._sort);
+  if (sa !== sb) return sa - sb;
+  return String(a._name ?? "").localeCompare(String(b._name ?? ""), "ar");
+});
+
+const rows = [];
+for (let i = 0; i < siblings.length; i += 2) {
+  const buttons = [];
+  for (let j = i; j < Math.min(i + 2, siblings.length); j++) {
+    const c = siblings[j];
+    buttons.push(Markup.button.callback(`${j + 1}️⃣ ${String(c._name ?? `قسم ${c.id}`).slice(0, 42)}`, `adm:reorderPick:${c.id}:${j + 1}:${parentId}`));
+  }
+  rows.push(buttons);
+}
+rows.push([Markup.button.callback("❌ إلغاء", `cat:${parentId}:1:0`)]);
+await ctx.reply(
+  `🔀 تغيير ترتيب القسم\nاختر القسم الذي تريد تغيير مكانه، ثم اختر رقم مكانه الجديد.\n\nمثال: لنقل «بطاقات الألعاب» من الموضع 3 إلى الموضع 1، اختر «بطاقات الألعاب» ثم اختر 1️⃣.`,
+  Markup.inlineKeyboard(rows)
+);
+});
+
+bot.action(/^adm:reorderPick:(\d+):(\d+):(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const sourceId = Number(ctx.match[1]);
+const currentPos = Number(ctx.match[2]);
+const parentId = Number(ctx.match[3]);
+if (!Number.isInteger(sourceId) || sourceId <= 0 || !Number.isInteger(parentId) || parentId < 0) {
+  await ctx.reply("⚠️ بيانات الترتيب غير صالحة."); return;
+}
+setStep(ctx.from.id, { kind: "admin:reorderCategory", categoryId: sourceId, parentId });
+const content = await getCachedContent(parentId);
+const ovMap = await getAllCategoryOverridesCached();
+const siblings = [];
+for (const c of (content.categories || [])) {
+  const id = Number(c.id); if (!Number.isInteger(id) || id <= 0) continue;
+  const ov = ovMap.get(id);
+  if ((ov?.customParentId ?? Number(c.parent_id ?? 0)) !== parentId) continue;
+  siblings.push({ id, name: ov?.customName ?? c.name, sort: ov?.sortOrder ?? null });
+}
+const moved = await q("SELECT category_id, custom_name, sort_order FROM category_overrides WHERE custom_parent_id=$1", [parentId]).catch(() => ({ rows: [] }));
+for (const r of moved.rows) {
+  const id = Number(r.category_id); if (siblings.some(x => x.id === id)) continue;
+  const provider = await findApi1CategoryById(id); if (provider) siblings.push({ id, name: r.custom_name ?? provider.name, sort: r.sort_order ?? null });
+}
+siblings.sort((a,b) => {
+  const sa = a.sort == null ? Number.MAX_SAFE_INTEGER : Number(a.sort);
+  const sb = b.sort == null ? Number.MAX_SAFE_INTEGER : Number(b.sort);
+  return sa !== sb ? sa - sb : String(a.name).localeCompare(String(b.name), "ar");
+});
+const buttons = [];
+for (let i = 1; i <= siblings.length; i++) buttons.push(Markup.button.callback(`${i}️⃣`, `adm:reorderApply:${sourceId}:${i}:${parentId}`));
+const rows = [];
+for (let i = 0; i < buttons.length; i += 5) rows.push(buttons.slice(i, i + 5));
+rows.push([Markup.button.callback("❌ إلغاء", `cat:${parentId}:1:0`)]);
+const source = siblings.find(x => x.id === sourceId);
+await ctx.reply(`📍 «${source?.name ?? sourceId}»\nمكانه الحالي: ${currentPos}\nاختر رقم المكان الجديد:`, Markup.inlineKeyboard(rows));
+});
+
+bot.action(/^adm:reorderApply:(\d+):(\d+):(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const sourceId = Number(ctx.match[1]);
+const targetPos = Number(ctx.match[2]);
+const parentId = Number(ctx.match[3]);
+if (!Number.isInteger(sourceId) || sourceId <= 0 || !Number.isInteger(targetPos) || targetPos <= 0 || !Number.isInteger(parentId) || parentId < 0) {
+  await ctx.reply("⚠️ بيانات الترتيب غير صالحة."); return;
+}
+
+const content = await getCachedContent(parentId);
+const ovMap = await getAllCategoryOverridesCached();
+const siblings = [];
+for (const c of (content.categories || [])) {
+  const id = Number(c.id); if (!Number.isInteger(id) || id <= 0) continue;
+  const ov = ovMap.get(id);
+  if ((ov?.customParentId ?? Number(c.parent_id ?? 0)) !== parentId) continue;
+  siblings.push({ id, name: ov?.customName ?? c.name, sort: ov?.sortOrder ?? null });
+}
+const moved = await q("SELECT category_id, custom_name, sort_order FROM category_overrides WHERE custom_parent_id=$1", [parentId]).catch(() => ({ rows: [] }));
+for (const r of moved.rows) {
+  const id = Number(r.category_id); if (siblings.some(x => x.id === id)) continue;
+  const provider = await findApi1CategoryById(id); if (provider) siblings.push({ id, name: r.custom_name ?? provider.name, sort: r.sort_order ?? null });
+}
+siblings.sort((a,b) => {
+  const sa = a.sort == null ? Number.MAX_SAFE_INTEGER : Number(a.sort);
+  const sb = b.sort == null ? Number.MAX_SAFE_INTEGER : Number(b.sort);
+  return sa !== sb ? sa - sb : String(a.name).localeCompare(String(b.name), "ar");
+});
+const sourceIndex = siblings.findIndex(x => x.id === sourceId);
+if (sourceIndex < 0) { await ctx.reply("⚠️ القسم غير موجود في هذا الترتيب."); return; }
+const [source] = siblings.splice(sourceIndex, 1);
+const pos = Math.min(Math.max(1, targetPos), siblings.length + 1);
+siblings.splice(pos - 1, 0, source);
+
+// إعادة ترقيم جميع الإخوة يجعل الترتيب مستقراً حتى بعد المزامنة مع المزود.
+await q("BEGIN");
+try {
+  for (let i = 0; i < siblings.length; i++) {
+    const c = siblings[i];
+    await q(
+      "INSERT INTO category_overrides(category_id, sort_order) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET sort_order=$2, updated_at=NOW()",
+      [c.id, i + 1]
+    );
+  }
+  await q("COMMIT");
+} catch (e) {
+  await q("ROLLBACK").catch(() => {});
+  throw e;
+}
+invalidateCaches();
+setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply(`✅ تم تغيير ترتيب «${source.name}» إلى الموضع ${pos}.`);
+});
+
+// الإبقاء على أمر نقل القسم إلى أب كميزة منفصلة عند الحاجة.
 bot.action(/^adm:moveCatToParent:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const cid = Number(ctx.match[1]);
@@ -3733,83 +3883,9 @@ if (!Number.isInteger(cid) || cid <= 0) { await ctx.reply("⚠️ القسم ا�
 setStep(ctx.from.id, { kind: "admin:moveCatToParent", categoryId: cid });
 const source = await findApi1CategoryById(cid);
 const sourceName = source?.name || `قسم ${cid}`;
-
-// نبني قائمة الهدف من قاعدة البيانات/الكاش مع إعطاء الأقسام الرئيسية أولوية،
-// حتى يستطيع المدير نقل «بطاقات الألعاب» من القسم 3 إلى القسم 1 بسهولة.
-const all = [];
-const seenIds = new Set();
-const visited = new Set();
-const walk = async parentId => {
-  const key = Number(parentId);
-  if (visited.has(key)) return;
-  visited.add(key);
-  const content = await getCachedContent(parentId);
-  for (const c of content.categories || []) {
-    const id = Number(c.id);
-    if (!Number.isInteger(id) || id <= 0 || id === cid || seenIds.has(id)) continue;
-    seenIds.add(id);
-    all.push({ ...c, _root: key === 0 });
-    await walk(id);
-  }
-};
-try { await walk(0); } catch (e) { console.error("Move-category target list failed:", e); }
-
-// استبعاد القسم نفسه وجميع أحفاده لمنع إنشاء حلقة في شجرة الأقسام.
-const descendants = new Set([cid]);
-let changed = true;
-while (changed) {
-  changed = false;
-  for (const c of all) {
-    const id = Number(c.id);
-    const parent = Number(c.parent_id ?? 0);
-    if (!descendants.has(id) && descendants.has(parent)) {
-      descendants.add(id);
-      changed = true;
-    }
-  }
-}
-
-const candidates = all
-  .filter(c => !descendants.has(Number(c.id)))
-  .sort((a, b) => Number(b._root) - Number(a._root) || String(a.name ?? "").localeCompare(String(b.name ?? ""), "ar"))
-  .slice(0, 80);
-
-const buttons = candidates.map(c => Markup.button.callback(`📂 ${String(c.name ?? `قسم ${c.id}`).slice(0, 48)}`, `adm:moveCatTarget:${cid}:${c.id}`));
-const rows = [];
-for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2));
-rows.unshift([Markup.button.callback("📁 الجذر (خارج الأقسام)", `adm:moveCatTarget:${cid}:0`)]);
-rows.push([Markup.button.callback("❌ إلغاء", `cat:${cid}:1:0`)]);
-await ctx.reply(`📁 نقل القسم «${sourceName}»
-اختر القسم الهدف مباشرة، أو أرسل اسم القسم الهدف في رسالة.
-
-مثال: إذا أردت نقل «بطاقات الألعاب» إلى القسم 1، اختر اسم القسم 1 من الأزرار أدناه.`, Markup.inlineKeyboard(rows));
+await ctx.reply(`📁 نقل القسم «${sourceName}»\nأرسل اسم القسم الهدف، أو اكتب 0 للجذر.`);
 });
 
-bot.action(/^adm:moveCatTarget:(\d+):(\d+)$/, async ctx => {
-if (!(await requireAdmin(ctx))) return;
-const sourceId = Number(ctx.match[1]);
-const targetId = Number(ctx.match[2]);
-if (!Number.isFinite(sourceId) || sourceId <= 0) { await ctx.reply("⚠️ القسم المصدر غير صالح."); return; }
-if (targetId === sourceId) { await ctx.reply("⚠️ لا يمكن نقل القسم إلى نفسه."); return; }
-if (targetId > 0) {
-  const target = await findApi1CategoryById(targetId);
-  if (!target) { await ctx.reply("⚠️ القسم الهدف غير موجود."); return; }
-  let cursor = targetId;
-  const seen = new Set([sourceId]);
-  while (cursor > 0) {
-    if (seen.has(cursor)) { await ctx.reply("⚠️ لا يمكن نقل القسم إلى داخل أحد أقسامه الفرعية."); return; }
-    seen.add(cursor);
-    const row = (await q("SELECT custom_parent_id FROM category_overrides WHERE category_id=$1", [cursor])).rows[0];
-    const provider = await findApi1CategoryById(cursor);
-    cursor = Number(row?.custom_parent_id ?? provider?.parent_id ?? 0);
-  }
-}
-await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=$2, updated_at=NOW()", [sourceId, targetId === 0 ? null : targetId]);
-invalidateCaches();
-setStep(ctx.from.id, { kind: "idle" });
-const targetName = targetId === 0 ? "الجذر" : (await findApi1CategoryById(targetId))?.name || `قسم ${targetId}`;
-await ctx.reply(`✅ تم نقل القسم إلى «${targetName}».`);
-});
 bot.action(/^adm:moveApi2CatToParent:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const cid = Number(ctx.match[1]);
