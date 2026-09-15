@@ -1,5 +1,5 @@
 // ============================================================
-//  متجر المروان — بوت تيليجرام v4.7 (تدقيق وإصلاح شامل)
+//  متجر المروان — بوت تيليجرام v4.7 (سلوك تلقائي لحالة الطلب + نقل القسم بين صفحات المنتجات + تحسين التحمل)
 //  إضافات: API ثاني، منتجات يدوية متكاملة، أقسام يدوية، ردود متعددة
 // ============================================================
 "use strict";
@@ -24,7 +24,7 @@ const _needSSL =
   _dbUrl.includes("railway") ||
   _dbUrl.includes("neon") ||
   _dbUrl.includes("supabase");
-const DB_POOL_MAX = Math.max(2, Math.min(100, Number(process.env.DB_POOL_MAX) || 10));
+const DB_POOL_MAX = Math.max(2, Math.min(50, Number(process.env.DB_POOL_MAX) || 10));
 const DB_POOL_MIN = Math.max(0, Math.min(DB_POOL_MAX, Number(process.env.DB_POOL_MIN) || 2));
 const pool = new Pool({
 connectionString: _dbUrl,
@@ -105,7 +105,7 @@ cancel_seconds INTEGER,
 cancel_url TEXT,
 cancel_available_at TIMESTAMPTZ,
 refunded_at TIMESTAMPTZ,
-pending_notice_sent_at TIMESTAMPTZ,
+pending_notice_sent BOOLEAN NOT NULL DEFAULT false,
 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS product_overrides (
@@ -270,7 +270,7 @@ const migrations = [
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_url TEXT",
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_available_at TIMESTAMPTZ",
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ",
-"ALTER TABLE orders ADD COLUMN IF NOT EXISTS pending_notice_sent_at TIMESTAMPTZ",
+"ALTER TABLE orders ADD COLUMN IF NOT EXISTS pending_notice_sent BOOLEAN NOT NULL DEFAULT false",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS manual_category_id INTEGER",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS description TEXT",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS image_file_id TEXT",
@@ -412,7 +412,8 @@ return kws.some(k => k && n.includes(k));
 //  USER CACHE
 // ============================================================
 const userCache = new Map();
-const USER_CACHE_TTL = 60_000;
+const _ensureUserInFlight = new Map();
+const USER_CACHE_TTL = Math.max(60_000, Number(process.env.USER_CACHE_TTL_MS) || 300_000);
 function userCacheGet(id) { const hit = userCache.get(id); if (hit && hit.exp > Date.now()) return hit.u; return undefined; }
 function userCacheSet(id, u) { userCache.set(id, { u, exp: Date.now() + USER_CACHE_TTL }); }
 function invalidateUserCache(id) { userCache.delete(id); }
@@ -1548,16 +1549,37 @@ await _botRef?.telegram.deleteMessage(n.adminId, n.messageId);
 // ============================================================
 //  TG HELPERS
 // ============================================================
+const lastBotMessageIds = new Map();
+const LAST_MESSAGE_CACHE_TTL = 30 * 60_000;
+const lastBotMessageTouched = new Map();
+setInterval(() => {
+  const cutoff = Date.now() - LAST_MESSAGE_CACHE_TTL;
+  for (const [chatId, touched] of lastBotMessageTouched) {
+    if (touched < cutoff) { lastBotMessageTouched.delete(chatId); lastBotMessageIds.delete(chatId); }
+  }
+}, 10 * 60_000).unref();
+
 async function sendOrEdit(ctx, text, extra) {
 const cb = ctx.callbackQuery;
 const msg = cb?.message;
 if (msg && !("photo" in msg && msg.photo)) {
-try { await ctx.editMessageText(text, extra); return; } catch (err) {
+try {
+await ctx.editMessageText(text, extra);
+lastBotMessageIds.set(ctx.chat?.id ?? ctx.from?.id, msg.message_id);
+lastBotMessageTouched.set(ctx.chat?.id ?? ctx.from?.id, Date.now());
+return msg;
+} catch (err) {
 const desc = err?.description ?? "";
-if (/not modified/i.test(desc)) return;
+if (/not modified/i.test(desc)) {
+lastBotMessageIds.set(ctx.chat?.id ?? ctx.from?.id, msg.message_id);
+lastBotMessageTouched.set(ctx.chat?.id ?? ctx.from?.id, Date.now());
+return msg;
 }
 }
-await ctx.reply(text, extra);
+}
+const sent = await ctx.reply(text, extra);
+if (sent?.message_id != null) { lastBotMessageIds.set(ctx.chat?.id ?? ctx.from?.id, sent.message_id); lastBotMessageTouched.set(ctx.chat?.id ?? ctx.from?.id, Date.now()); }
+return sent;
 }
 
 async function clearInlineKeyboard(ctx) {
@@ -1569,7 +1591,31 @@ const f = ctx.from;
 if (!f) return null;
 const cached = userCacheGet(f.id);
 if (cached !== undefined) return cached;
-return upsertUser({ id: f.id, username: f.username, first_name: f.first_name, last_name: f.last_name });
+if (_ensureUserInFlight.has(f.id)) return _ensureUserInFlight.get(f.id);
+const p = (async () => {
+  // للزوار الحاليين نقرأ فقط؛ لا نعمل UPDATE للمستخدم عند كل انتهاء للكاش.
+  // الكتابة تحصل فقط للمستخدم الجديد أو إذا تغيرت بياناته الأساسية.
+  const res = await q("SELECT * FROM users WHERE id=$1", [f.id]);
+  let row = res.rows[0] ?? null;
+  if (!row) {
+    row = await upsertUser({ id: f.id, username: f.username, first_name: f.first_name, last_name: f.last_name });
+    return row;
+  }
+  userCacheSet(f.id, row);
+  const changed = (f.username ?? null) !== (row.username ?? null) ||
+    (f.first_name ?? null) !== (row.first_name ?? null) ||
+    (f.last_name ?? null) !== (row.last_name ?? null);
+  if (changed) {
+    // تحديث خفيف غير حاجب للطلب الحالي.
+    q("UPDATE users SET username=COALESCE($2,username), first_name=COALESCE($3,first_name), last_name=COALESCE($4,last_name) WHERE id=$1",
+      [f.id, f.username ?? null, f.first_name ?? null, f.last_name ?? null])
+      .then(() => { userCacheSet(f.id, { ...row, username: f.username ?? row.username, first_name: f.first_name ?? row.first_name, last_name: f.last_name ?? row.last_name }); })
+      .catch(() => {});
+  }
+  return row;
+})().finally(() => _ensureUserInFlight.delete(f.id));
+_ensureUserInFlight.set(f.id, p);
+return p;
 }
 
 // ── لوحة الإدارة مخفية - لا تظهر في القائمة الرئيسية ──────────────
@@ -1615,7 +1661,26 @@ if (authedAdminIds.has(user.id) && !adminSessionActive && !user.is_admin) {
 authedAdminIds.delete(user.id);
 }
 const isAuthed = adminSessionActive || (authedAdminIds.has(user.id) && !!user.is_admin);
-await sendOrEdit(ctx, greeting, isAuthed ? mainMenuAdmin() : mainMenu());
+const keyboard = isAuthed ? mainMenuAdmin() : mainMenu();
+const incomingText = ctx.message?.text ?? "";
+const isStartCommand = /^\/start(?:@\w+)?(?:\s|$)/i.test(incomingText);
+
+// عند تكرار /start بسرعة لا نغرق المحادثة بعشرات الرسائل ولا نصطدم بحدود Telegram.
+// نعيد استخدام آخر رسالة للبوت ونحدّثها، مع إنشاء رسالة جديدة إذا تعذر تعديل القديمة.
+if (isStartCommand) {
+  const chatId = ctx.chat?.id ?? user.id;
+  const lastId = lastBotMessageIds.get(chatId);
+  if (lastId) {
+    try {
+      await ctx.telegram.editMessageText(chatId, lastId, undefined, greeting, keyboard);
+      return;
+    } catch (err) {
+      const desc = err?.description ?? "";
+      if (/not modified/i.test(desc)) return;
+    }
+  }
+}
+await sendOrEdit(ctx, greeting, keyboard);
 }
 
 async function showContactLinks(ctx) {
@@ -1893,7 +1958,6 @@ if (nav.length > 1) rows.push(nav);
 
 if (parentId === 0) {
 if (isAdmin) {
-rows.push([Markup.button.callback("🔀 تغيير ترتيب القسم", "adm:reorderCat:0")]);
 rows.push([Markup.button.callback(backLabel, "admin:menu"), Markup.button.callback(homeLabel, "home")]);
 } else {
 rows.push([Markup.button.callback(homeLabel, "home")]);
@@ -2647,7 +2711,8 @@ await _botRef?.telegram.sendMessage(order.user_id, lines.join("\n"), Markup.inli
 return;
 }
 
-// الطلب لم يُحسم بعد: نحفظ رقم الطلب ونترك الـpoller يفحصه كل عدة ثوانٍ.
+// الطلب لم يُحسم بعد: نحفظ رقم الطلب، ثم يستمر الفحص التلقائي بالخلفية.
+// لا يحتاج المستخدم لأي زر؛ عند تغيّر الحالة إلى قبول/رفض ستصله النتيجة تلقائياً.
 await q(
 "UPDATE orders SET status='pending', oranos_order_id=$1, api_response=$2 WHERE id=$3 AND status='pending'",
 [orderApiId, JSON.stringify(resp), order.id]
@@ -2826,27 +2891,6 @@ await ctx.reply("⚠️ تعذّر فحص الحالة الآن.", Markup.inline
 }
 }
 
-async function sendPendingOrderNoticeIfDue(bot, order) {
-  if (!order || order.status !== "pending") return false;
-  if (order.pending_notice_sent_at) return false;
-  const createdAt = new Date(order.created_at).getTime();
-  if (!Number.isFinite(createdAt) || Date.now() - createdAt < 2 * 60 * 1000) return false;
-
-  // Atomic guard: even with multiple poll attempts, only one worker can send the 2-minute notice.
-  const marked = await q(
-    "UPDATE orders SET pending_notice_sent_at=NOW() WHERE id=$1 AND status='pending' AND pending_notice_sent_at IS NULL RETURNING id",
-    [order.id]
-  );
-  if (!marked.rows.length) return false;
-
-  await bot.telegram.sendMessage(
-    order.user_id,
-    "⏳ سأُعلمك تلقائياً عند اكتمال طلبك.",
-    Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])
-  ).catch(() => {});
-  return true;
-}
-
 async function pollOneOrder(bot, order) {
 const identifiers = [];
 if (order.oranos_order_id) identifiers.push({ value: String(order.oranos_order_id), byUuid: false });
@@ -2887,7 +2931,6 @@ for (const ident of identifiers) {
   }
   return true;
 }
-await sendPendingOrderNoticeIfDue(bot, order).catch(() => false);
 return false;
 }
 
@@ -2900,6 +2943,28 @@ for (let i = 0; i < attempts; i++) {
   const done = await pollOneOrder(_botRef, row).catch(() => false);
   if (done) return;
 }
+}
+
+// يرسل تنبيه الدقيقتين مرة واحدة فقط. يتم حسم السباق بين أكثر من عامل/فحص عبر UPDATE مشروط.
+async function sendPendingOrderReminder(bot, order) {
+  if (!bot || !order?.id || !order?.user_id) return false;
+  const claimed = await q(
+    "UPDATE orders SET pending_notice_sent=true WHERE id=$1 AND status='pending' AND pending_notice_sent=false RETURNING id",
+    [order.id]
+  ).catch(() => ({ rows: [] }));
+  if (!claimed.rows.length) return false;
+  try {
+    await bot.telegram.sendMessage(
+      order.user_id,
+      "⏳ سأُعلمك تلقائياً عند اكتمال طلبك.",
+      Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])
+    );
+    return true;
+  } catch (e) {
+    // إذا فشل الإرسال نعيد العلامة حتى تتم محاولة الإرسال في دورة لاحقة.
+    await q("UPDATE orders SET pending_notice_sent=false WHERE id=$1 AND status='pending'", [order.id]).catch(() => {});
+    return false;
+  }
 }
 
 function startOrderPoller(bot) {
@@ -2917,6 +2982,16 @@ const res = await q(
 const CHUNK = Math.max(5, Math.min(50, Number(process.env.ORDER_POLL_CONCURRENCY) || 10));
 for (let i = 0; i < res.rows.length; i += CHUNK) {
 await Promise.allSettled(res.rows.slice(i, i + CHUNK).map(order => pollOneOrder(bot, order).catch(() => {})));
+}
+
+// بعد دقيقتين من إنشاء الطلب، أرسل تنبيه الانتظار مرة واحدة فقط إذا بقي pending.
+const reminderCutoff = new Date(Date.now() - 2 * 60 * 1000);
+const reminderRes = await q(
+  "SELECT * FROM orders WHERE status='pending' AND created_at <= $1 AND pending_notice_sent=false ORDER BY created_at ASC LIMIT 100",
+  [reminderCutoff]
+).catch(() => ({ rows: [] }));
+for (let i = 0; i < reminderRes.rows.length; i += CHUNK) {
+  await Promise.allSettled(reminderRes.rows.slice(i, i + CHUNK).map(order => sendPendingOrderReminder(bot, order)));
 }
 } catch (e) {
 console.error("Order poller failed:", e.message);
@@ -3286,6 +3361,10 @@ if (times.every(t => now - t > 5_000)) _rateMap.delete(uid);
 
 bot.use((ctx, next) => {
 const uid = ctx.from?.id; if (!uid) return next();
+const incoming = ctx.message?.text ?? "";
+const isSafeCommand = /^\/(?:start|menu)(?:@\w+)?(?:\s|$)/i.test(incoming);
+// /start و /menu لا يتم إسقاطهما بسبب محدد النقرات؛ تكرارهما يعاد استخدام نفس رسالة القائمة.
+if (isSafeCommand) return next();
 const now = Date.now();
 const times = (_rateMap.get(uid) ?? []).filter(t => now - t < 2_000);
 if (times.length >= 5) {
@@ -3319,16 +3398,20 @@ const originalReply = ctx.reply.bind(ctx);
 ctx.reply = async (...args) => {
 const text = typeof args[0] === "string" ? args[0] : JSON.stringify(args[0]);
 const userId = ctx.from?.id ?? 0;
-const key = `${userId}:reply:${text}`;
-const now = Date.now();
-const last = _replyDedup.get(key) ?? 0;
-if (now - last < 2500) return;
-_replyDedup.set(key, now);
+const incoming = ctx.message?.text ?? "";
+const isStartOrMenu = /^\/(?:start|menu)(?:@\w+)?(?:\s|$)/i.test(incoming);
+if (!isStartOrMenu) {
+  const key = `${userId}:reply:${text}`;
+  const now = Date.now();
+  const last = _replyDedup.get(key) ?? 0;
+  if (now - last < 2500) return;
+  _replyDedup.set(key, now);
+  if (_replyDedup.size > 2000) {
+    for (const [k, t] of _replyDedup) if (now - t > 10000) _replyDedup.delete(k);
+  }
+}
 ctx.state = ctx.state || {};
 ctx.state._replySent = true;
-if (_replyDedup.size > 2000) {
-for (const [k, t] of _replyDedup) if (now - t > 10000) _replyDedup.delete(k);
-}
 return originalReply(...args);
 };
 return next();
@@ -3491,7 +3574,7 @@ await askNextParam(ctx, p, step.priceUsd, qty, step.paramKeys, {}, 0, step.backT
 });
 bot.action("ord:confirm", async ctx => { await executeOrder(ctx); });
 bot.action("ord:cancel", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
-bot.action(/^ord:check:(\d+)$/, async ctx => { await checkOrderStatus(ctx, Number(ctx.match[1])); });
+bot.action(/^ord:check:(\d+)$/, async ctx => { await checkOrderStatus(ctx, Number(ctx.match[1])); }); // compatibility for old messages; no new UI button is generated
 bot.action(/^api2cancel:(\d+)$/, async ctx => { await cancelApi2Order(ctx, Number(ctx.match[1])); });
 
 // ── Manual product buy (NO NOTE REQUIRED) ─────────────────────────────
@@ -3767,7 +3850,7 @@ for (const c of (content.categories || [])) {
   const ov = ovMap.get(id);
   // القسم الذي نراه تحت هذا الأب فقط يدخل في قائمة الترتيب.
   if ((ov?.customParentId ?? Number(c.parent_id ?? 0)) !== parentId) continue;
-  byId.set(id, { ...c, _sort: ov?.sortOrder ?? null, _name: ov?.customName ?? c.name });
+  byId.set(id, { ...c, _sort: ov?.sortOrder ?? null, _name: ov?.customName ?? c.name, _providerIndex: byId.size });
 }
 // أضف الأقسام التي تم نقلها يدوياً إلى هذا الأب حتى يمكن ترتيبها أيضاً.
 try {
@@ -3776,7 +3859,7 @@ try {
     const id = Number(r.category_id);
     if (!byId.has(id)) {
       const provider = await findApi1CategoryById(id);
-      if (provider) byId.set(id, { ...provider, _sort: r.sort_order ?? null, _name: r.custom_name ?? provider.name });
+      if (provider) byId.set(id, { ...provider, _sort: r.sort_order ?? null, _name: r.custom_name ?? provider.name, _providerIndex: byId.size });
     }
   }
 } catch {}
@@ -3789,7 +3872,7 @@ siblings.sort((a, b) => {
   const sa = a._sort == null ? Number.MAX_SAFE_INTEGER : Number(a._sort);
   const sb = b._sort == null ? Number.MAX_SAFE_INTEGER : Number(b._sort);
   if (sa !== sb) return sa - sb;
-  return String(a._name ?? "").localeCompare(String(b._name ?? ""), "ar");
+  return (a._providerIndex ?? 0) - (b._providerIndex ?? 0);
 });
 
 const rows = [];
@@ -3803,7 +3886,7 @@ for (let i = 0; i < siblings.length; i += 2) {
 }
 rows.push([Markup.button.callback("❌ إلغاء", `cat:${parentId}:1:0`)]);
 await ctx.reply(
-  `🔀 تغيير ترتيب القسم\nاختر القسم الذي تريد تغيير مكانه، ثم اختر رقم مكانه الجديد.\n\nمثال: لنقل «بطاقات الألعاب» من الموضع 3 إلى الموضع 1، اختر «بطاقات الألعاب» ثم اختر 1️⃣.`,
+  `🔀 تغيير ترتيب القسم بالكامل\nاختر القسم الذي تريد نقل مكانه، ثم اختر رقم مكانه الجديد.\n\nمثال: لنقل «بطاقات الألعاب» من الموضع 3 إلى الموضع 1، اختر «بطاقات الألعاب» ثم اختر 1️⃣.`,
   Markup.inlineKeyboard(rows)
 );
 });
@@ -3824,17 +3907,17 @@ for (const c of (content.categories || [])) {
   const id = Number(c.id); if (!Number.isInteger(id) || id <= 0) continue;
   const ov = ovMap.get(id);
   if ((ov?.customParentId ?? Number(c.parent_id ?? 0)) !== parentId) continue;
-  siblings.push({ id, name: ov?.customName ?? c.name, sort: ov?.sortOrder ?? null });
+  siblings.push({ id, name: ov?.customName ?? c.name, sort: ov?.sortOrder ?? null, providerIndex: siblings.length });
 }
 const moved = await q("SELECT category_id, custom_name, sort_order FROM category_overrides WHERE custom_parent_id=$1", [parentId]).catch(() => ({ rows: [] }));
 for (const r of moved.rows) {
   const id = Number(r.category_id); if (siblings.some(x => x.id === id)) continue;
-  const provider = await findApi1CategoryById(id); if (provider) siblings.push({ id, name: r.custom_name ?? provider.name, sort: r.sort_order ?? null });
+  const provider = await findApi1CategoryById(id); if (provider) siblings.push({ id, name: r.custom_name ?? provider.name, sort: r.sort_order ?? null, providerIndex: siblings.length });
 }
 siblings.sort((a,b) => {
   const sa = a.sort == null ? Number.MAX_SAFE_INTEGER : Number(a.sort);
   const sb = b.sort == null ? Number.MAX_SAFE_INTEGER : Number(b.sort);
-  return sa !== sb ? sa - sb : String(a.name).localeCompare(String(b.name), "ar");
+  return sa !== sb ? sa - sb : (a.providerIndex ?? 0) - (b.providerIndex ?? 0);
 });
 const buttons = [];
 for (let i = 1; i <= siblings.length; i++) buttons.push(Markup.button.callback(`${i}️⃣`, `adm:reorderApply:${sourceId}:${i}:${parentId}`));
@@ -3861,17 +3944,17 @@ for (const c of (content.categories || [])) {
   const id = Number(c.id); if (!Number.isInteger(id) || id <= 0) continue;
   const ov = ovMap.get(id);
   if ((ov?.customParentId ?? Number(c.parent_id ?? 0)) !== parentId) continue;
-  siblings.push({ id, name: ov?.customName ?? c.name, sort: ov?.sortOrder ?? null });
+  siblings.push({ id, name: ov?.customName ?? c.name, sort: ov?.sortOrder ?? null, providerIndex: siblings.length });
 }
 const moved = await q("SELECT category_id, custom_name, sort_order FROM category_overrides WHERE custom_parent_id=$1", [parentId]).catch(() => ({ rows: [] }));
 for (const r of moved.rows) {
   const id = Number(r.category_id); if (siblings.some(x => x.id === id)) continue;
-  const provider = await findApi1CategoryById(id); if (provider) siblings.push({ id, name: r.custom_name ?? provider.name, sort: r.sort_order ?? null });
+  const provider = await findApi1CategoryById(id); if (provider) siblings.push({ id, name: r.custom_name ?? provider.name, sort: r.sort_order ?? null, providerIndex: siblings.length });
 }
 siblings.sort((a,b) => {
   const sa = a.sort == null ? Number.MAX_SAFE_INTEGER : Number(a.sort);
   const sb = b.sort == null ? Number.MAX_SAFE_INTEGER : Number(b.sort);
-  return sa !== sb ? sa - sb : String(a.name).localeCompare(String(b.name), "ar");
+  return sa !== sb ? sa - sb : (a.providerIndex ?? 0) - (b.providerIndex ?? 0);
 });
 const sourceIndex = siblings.findIndex(x => x.id === sourceId);
 if (sourceIndex < 0) { await ctx.reply("⚠️ القسم غير موجود في هذا الترتيب."); return; }
