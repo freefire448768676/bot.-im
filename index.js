@@ -1945,7 +1945,7 @@ if (isAdmin && parentId !== 0) {
 const curOv = catOv.get(Number(parentId));
 rows.push([Markup.button.callback("✏️ تعديل اسم القسم", `adm:catEdit:${parentId}`), Markup.button.callback(curOv?.hidden ? "👁 إظهار" : "🙈 إخفاء", `adm:catToggle:${parentId}`)]);
 rows.push([Markup.button.callback("% نسبة ربح القسم", `adm:catMarkup:${parentId}`)]);
-rows.push([Markup.button.callback("🚚 نقل كل منتجات القسم", `adm:moveCatAll:${parentId}`), Markup.button.callback("📁 نقل القسم إلى قسم", `adm:moveCatToParent:${parentId}`)]);
+rows.push([Markup.button.callback("🚚 نقل كل منتجات القسم", `adm:moveCatAll:${parentId}`), Markup.button.callback("📁 نقل القسم", `adm:moveCatToParent:${parentId}`)]);
 rows.push([Markup.button.callback("🗑️ حذف القسم", `adm:catDelete:${parentId}`)]);
 }
 for (const b of slice) rows.push([b]);
@@ -3834,15 +3834,18 @@ invalidateCaches(); await ctx.reply(nextHidden ? "🙈 تم إخفاء القس�
 });
 bot.action(/^adm:catMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const cid = Number(ctx.match[1]); const cur = (await q("SELECT custom_markup_percent FROM category_overrides WHERE category_id=$1", [cid])).rows[0]; setStep(ctx.from.id, { kind: "admin:setCatMarkup", categoryId: cid }); await ctx.reply(`% نسبة ربح القسم ${cid}\nالحالية: ${cur?.custom_markup_percent ?? "غير محددة"}\nأرسل النسبة أو reset:`); });
 bot.action(/^adm:moveCatAll:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:moveCatAll", sourceCategoryId: Number(ctx.match[1]) }); await ctx.reply(`🚚 نقل جميع منتجات القسم\nأرسل اسم القسم الهدف أو cancel:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${ctx.match[1]}:1:0`)]])); });
-// الإبقاء على أمر نقل القسم إلى أب كميزة منفصلة عند الحاجة.
+// نقل القسم إلى موضع رقمي بين الأقسام الموجودة تحت نفس الأب.
+// مثال: «بطاقات الألعاب» في الموضع 3 ثم يرسل المدير 1 => تصبح في الموضع 1،
+// وتتحرك بقية الأقسام تلقائياً إلى أسفل دون تغيير الأب أو المنتجات التابعة للقسم.
 bot.action(/^adm:moveCatToParent:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const cid = Number(ctx.match[1]);
 if (!Number.isInteger(cid) || cid <= 0) { await ctx.reply("⚠️ القسم المصدر غير صالح."); return; }
-setStep(ctx.from.id, { kind: "admin:moveCatToParent", categoryId: cid });
 const source = await findApi1CategoryById(cid);
+if (!source) { await ctx.reply("⚠️ لم أجد القسم المطلوب."); return; }
+setStep(ctx.from.id, { kind: "admin:moveCatToPosition", categoryId: cid });
 const sourceName = source?.name || `قسم ${cid}`;
-await ctx.reply(`📁 نقل القسم «${sourceName}»\nأرسل اسم القسم الهدف، أو اكتب 0 للجذر.`);
+await ctx.reply(`📁 نقل القسم «${sourceName}»\nأرسل رقم القسم الجديد فقط.\nمثال: أرسل 1 ليصبح هذا القسم هو القسم رقم 1، مع بقاء القسم ومنتجاته كما هي.`);
 });
 
 bot.action(/^adm:moveApi2CatToParent:(\d+)$/, async ctx => {
@@ -4379,33 +4382,97 @@ setStep(ctx.from.id, { kind: "idle" });
 await ctx.reply("✅ تم إرسال الرسالة.");
 return;
 }
-case "admin:moveCatToParent": {
+case "admin:moveCatToPosition": {
 if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await showAdminMenu(ctx); return; }
 const sourceId = Number(step.categoryId);
-if (!Number.isFinite(sourceId) || sourceId <= 0) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("⚠️ القسم المصدر غير صالح."); return; }
-if (txt === "0" || txt.toLowerCase() === "reset") {
-await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,NULL) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=NULL, updated_at=NOW()", [sourceId]);
-invalidateCaches(); setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("✅ تم نقل القسم إلى الجذر."); return;
+const targetPos = Number(txt.trim());
+if (!Number.isInteger(sourceId) || sourceId <= 0) {
+setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply("⚠️ القسم المصدر غير صالح.");
+return;
 }
-const visited = new Set();
-const matches = [];
-const walk = async parentId => {
-if (visited.has(parentId)) return;
-visited.add(parentId);
+if (!Number.isInteger(targetPos) || targetPos < 1) {
+await ctx.reply("⚠️ أرسل رقم مكان صحيح، مثل 1 أو 2 أو 3.");
+return;
+}
+const source = await findApi1CategoryById(sourceId);
+if (!source) { setStep(ctx.from.id, { kind: "idle" }); await ctx.reply("⚠️ لم أجد القسم المطلوب."); return; }
+
+try {
+const ovMap = await getAllCategoryOverridesCached();
+const sourceOv = ovMap.get(sourceId);
+const parentId = sourceOv?.customParentId ?? Number(source.parent_id ?? 0);
+
+const byId = new Map();
 const content = await getCachedContent(parentId);
-for (const c of content.categories || []) {
-if (String(c.name ?? "").trim().toLowerCase() === txt.trim().toLowerCase()) matches.push(c);
-await walk(c.id);
+for (const c of (content.categories || [])) {
+const id = Number(c.id);
+if (!Number.isInteger(id) || id <= 0) continue;
+const ov = ovMap.get(id);
+const effectiveParent = ov?.customParentId ?? Number(c.parent_id ?? 0);
+if (effectiveParent !== parentId) continue;
+byId.set(id, {
+id,
+name: ov?.customName ?? c.name,
+sort: ov?.sortOrder ?? null,
+providerIndex: byId.size,
+});
 }
-};
-try { await walk(0); } catch (e) { await ctx.reply(`❌ تعذر البحث عن القسم: ${e.message}`); return; }
-if (!matches.length) { await ctx.reply("❌ لم أجد قسماً بهذا الاسم ."); return; }
-if (matches.length > 1) { await ctx.reply("⚠️ يوجد أكثر من قسم بنفس الاسم. أرسل اسماً مميزاً."); return; }
-const target = matches[0];
-if (Number(target.id) === sourceId) { await ctx.reply("⚠️ لا يمكن نقل القسم إلى نفسه."); return; }
-await q("INSERT INTO category_overrides(category_id,custom_parent_id) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET custom_parent_id=$2, updated_at=NOW()", [sourceId, target.id]);
-invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
-await ctx.reply(`✅ تم نقل القسم إلى داخل «${target.name}».`);
+
+// أضف الأقسام التي تم نقلها يدوياً إلى هذا الأب.
+const moved = await q("SELECT category_id, custom_name, sort_order FROM category_overrides WHERE custom_parent_id=$1", [parentId]);
+for (const r of moved.rows) {
+const id = Number(r.category_id);
+if (byId.has(id)) continue;
+const provider = await findApi1CategoryById(id);
+if (provider) {
+byId.set(id, {
+id,
+name: r.custom_name ?? provider.name,
+sort: r.sort_order ?? null,
+providerIndex: byId.size,
+});
+}
+}
+
+const siblings = [...byId.values()];
+siblings.sort((a, b) => {
+const sa = a.sort == null ? Number.MAX_SAFE_INTEGER : Number(a.sort);
+const sb = b.sort == null ? Number.MAX_SAFE_INTEGER : Number(b.sort);
+if (sa !== sb) return sa - sb;
+return (a.providerIndex ?? 0) - (b.providerIndex ?? 0);
+});
+
+const sourceIndex = siblings.findIndex(x => x.id === sourceId);
+if (sourceIndex < 0) {
+setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply("⚠️ لم أجد القسم ضمن أقسام هذا المستوى.");
+return;
+}
+if (targetPos > siblings.length) {
+await ctx.reply(`⚠️ الرقم أكبر من عدد الأقسام. عدد الأقسام هنا: ${siblings.length}.\nأرسل رقماً من 1 إلى ${siblings.length}.`);
+return;
+}
+
+const [moving] = siblings.splice(sourceIndex, 1);
+siblings.splice(targetPos - 1, 0, moving);
+
+// تثبيت ترتيب جميع الأقسام تحت نفس الأب حتى لا تعيد المزامنة ترتيبها.
+for (let i = 0; i < siblings.length; i++) {
+const c = siblings[i];
+await q(
+"INSERT INTO category_overrides(category_id, sort_order) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET sort_order=$2, updated_at=NOW()",
+[c.id, i + 1]
+);
+}
+
+invalidateCaches();
+setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply(`✅ تم نقل القسم «${moving.name}» إلى الموضع ${targetPos}.\n📂 بقي القسم مع نفس الأب وجميع منتجاته كما هي.`);
+} catch (e) {
+console.error("move category position failed:", e);
+await ctx.reply("❌ تعذر تغيير ترتيب القسم حالياً. حاول مرة أخرى.");
+}
 return;
 }
 case "admin:moveProduct": {
