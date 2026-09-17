@@ -106,6 +106,8 @@ cancel_url TEXT,
 cancel_available_at TIMESTAMPTZ,
 refunded_at TIMESTAMPTZ,
 pending_notice_sent BOOLEAN NOT NULL DEFAULT false,
+result_notified_at TIMESTAMPTZ,
+result_notify_attempts INTEGER NOT NULL DEFAULT 0,
 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS product_overrides (
@@ -271,6 +273,8 @@ const migrations = [
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_available_at TIMESTAMPTZ",
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ",
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS pending_notice_sent BOOLEAN NOT NULL DEFAULT false",
+"ALTER TABLE orders ADD COLUMN IF NOT EXISTS result_notified_at TIMESTAMPTZ",
+"ALTER TABLE orders ADD COLUMN IF NOT EXISTS result_notify_attempts INTEGER NOT NULL DEFAULT 0",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS manual_category_id INTEGER",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS description TEXT",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS image_file_id TEXT",
@@ -304,6 +308,7 @@ const migrations = [
 "CREATE INDEX IF NOT EXISTS idx_api_source_products_source_category_available ON api_source_products(api_source_id, category_id, available)",
 "CREATE INDEX IF NOT EXISTS idx_api_source_categories_parent_active ON api_source_categories(api_source_id, parent_id, active)",
 "CREATE INDEX IF NOT EXISTS idx_orders_pending_created ON orders(created_at DESC) WHERE status='pending'",
+"CREATE INDEX IF NOT EXISTS idx_orders_result_notify ON orders(status, result_notified_at, created_at DESC) WHERE status IN ('accept','reject') AND result_notified_at IS NULL",
 "CREATE INDEX IF NOT EXISTS idx_deposit_requests_pending_created ON deposit_requests(created_at DESC) WHERE status='pending'",
 "CREATE INDEX IF NOT EXISTS idx_manual_orders_pending_created ON manual_orders(created_at DESC) WHERE status='pending'",
 "CREATE INDEX IF NOT EXISTS idx_processed_updates_created_at ON processed_telegram_updates(created_at)",
@@ -1636,7 +1641,7 @@ return Markup.inlineKeyboard([
 ]);
 }
 
-async function showMainMenu(ctx) {
+async function showMainMenu(ctx, options = {}) {
 const user = await ensureUser(ctx);
 if (!user) return;
 setStep(user.id, { kind: "idle" });
@@ -1662,23 +1667,11 @@ authedAdminIds.delete(user.id);
 }
 const isAuthed = adminSessionActive || (authedAdminIds.has(user.id) && !!user.is_admin);
 const keyboard = isAuthed ? mainMenuAdmin() : mainMenu();
-const incomingText = ctx.message?.text ?? "";
-const isStartCommand = /^\/start(?:@\w+)?(?:\s|$)/i.test(incomingText);
-
-// عند تكرار /start بسرعة لا نغرق المحادثة بعشرات الرسائل ولا نصطدم بحدود Telegram.
-// نعيد استخدام آخر رسالة للبوت ونحدّثها، مع إنشاء رسالة جديدة إذا تعذر تعديل القديمة.
-if (isStartCommand) {
-  const chatId = ctx.chat?.id ?? user.id;
-  const lastId = lastBotMessageIds.get(chatId);
-  if (lastId) {
-    try {
-      await ctx.telegram.editMessageText(chatId, lastId, undefined, greeting, keyboard);
-      return;
-    } catch (err) {
-      const desc = err?.description ?? "";
-      if (/not modified/i.test(desc)) return;
-    }
-  }
+// /start يجب أن يعمل دائماً حتى لو كان المستخدم داخل قسم أو خطوة سابقة.
+// في هذه الحالة نرسل قائمة جديدة بدلاً من محاولة تعديل رسالة قديمة.
+if (options.forceNew) {
+  await ctx.reply(greeting, keyboard);
+  return;
 }
 await sendOrEdit(ctx, greeting, keyboard);
 }
@@ -2341,14 +2334,43 @@ await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
 // ============================================================
 //  ORDER FLOW
 // ============================================================
-const REJECT_STATUSES = new Set(["reject","rejected","error","refused","cancel","cancelled","canceled","fail","failed"]);
-const ACCEPT_STATUSES = new Set(["accept","accepted","success","done","complete","completed","delivered"]);
+const REJECT_STATUSES = new Set(["reject","rejected","error","refused","cancel","cancelled","canceled","fail","failed","denied","declined"]);
+const ACCEPT_STATUSES = new Set(["accept","accepted","success","done","complete","completed","delivered","finished","fulfilled","approved"]);
 const TERMINAL_STATUSES = ["accept","accepted","success","done","complete","completed","delivered","reject","rejected","error","refused","cancel","cancelled","canceled","fail","failed"];
+
+function normalizePastedInput(value) {
+  let text = String(value ?? "")
+    .replace(/[\u200B-\u200D\uFEFF\u2060]/g, "")
+    .replace(/[\r\n\t]+/g, " ")
+    .trim();
+  // Telegram/Android keyboards may paste Arabic/Persian digits.
+  text = text.replace(/[٠-٩]/g, d => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)))
+             .replace(/[۰-۹]/g, d => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)));
+  // For a value that is purely numeric-ish, remove accidental spaces inserted by paste.
+  if (/^[+\-().,\s\d]+$/.test(text)) text = text.replace(/\s+/g, "");
+  return text;
+}
+
+function normalizeOrderParamValue(value) {
+  return normalizePastedInput(value);
+}
+
 
 function extractOrderData(resp) {
 if (!resp?.data) return null;
 if (Array.isArray(resp.data)) return resp.data[0] ?? null;
 return resp.data;
+}
+
+function normalizeProviderStatus(value) {
+  if (value == null) return "";
+  const raw = String(value).trim().toLowerCase();
+  if (!raw) return "";
+  const compact = raw.replace(/[\s_-]+/g, "");
+  if (["1","true","ok","success","successful","accept","accepted","done","complete","completed","delivered","finished","fulfilled","approved","تم","مقبول","مكتمل","مكتملة","منفذ","منفذة"].includes(raw) || ["successfully","completed","delivered","approved"].includes(compact)) return "accepted";
+  if (["0","false","reject","rejected","error","refused","cancel","cancelled","canceled","fail","failed","denied","declined","مرفوض","مرفوضة","فشل","ملغى","ملغاة"].includes(raw)) return "rejected";
+  if (["pending","wait","waiting","processing","inprogress","queued","queue","new","created","قيدالتنفيذ","انتظار","معلق","معلقة"].includes(compact)) return "pending";
+  return raw;
 }
 
 function extractApiStatuses(resp) {
@@ -2358,8 +2380,8 @@ const walk = (value, key = "") => {
   if (value == null) return;
   if (Array.isArray(value)) { for (const item of value) walk(item, key); return; }
   if (typeof value !== "object") {
-    if (/status|state|result/i.test(key)) {
-      const n = String(value).trim().toLowerCase();
+    if (/status|state|result|order_status|orderstate|success|completed|accepted|approved/i.test(key)) {
+      const n = normalizeProviderStatus(value);
       if (n && !seen.has(n)) { seen.add(n); values.push(n); }
     }
     return;
@@ -2659,7 +2681,7 @@ try {
 const updated = await q("UPDATE orders SET status='reject', api_response=$1 WHERE id=$2 AND status='pending' RETURNING id", [JSON.stringify({ status: "ERR", message: err?.message ?? "خطأ غير معروف" }), order.id]);
 if (updated.rows.length) {
 await adjustBalance(order.user_id, totalUsd).catch(() => {});
-await _botRef?.telegram.sendMessage(order.user_id, `❌ تعذر تنفيذ الطلب.\n💰 تمت إعادة ${totalUsd.toFixed(2)}$ إلى رصيدك.`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+await notifyOrderResult(_botRef, { ...order, price_usd: totalUsd, status: "reject" }, "reject", err?.message ?? "خطأ غير معروف");
 }
 } catch {}
 });
@@ -2690,11 +2712,7 @@ const updated = await q(
 if (!updated.rows.length) return;
 await adjustBalance(order.user_id, totalUsd);
 const reason = extractDeliveredCode(resp) || (resp?.message && resp.message !== "Network error" ? resp.message : null);
-await _botRef?.telegram.sendMessage(
-order.user_id,
-`❌ تم رفض الطلب.${reason ? `\n📋 السبب: ${reason}` : ""}\n💰 تمت إعادة ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`,
-Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])
-).catch(() => {});
+await notifyOrderResult(_botRef, { ...order, price_usd: totalUsd, status: "reject" }, "reject", reason);
 return;
 }
 
@@ -2705,9 +2723,7 @@ const updated = await q(
 [orderApiId, JSON.stringify(resp), deliveredCode ?? null, order.id]
 );
 if (!updated.rows.length) return;
-const lines = [`✅ تم تنفيذ طلبك بنجاح!`, `🛒 ${p.name} × ${order.qty}`, `💰 ${totalUsd.toFixed(2)}$ | ${totalSyp.toLocaleString("en-US")} ل.س`];
-if (deliveredCode) lines.push(`\n🔑 تفاصيل الطلب:\n\n${deliveredCode}`);
-await _botRef?.telegram.sendMessage(order.user_id, lines.join("\n"), Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+await notifyOrderResult(_botRef, { ...order, product_name: p.name, price_usd: totalUsd, status: "accept" }, "accept", deliveredCode);
 return;
 }
 
@@ -2821,6 +2837,30 @@ if (!refunded) { await ctx.reply("⚠️ تم إرسال الإلغاء لكن �
 await ctx.reply("✅ تم إلغاء الطلب وإعادة قيمته إلى رصيدك.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
 }
 
+async function notifyOrderResult(bot, order, status, deliveredCode = null) {
+  if (!bot || !order?.user_id || !order?.id || !["accept", "reject"].includes(status)) return false;
+  try {
+    const priceUsd = Number(order.price_usd);
+    const rate = await getExchangeRate();
+    const priceSyp = Math.round(priceUsd * rate);
+    let text;
+    if (status === "reject") {
+      text = `❌ تم رفض طلبك.\n💰 تمت إعادة ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`;
+    } else {
+      const lines = [`✅ تم تنفيذ طلبك بنجاح!`, `🛒 ${order.product_name} × ${order.qty}`, `💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`];
+      if (deliveredCode) lines.push(`\n🔑 تفاصيل الطلب:\n\n${deliveredCode}`);
+      text = lines.join("\n");
+    }
+    await bot.telegram.sendMessage(order.user_id, text, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+    await q("UPDATE orders SET result_notified_at=NOW(), result_notify_attempts=result_notify_attempts+1 WHERE id=$1", [order.id]);
+    return true;
+  } catch (e) {
+    await q("UPDATE orders SET result_notify_attempts=result_notify_attempts+1 WHERE id=$1", [order.id]).catch(() => {});
+    console.error("Order result notification failed:", order.id, e?.message ?? e);
+    return false;
+  }
+}
+
 async function checkOrderStatus(ctx, orderId) {
 const row = (await q("SELECT * FROM orders WHERE id=$1", [orderId])).rows[0];
 if (!row || Number(row.user_id) !== Number(ctx.from.id)) { await ctx.reply("⚠️ غير موجود."); return; }
@@ -2878,10 +2918,12 @@ latest = row.status;
 }
 if (latest === "accept") {
 await ctx.reply(code ? `✅ تم تنفيذ طلبك بنجاح.\n🔑 تفاصيل الطلب:\n\n${code}` : "✅ تم تنفيذ طلبك بنجاح.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+await q("UPDATE orders SET result_notified_at=NOW(), result_notify_attempts=result_notify_attempts+1 WHERE id=$1", [row.id]).catch(() => {});
 return;
 }
 if (latest === "reject") {
 await ctx.reply("❌ تم رفض طلبك. تمت إعادة المبلغ إلى رصيدك.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+await q("UPDATE orders SET result_notified_at=NOW(), result_notify_attempts=result_notify_attempts+1 WHERE id=$1", [row.id]).catch(() => {});
 return;
 }
 await ctx.reply("⏳ طلبك ما زال قيد التنفيذ.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
@@ -2917,18 +2959,10 @@ for (const ident of identifiers) {
   if (!updated.rows.length) return false;
 
   const priceUsd = Number(order.price_usd);
-  const rate = await getExchangeRate();
   if (isRejected) {
     await adjustBalance(order.user_id, priceUsd);
-    const refundSyp = Math.round(priceUsd * rate);
-    await bot.telegram.sendMessage(order.user_id, `❌ تم رفض طلبك.\n💰 تمت إعادة ${priceUsd.toFixed(2)}$ | ${refundSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
-  } else {
-    const priceSyp = Math.round(priceUsd * rate);
-    const message = code
-      ? `✅ تم تنفيذ طلبك بنجاح!\n🛒 ${order.product_name} × ${order.qty}\n💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س\n\n🔑 تفاصيل الطلب:\n\n${code}`
-      : `✅ تم تنفيذ طلبك بنجاح!\n🛒 ${order.product_name} × ${order.qty}\n💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`;
-    await bot.telegram.sendMessage(order.user_id, message, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
   }
+  await notifyOrderResult(bot, { ...order, status: finalStatus }, finalStatus, code);
   return true;
 }
 return false;
@@ -2946,6 +2980,18 @@ for (let i = 0; i < attempts; i++) {
 }
 
 // يرسل تنبيه الدقيقتين مرة واحدة فقط. يتم حسم السباق بين أكثر من عامل/فحص عبر UPDATE مشروط.
+async function retryUnsentOrderResults(bot) {
+  if (!bot) return;
+  const res = await q(
+    "SELECT * FROM orders WHERE status IN ('accept','reject') AND result_notified_at IS NULL AND created_at > $1 AND result_notify_attempts < 20 ORDER BY created_at ASC LIMIT 100",
+    [new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)]
+  ).catch(() => ({ rows: [] }));
+  for (const order of res.rows) {
+    const code = order.delivered_code || null;
+    await notifyOrderResult(bot, order, order.status, code);
+  }
+}
+
 async function sendPendingOrderReminder(bot, order) {
   if (!bot || !order?.id || !order?.user_id) return false;
   const claimed = await q(
@@ -2983,6 +3029,9 @@ const CHUNK = Math.max(5, Math.min(50, Number(process.env.ORDER_POLL_CONCURRENCY
 for (let i = 0; i < res.rows.length; i += CHUNK) {
 await Promise.allSettled(res.rows.slice(i, i + CHUNK).map(order => pollOneOrder(bot, order).catch(() => {})));
 }
+
+// إذا تم تغيير حالة الطلب لكن فشل إرسال النتيجة مؤقتاً، نحاول الإرسال مرة أخرى.
+await retryUnsentOrderResults(bot);
 
 // بعد دقيقتين من إنشاء الطلب، أرسل تنبيه الانتظار مرة واحدة فقط إذا بقي pending.
 const reminderCutoff = new Date(Date.now() - 2 * 60 * 1000);
@@ -3430,9 +3479,9 @@ await ctx.reply("🔑 أرسل كلمة المرور:");
 return;
 }
 }
-await showMainMenu(ctx);
+await showMainMenu(ctx, { forceNew: true });
 });
-bot.command("menu", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
+bot.command("menu", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx, { forceNew: true }); });
 bot.command("balance", async ctx => { const u = await ensureUser(ctx); if (!u) return; await ctx.reply(`💰 رصيدك: ${formatBalance(Number(u.balance), await getExchangeRate())}`); });
 bot.command("deposit", async ctx => { await ensureUser(ctx); setStep(ctx.from.id, { kind: "idle" }); await showDepositMenu(ctx); });
 bot.command("orders", async ctx => { await ensureUser(ctx); await showMyOrders(ctx, 1); });
@@ -3810,9 +3859,28 @@ invalidateCaches(); await ctx.reply(nextHidden ? "🙈 تم إخفاء المن�
 bot.action(/^adm:deleteProd:(\d+)$/, async ctx => {
 if (!(await requireProductDelete(ctx))) return;
 const pid = Number(ctx.match[1]);
+const p = (await q("SELECT name FROM product_overrides WHERE product_id=$1", [pid])).rows[0];
+const all = await getCachedProducts().catch(() => []);
+const live = all.find(x => Number(x.id) === pid);
+const name = p?.name ?? live?.name ?? `المنتج ${pid}`;
+await ctx.reply(`⚠️ تأكيد حذف المنتج
+
+🛒 ${name}
+
+هل تريد حذف هذا المنتج من المتجر؟`, Markup.inlineKeyboard([[Markup.button.callback("✅ تأكيد", `adm:confirmDeleteProd:${pid}`), Markup.button.callback("❌ إلغاء", `adm:cancelDelete:prod:${pid}`)]]));
+});
+
+bot.action(/^adm:confirmDeleteProd:(\d+)$/, async ctx => {
+if (!(await requireProductDelete(ctx))) return;
+const pid = Number(ctx.match[1]);
 await q("INSERT INTO product_overrides(product_id,hidden) VALUES($1,true) ON CONFLICT(product_id) DO UPDATE SET hidden=true, updated_at=NOW()", [pid]);
 invalidateCaches();
 await ctx.reply("🗑️ تم حذف المنتج من واجهة المتجر. يمكنك إظهاره لاحقاً من إدارة المنتج.");
+});
+
+bot.action(/^adm:cancelDelete:prod:(\d+)$/, async ctx => {
+if (!(await requireProductDelete(ctx))) return;
+await ctx.reply("❌ تم إلغاء عملية حذف المنتج.");
 });
 
 // ── Admin: category management ────────────────────────────────────────
@@ -3820,9 +3888,27 @@ bot.action(/^adm:catDelete:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const cid = Number(ctx.match[1]);
 if (!Number.isInteger(cid) || cid <= 0) { await ctx.reply("⚠️ لا يمكن حذف هذا القسم."); return; }
+const source = await findApi1CategoryById(cid);
+const name = source?.name ?? `القسم ${cid}`;
+await ctx.reply(`⚠️ تأكيد حذف القسم
+
+📁 ${name}
+
+هل تريد حذف هذا القسم من المتجر؟`, Markup.inlineKeyboard([[Markup.button.callback("✅ تأكيد", `adm:confirmCatDelete:${cid}`), Markup.button.callback("❌ إلغاء", `adm:cancelDelete:cat:${cid}`)]]));
+});
+
+bot.action(/^adm:confirmCatDelete:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const cid = Number(ctx.match[1]);
+if (!Number.isInteger(cid) || cid <= 0) { await ctx.reply("⚠️ لا يمكن حذف هذا القسم."); return; }
 await q("INSERT INTO category_overrides(category_id,hidden) VALUES($1,true) ON CONFLICT(category_id) DO UPDATE SET hidden=true, updated_at=NOW()", [cid]);
 invalidateCaches();
 await ctx.reply("🗑️ تم حذف القسم من واجهة المتجر.");
+});
+
+bot.action(/^adm:cancelDelete:cat:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+await ctx.reply("❌ تم إلغاء عملية حذف القسم.");
 });
 bot.action(/^adm:catEdit:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:editCategoryName", categoryId: Number(ctx.match[1]) }); await ctx.reply("✏️ أرسل الاسم الجديد للقسم (أو reset):"); });
 bot.action(/^adm:catToggle:(\d+)$/, async ctx => {
@@ -3859,17 +3945,51 @@ await ctx.reply(`📁 نقل «${cat.name}» إلى داخل قسم آخر\nأر
 bot.action(/^adm:deleteApi2Cat:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const cid = Number(ctx.match[1]);
+const cat = (await q("SELECT name FROM api_source_categories WHERE id=$1", [cid])).rows[0];
+if (!cat) { await ctx.reply("⚠️ القسم غير موجود."); return; }
+await ctx.reply(`⚠️ تأكيد حذف القسم
+
+📁 ${cat.name}
+
+سيتم إخفاء القسم ومنتجاته من المتجر. هل تريد المتابعة؟`, Markup.inlineKeyboard([[Markup.button.callback("✅ تأكيد", `adm:confirmApi2CatDelete:${cid}`), Markup.button.callback("❌ إلغاء", `adm:cancelDelete:api2cat:${cid}`)]]));
+});
+
+bot.action(/^adm:confirmApi2CatDelete:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const cid = Number(ctx.match[1]);
 await q("UPDATE api_source_categories SET active=false, admin_deleted=true, updated_at=NOW() WHERE id=$1", [cid]);
 await q("UPDATE api_source_products SET available=false, admin_deleted=true, updated_at=NOW() WHERE category_id=$1", [cid]);
 invalidateCaches();
 await ctx.reply("🗑️ تم حذف القسم ومنتجاته من واجهة المتجر.");
 });
+
+bot.action(/^adm:cancelDelete:api2cat:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+await ctx.reply("❌ تم إلغاء عملية حذف القسم.");
+});
 bot.action(/^adm:deleteApi2Prod:(\d+)$/, async ctx => {
+if (!(await requireProductDelete(ctx))) return;
+const pid = Number(ctx.match[1]);
+const row = (await q("SELECT name FROM api_source_products WHERE id=$1", [pid])).rows[0];
+if (!row) { await ctx.reply("⚠️ المنتج غير موجود."); return; }
+await ctx.reply(`⚠️ تأكيد حذف المنتج
+
+🛒 ${row.name}
+
+هل تريد حذف هذا المنتج من المتجر؟`, Markup.inlineKeyboard([[Markup.button.callback("✅ تأكيد", `adm:confirmApi2ProdDelete:${pid}`), Markup.button.callback("❌ إلغاء", `adm:cancelDelete:api2prod:${pid}`)]]));
+});
+
+bot.action(/^adm:confirmApi2ProdDelete:(\d+)$/, async ctx => {
 if (!(await requireProductDelete(ctx))) return;
 const pid = Number(ctx.match[1]);
 await q("UPDATE api_source_products SET available=false, admin_deleted=true, updated_at=NOW() WHERE id=$1", [pid]);
 invalidateCaches();
 await ctx.reply("🗑️ تم حذف المنتج من واجهة المتجر.");
+});
+
+bot.action(/^adm:cancelDelete:api2prod:(\d+)$/, async ctx => {
+if (!(await requireProductDelete(ctx))) return;
+await ctx.reply("❌ تم إلغاء عملية حذف المنتج.");
 });
 bot.action(/^adm:api2HideProd:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
@@ -4207,7 +4327,8 @@ await showAdminMenu(ctx);
 return;
 }
 case "order:qty": {
-const qty = Number(txt.replace(/,/g, ""));
+const cleanQtyText = normalizePastedInput(txt);
+const qty = Number(cleanQtyText.replace(/,/g, ""));
 const limits = Array.isArray(step.qtyValues)
 ? step.qtyValues
 : [Number(step.qtyValues?.min), Number(step.qtyValues?.max)];
@@ -4235,7 +4356,7 @@ return;
 }
 const key = step.paramKeys?.[step.idx];
 const collected = { ...(step.collected ?? {}) };
-if (key) collected[key] = txt;
+if (key) collected[key] = normalizeOrderParamValue(txt);
 await askNextParam(ctx, product, step.priceUsd, step.qty, step.paramKeys ?? [], collected, (step.idx ?? 0) + 1, step.backTo);
 return;
 }
