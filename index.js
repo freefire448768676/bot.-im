@@ -395,12 +395,17 @@ settingsCache.set(k, v);
 }
 }
 
+let _settingsLoadInFlight = null;
 async function getSetting(key) {
-if (!settingsCache.has(key) || Date.now() > _settingsCacheExpiry) {
-await loadAllSettings();
-_settingsCacheExpiry = Date.now() + SETTINGS_TTL;
-}
-return settingsCache.get(key) ?? DEFAULTS[key] ?? "";
+  if (!settingsCache.has(key) || Date.now() > _settingsCacheExpiry) {
+    if (!_settingsLoadInFlight) {
+      _settingsLoadInFlight = loadAllSettings()
+        .then(() => { _settingsCacheExpiry = Date.now() + SETTINGS_TTL; })
+        .finally(() => { _settingsLoadInFlight = null; });
+    }
+    await _settingsLoadInFlight;
+  }
+  return settingsCache.get(key) ?? DEFAULTS[key] ?? "";
 }
 
 async function setSetting(key, value) {
@@ -1895,8 +1900,13 @@ getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel(),
 ]);
 
 // Manual categories
-const manualCatRes = await q("SELECT * FROM manual_categories WHERE parent_id=$1 AND active=true ORDER BY position", [parentId]);
-const manualCats = isAdmin ? (await q("SELECT * FROM manual_categories WHERE parent_id=$1 ORDER BY position", [parentId])).rows : manualCatRes.rows;
+const [manualCatRes, manualAllRes] = await Promise.all([
+  q("SELECT * FROM manual_categories WHERE parent_id=$1 AND active=true ORDER BY position", [parentId]),
+  isAdmin
+    ? q("SELECT * FROM manual_categories WHERE parent_id=$1 ORDER BY position", [parentId])
+    : Promise.resolve({ rows: [] }),
+]);
+const manualCats = isAdmin ? manualAllRes.rows : manualCatRes.rows;
 
 const vcRows = isAdmin ? vcRes.rows : vcRes.rows.filter(v => v.active);
 const vcBtns = vcRows.map(v => Markup.button.callback(`${v.active ? "📂 " : "🔒 "}${v.name}`.slice(0, 60), `vcat:${v.id}:1:${parentId}`));
@@ -2427,12 +2437,25 @@ function normalizeProviderStatus(value) {
   const raw = String(value).trim().toLowerCase();
   if (!raw) return "";
   const compact = raw.replace(/[\s_-]+/g, "");
-  if (["1","true","ok","success","successful","accept","accepted","done","complete","completed","delivered","finished","fulfilled","approved","تم","مقبول","مكتمل","مكتملة","منفذ","منفذة"].includes(raw) || ["successfully","completed","delivered","approved"].includes(compact)) return "accepted";
+
+  if (["1","true","ok","success","successful","accept","accepted","done","complete","completed","delivered","finished","fulfilled","approved","تم","مقبول","مكتمل","مكتملة","منفذ","منفذة"].includes(raw) ||
+      ["successfully","completed","delivered","approved"].includes(compact)) return "accepted";
+
   if (["0","false","reject","rejected","error","refused","cancel","cancelled","canceled","fail","failed","denied","declined","مرفوض","مرفوضة","فشل","ملغى","ملغاة"].includes(raw)) return "rejected";
+
   if (["pending","wait","waiting","processing","inprogress","queued","queue","new","created","قيدالتنفيذ","انتظار","معلق","معلقة"].includes(compact)) return "pending";
+
+  // دعم النصوص الوصفية التي ترجعها بعض المصادر بدلاً من قيمة ثابتة.
+  if (/(completed?|successfully?|delivered|fulfilled|approved|accepted|finished|done|complete[_\s-]*successfully|success[_\s-]*completed|order[_\s-]*completed)/i.test(raw) ||
+      /(تم\s*(تنفيذ|اكتمال|الطلب)|اكتمل|مكتمل|منفذ|تم\s*قبول|تم\s*التنفيذ|نجح\s*الطلب)/i.test(raw)) return "accepted";
+
+  if (/(rejected?|declined|denied|failed?|refused|cancelled?|canceled|error)/i.test(raw) ||
+      /(تم\s*رفض|مرفوض|فشل|ملغى|ملغاة)/i.test(raw)) return "rejected";
+
+  if (/(pending|processing|waiting|queued|in\s*progress|قيد\s*التنفيذ|انتظار|معلق)/i.test(raw)) return "pending";
+
   return raw;
 }
-
 function extractApiStatuses(resp) {
   const values = [];
   const seen = new Set();
@@ -2465,6 +2488,62 @@ function extractApiStatuses(resp) {
 
   walk(resp);
   return values;
+}
+
+function extractStatusForOrder(resp, identifiers = []) {
+  const wanted = new Set((identifiers || []).filter(Boolean).map(v => String(v).trim()));
+  const candidates = [];
+  const addCandidate = (value) => {
+    const n = normalizeProviderStatus(value);
+    if (n) candidates.push(n);
+  };
+
+  const walk = (value, key = "") => {
+    if (value == null) return;
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item, key);
+      return;
+    }
+    if (typeof value !== "object") {
+      if (/status|state|result|order_status|orderstate/i.test(key)) addCandidate(value);
+      return;
+    }
+
+    // Common v2 shape: { "12345": { status: "Completed" } }
+    for (const wantedId of wanted) {
+      if (Object.prototype.hasOwnProperty.call(value, wantedId)) {
+        const node = value[wantedId];
+        if (node && typeof node === "object") {
+          for (const [k, v] of Object.entries(node)) {
+            if (/status|state|result|order_status|orderstate/i.test(k) && v != null) addCandidate(v);
+          }
+          const direct = getBestApiStatus(node);
+          if (direct) candidates.push(direct);
+        } else if (node != null) {
+          addCandidate(node);
+        }
+      }
+    }
+
+    // Array/object records that carry order_id/order_uuid beside status.
+    const idKeys = ["order_id","orderId","order_number","orderNumber","provider_order_id","providerOrderId","order_uuid","orderUuid","uuid","id"];
+    let recordMatches = false;
+    for (const k of idKeys) {
+      if (value[k] != null && wanted.has(String(value[k]).trim())) { recordMatches = true; break; }
+    }
+    if (recordMatches) {
+      for (const [k, v] of Object.entries(value)) {
+        if (/status|state|result|order_status|orderstate/i.test(k) && v != null) addCandidate(v);
+      }
+      const direct = getBestApiStatus(value);
+      if (direct) candidates.push(direct);
+    }
+
+    for (const [k, v] of Object.entries(value)) walk(v, k);
+  };
+
+  walk(resp);
+  return candidates.find(v => v === "accepted") || candidates.find(v => v === "rejected") || candidates.find(v => v === "pending") || "";
 }
 
 function getBestApiStatus(resp) {
@@ -3013,7 +3092,7 @@ async function notifyOrderResult(bot, order, status, deliveredCode = null, resp 
     return true;
   } catch (e) {
     await q("UPDATE orders SET result_notify_attempts=result_notify_attempts+1 WHERE id=$1", [order.id]).catch(() => {});
-    console.error("Order result notification failed:", order.id, e?.message ?? e);
+    console.error("Order result notification failed:", order.id, "status=", status, e?.message ?? e);
     return false;
   }
 }
@@ -3088,58 +3167,100 @@ await ctx.reply("⚠️ تعذّر فحص الحالة الآن.", Markup.inline
 }
 
 async function pollOneOrder(bot, order) {
-const identifiers = [];
-if (order.oranos_order_id) identifiers.push({ value: String(order.oranos_order_id), byUuid: false });
-if (order.oranos_uuid) identifiers.push({ value: String(order.oranos_uuid), byUuid: true });
-for (const ident of identifiers) {
-  let resp = null;
-  if (order.api_source_id) {
-    const src = await getApiSource(order.api_source_id).catch(() => null);
-    if (src) resp = await checkApiSourceOrder(src, ident.value, ident.byUuid).catch(() => null);
-  } else {
-    resp = await checkOrder(ident.value, ident.byUuid).catch(() => null);
-  }
-  if (!resp) continue;
-  const rawNew = getBestApiStatus(resp);
-  if (!rawNew || ["err","error"].includes(String(rawNew).toLowerCase())) continue;
-  const isRejected = REJECT_STATUSES.has(rawNew) || ["0","false"].includes(rawNew);
-  const isAccepted = ACCEPT_STATUSES.has(rawNew) || ["1","true"].includes(rawNew);
-  if (!isRejected && !isAccepted) continue;
-  const finalStatus = isRejected ? "reject" : "accept";
-  const code = extractDeliveredCode(resp);
-  const updateSql = "UPDATE orders SET status=$1, api_response=$2, execution_completed_at=NOW(), execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint)" + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3") + " AND status='pending' RETURNING id";
-  const updateParams = code ? [finalStatus, JSON.stringify(resp), code, order.id] : [finalStatus, JSON.stringify(resp), order.id];
-  const updated = await q(updateSql, updateParams);
-  if (!updated.rows.length) return false;
+  if (!order?.id || !bot) return false;
 
-  const priceUsd = Number(order.price_usd);
-  if (isRejected) {
-    await q("UPDATE orders SET refunded_at=COALESCE(refunded_at,NOW()) WHERE id=$1", [order.id]);
-    await adjustBalance(order.user_id, priceUsd);
-  }
-  const latest = (await q("SELECT * FROM orders WHERE id=$1", [order.id])).rows[0] || { ...order, status: finalStatus, delivered_code: code, api_response: resp };
-  await notifyOrderResult(bot, latest, finalStatus, code, resp);
-  return true;
-}
-return false;
-}
+  const identifiers = [];
+  const addIdentifier = (value, byUuid) => {
+    if (value == null || String(value).trim() === "") return;
+    const key = `${byUuid ? "uuid" : "id"}:${String(value)}`;
+    if (!identifiers.some(x => x.key === key)) identifiers.push({ key, value: String(value), byUuid });
+  };
+  // افحص الرقم الخارجي والـUUID بشكل مستقل. لا نعتمد على أول استجابة فقط.
+  addIdentifier(order.oranos_order_id, false);
+  addIdentifier(order.oranos_uuid, true);
 
-async function fastPollOrder(orderId, attempts = 20, delayMs = 1500) {
-if (!_botRef) return;
-for (let i = 0; i < attempts; i++) {
-  await new Promise(r => setTimeout(r, delayMs));
-  const row = (await q("SELECT * FROM orders WHERE id=$1", [orderId])).rows[0];
-  if (!row || row.status !== "pending") return;
-  const done = await pollOneOrder(_botRef, row).catch(() => false);
-  if (done) return;
+  for (const ident of identifiers) {
+    let resp = null;
+    try {
+      if (order.api_source_id) {
+        const src = await getApiSource(order.api_source_id);
+        if (!src) continue;
+        resp = await checkApiSourceOrder(src, ident.value, ident.byUuid);
+      } else {
+        resp = await checkOrder(ident.value, ident.byUuid);
+      }
+    } catch (e) {
+      console.error("Order status check failed:", order.id, e?.message ?? e);
+      continue;
+    }
+
+    if (!resp) continue;
+    const targeted = extractStatusForOrder(resp, [ident.value]);
+    const rawNew = targeted || getBestApiStatus(resp);
+    if (!rawNew || ["err","error"].includes(String(rawNew).toLowerCase())) continue;
+
+    const isRejected = REJECT_STATUSES.has(rawNew) || rawNew === "rejected";
+    const isAccepted = ACCEPT_STATUSES.has(rawNew) || rawNew === "accepted";
+    if (!isRejected && !isAccepted) continue;
+
+    const finalStatus = isRejected ? "reject" : "accept";
+    const code = extractDeliveredCode(resp);
+
+    const updateSql =
+      "UPDATE orders SET status=$1, api_response=$2, execution_completed_at=NOW(), " +
+      "execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint)" +
+      (code ? ", delivered_code=$3" : "") +
+      " WHERE id=" + (code ? "$4" : "$3") + " AND status='pending' RETURNING id";
+
+    const updateParams = code
+      ? [finalStatus, JSON.stringify(resp), code, order.id]
+      : [finalStatus, JSON.stringify(resp), order.id];
+
+    const updated = await q(updateSql, updateParams);
+    if (!updated.rows.length) {
+      // عامل آخر سبقنا وغيّر الحالة؛ حاول فقط إعادة إرسال النتيجة إن كانت لم تصل.
+      const latest = (await q("SELECT * FROM orders WHERE id=$1", [order.id])).rows[0];
+      if (latest?.status === finalStatus && !latest.result_notified_at) {
+        await notifyOrderResult(bot, latest, finalStatus, latest.delivered_code, latest.api_response);
+      }
+      return false;
+    }
+
+    if (isRejected) {
+      await q(
+        "UPDATE orders SET refunded_at=COALESCE(refunded_at,NOW()) WHERE id=$1",
+        [order.id]
+      );
+      await adjustBalance(order.user_id, Number(order.price_usd));
+    }
+
+    const latest = (await q("SELECT * FROM orders WHERE id=$1", [order.id])).rows[0] ||
+      { ...order, status: finalStatus, delivered_code: code, api_response: resp };
+
+    await notifyOrderResult(bot, latest, finalStatus, code, resp);
+    return true;
+  }
+
+  return false;
 }
+async function fastPollOrder(orderId, attempts = 150, delayMs = 2000) {
+  if (!_botRef) return;
+  for (let i = 0; i < attempts; i++) {
+    const row = (await q("SELECT * FROM orders WHERE id=$1", [orderId])).rows[0];
+    if (!row || row.status !== "pending") return;
+
+    // افحص فوراً ثم كل ثانيتين. إذا تأخر المصدر دقائق، يستمر الفحص حتى 5 دقائق.
+    const done = await pollOneOrder(_botRef, row).catch(() => false);
+    if (done) return;
+    if (i < attempts - 1) await new Promise(r => setTimeout(r, delayMs));
+  }
 }
 
 // يرسل تنبيه الدقيقتين مرة واحدة فقط. يتم حسم السباق بين أكثر من عامل/فحص عبر UPDATE مشروط.
 async function retryUnsentOrderResults(bot) {
   if (!bot) return;
   const res = await q(
-    "SELECT * FROM orders WHERE status IN ('accept','reject') AND result_notified_at IS NULL AND created_at > $1 AND result_notify_attempts < 20 ORDER BY created_at ASC LIMIT 100",
+    "SELECT * FROM orders WHERE status IN ('accept','reject') AND result_notified_at IS NULL AND created_at > $1 AND result_notify_attempts < 60 ORDER BY created_at ASC LIMIT 100",
     [new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)]
   ).catch(() => ({ rows: [] }));
   for (const order of res.rows) {
@@ -3181,15 +3302,67 @@ const res = await q(
 "SELECT * FROM orders WHERE status='pending' AND created_at > $1 ORDER BY created_at ASC LIMIT $2",
 [cutoff, batchSize]
 );
-const CHUNK = Math.max(2, Math.min(10, Number(process.env.ORDER_POLL_CONCURRENCY) || 4));
-for (let i = 0; i < res.rows.length; i += CHUNK) {
-await Promise.allSettled(res.rows.slice(i, i + CHUNK).map(order => pollOneOrder(bot, order).catch(() => {})));
+
+// API2 يدعم فحص عدة طلبات دفعة واحدة. هذا يمنع طلباً بطيئاً من تعطيل بقية الطلبات.
+const api2Groups = new Map();
+const normalOrders = [];
+for (const order of res.rows) {
+  if (order.api_source_id && order.oranos_order_id) {
+    const key = String(order.api_source_id);
+    if (!api2Groups.has(key)) api2Groups.set(key, []);
+    api2Groups.get(key).push(order);
+  } else {
+    normalOrders.push(order);
+  }
 }
 
-// إذا تم تغيير حالة الطلب لكن فشل إرسال النتيجة مؤقتاً، نحاول الإرسال مرة أخرى.
+for (const [sourceId, orders] of api2Groups) {
+  const src = await getApiSource(Number(sourceId)).catch(() => null);
+  if (!src) continue;
+  for (let i = 0; i < orders.length; i += 50) {
+    const chunk = orders.slice(i, i + 50);
+    try {
+      const ids = chunk.map(o => String(o.oranos_order_id)).join(",");
+      const client = getApiSourceClient(src);
+      const resApi = await client.get(`/api/v2/check?orders=${encodeURIComponent(ids)}`);
+      const payload = resApi.data;
+      for (const order of chunk) {
+        const targeted = extractStatusForOrder(payload, [order.oranos_order_id, order.oranos_uuid]);
+        if (!targeted || targeted === "pending") continue;
+        const finalStatus = REJECT_STATUSES.has(targeted) || targeted === "rejected" ? "reject" :
+          ACCEPT_STATUSES.has(targeted) || targeted === "accepted" ? "accept" : null;
+        if (!finalStatus) continue;
+        const code = extractDeliveredCode(payload?.[order.oranos_order_id] ?? payload);
+        const updateSql =
+          "UPDATE orders SET status=$1, api_response=$2, execution_completed_at=NOW(), " +
+          "execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint)" +
+          (code ? ", delivered_code=$3" : "") +
+          " WHERE id=" + (code ? "$4" : "$3") + " AND status='pending' RETURNING id";
+        const params = code ? [finalStatus, JSON.stringify(payload?.[order.oranos_order_id] ?? payload), code, order.id] : [finalStatus, JSON.stringify(payload?.[order.oranos_order_id] ?? payload), order.id];
+        const updated = await q(updateSql, params);
+        if (!updated.rows.length) continue;
+        if (finalStatus === "reject") {
+          await q("UPDATE orders SET refunded_at=COALESCE(refunded_at,NOW()) WHERE id=$1", [order.id]);
+          await adjustBalance(order.user_id, Number(order.price_usd));
+        }
+        const latest = (await q("SELECT * FROM orders WHERE id=$1", [order.id])).rows[0] || { ...order, status: finalStatus, delivered_code: code, api_response: payload?.[order.oranos_order_id] ?? payload };
+        await notifyOrderResult(bot, latest, finalStatus, code, latest.api_response);
+      }
+    } catch (e) {
+      console.error("API2 batch order status check failed:", e?.message ?? e);
+    }
+  }
+}
+
+// الطلبات الأخرى: فحص متوازٍ حتى لا يوقف طلب بطيء بقية البوت.
+const CHUNK = Math.max(4, Math.min(12, Number(process.env.ORDER_POLL_CONCURRENCY) || 8));
+for (let i = 0; i < normalOrders.length; i += CHUNK) {
+  await Promise.allSettled(normalOrders.slice(i, i + CHUNK).map(order => pollOneOrder(bot, order).catch(() => {})));
+}
+
 await retryUnsentOrderResults(bot);
 
-// بعد دقيقتين من إنشاء الطلب، أرسل تنبيه الانتظار مرة واحدة فقط إذا بقي pending.
+// تنبيه الانتظار مرة واحدة فقط إذا بقي الطلب pending لمدة دقيقتين.
 const reminderCutoff = new Date(Date.now() - 2 * 60 * 1000);
 const reminderRes = await q(
   "SELECT * FROM orders WHERE status='pending' AND created_at <= $1 AND pending_notice_sent=false ORDER BY created_at ASC LIMIT 100",
@@ -3199,11 +3372,11 @@ for (let i = 0; i < reminderRes.rows.length; i += CHUNK) {
   await Promise.allSettled(reminderRes.rows.slice(i, i + CHUNK).map(order => sendPendingOrderReminder(bot, order)));
 }
 } catch (e) {
-console.error("Order poller failed:", e.message);
+console.error("Order poller failed:", e?.message ?? e);
 } finally {
 polling = false;
 }
-}, Math.max(1_500, Number(process.env.ORDER_POLL_INTERVAL_MS) || 3_000).unref());
+}, Math.max(1_500, Number(process.env.ORDER_POLL_INTERVAL_MS) || 1_500)).unref();
 }
 
 
