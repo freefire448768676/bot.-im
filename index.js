@@ -24,7 +24,7 @@ const _needSSL =
   _dbUrl.includes("railway") ||
   _dbUrl.includes("neon") ||
   _dbUrl.includes("supabase");
-const DB_POOL_MAX = Math.max(2, Math.min(50, Number(process.env.DB_POOL_MAX) || 10));
+const DB_POOL_MAX = Math.max(4, Math.min(50, Number(process.env.DB_POOL_MAX) || 20));
 const DB_POOL_MIN = Math.max(0, Math.min(DB_POOL_MAX, Number(process.env.DB_POOL_MIN) || 2));
 const pool = new Pool({
 connectionString: _dbUrl,
@@ -2440,9 +2440,18 @@ const walk = (value, key = "") => {
   if (value == null) return;
   if (Array.isArray(value)) { for (const item of value) walk(item, key); return; }
   if (typeof value !== "object") {
-    if (/status|state|result|order_status|orderstate|success|completed|accepted|approved/i.test(key)) {
+    const rootOrStatusField = !key || /status|state|result|order_status|orderstate|success|completed|accepted|approved|message/i.test(key);
+    if (rootOrStatusField) {
       const n = normalizeProviderStatus(value);
       if (n && !seen.has(n)) { seen.add(n); values.push(n); }
+      // Some providers return a human-readable completion message instead of a status field.
+      const text = String(value).trim().toLowerCase();
+      if (/(?:order|request).*(?:completed|complete|accepted|approved|delivered|finished)|(?:completed|accepted|approved|delivered|finished).*(?:order|request)|^(?:completed|complete|accepted|approved|delivered|finished)$/i.test(text)) {
+        if (!seen.has("accepted")) { seen.add("accepted"); values.push("accepted"); }
+      }
+      if (/(?:order|request).*(?:rejected|declined|failed|cancelled|canceled)|(?:rejected|declined|failed|cancelled|canceled).*(?:order|request)|^(?:rejected|declined|failed|cancelled|canceled)$/i.test(text)) {
+        if (!seen.has("rejected")) { seen.add("rejected"); values.push("rejected"); }
+      }
     }
     return;
   }
@@ -2794,7 +2803,7 @@ await q(
 "UPDATE orders SET status='pending', oranos_order_id=$1, api_response=$2 WHERE id=$3 AND status='pending'",
 [orderApiId, JSON.stringify(resp), order.id]
 );
-await fastPollOrder(order.id, 5, 1200);
+await fastPollOrder(order.id, 15, 1000);
 }
 
 async function showMyOrders(ctx, page) {
@@ -3161,12 +3170,12 @@ if (polling) return;
 polling = true;
 try {
 const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-const batchSize = Math.max(20, Math.min(1000, Number(process.env.ORDER_POLL_BATCH) || 200));
+const batchSize = Math.max(10, Math.min(200, Number(process.env.ORDER_POLL_BATCH) || 40));
 const res = await q(
 "SELECT * FROM orders WHERE status='pending' AND created_at > $1 ORDER BY created_at ASC LIMIT $2",
 [cutoff, batchSize]
 );
-const CHUNK = Math.max(5, Math.min(50, Number(process.env.ORDER_POLL_CONCURRENCY) || 10));
+const CHUNK = Math.max(2, Math.min(10, Number(process.env.ORDER_POLL_CONCURRENCY) || 4));
 for (let i = 0; i < res.rows.length; i += CHUNK) {
 await Promise.allSettled(res.rows.slice(i, i + CHUNK).map(order => pollOneOrder(bot, order).catch(() => {})));
 }
@@ -3188,7 +3197,7 @@ console.error("Order poller failed:", e.message);
 } finally {
 polling = false;
 }
-}, Math.max(500, Number(process.env.ORDER_POLL_INTERVAL_MS) || 2_000).unref());
+}, Math.max(1_000, Number(process.env.ORDER_POLL_INTERVAL_MS) || 3_000).unref());
 }
 
 
@@ -3247,7 +3256,8 @@ const u = await getUser(ctx.from.id);
 const isSA = !!u?.is_super_admin;
 const rows = [
 [Markup.button.callback("📥 طلبات الإيداع", "adm:depList:1"), Markup.button.callback("👥 المستخدمون", "adm:users:1")],
-[Markup.button.callback("🔍 بحث مستخدم", "adm:findUser"), Markup.button.callback("📦 كل الطلبات", "adm:allOrders:1")],
+[Markup.button.callback("🔍 بحث مستخدم", "adm:findUser"), Markup.button.callback("📦 طلبات آخر 24 ساعة", "adm:orders24:1")],
+[Markup.button.callback("📦 كل الطلبات", "adm:allOrders:1")],
 [Markup.button.callback("📣 رسالة جماعية", "adm:broadcast"), Markup.button.callback("💳 طرق الإيداع", "adm:methods")],
 [Markup.button.callback("🛒 إدارة المنتجات", "cat:0:1:0"), Markup.button.callback("⚙️ الإعدادات", "adm:settings")],
 [Markup.button.callback("📞 وسائل التواصل", "adm:contacts"), Markup.button.callback("📁 أقسام مخصصة", "adm:vcList")],
@@ -4023,6 +4033,11 @@ if (nav.length) kb.push(nav); kb.push([Markup.button.callback("⬅️ رجوع",
 await sendOrEdit(ctx, `📦 طلبات المستخدم ${uid}\n\nاختر الطلب لعرض تفاصيله وتعديل حالته:`, Markup.inlineKeyboard(kb));
 });
 
+bot.action(/^adm:userOrder:(\d+):(\d+):24:(\d+)$/, async ctx => {
+const oid = Number(ctx.match[1]); const uid = Number(ctx.match[2]); const page = Number(ctx.match[3]);
+await showAdminOrderDetails(ctx, oid, `adm:orders24:${page}`);
+});
+
 bot.action(/^adm:userOrder:(\d+):(\d+):(\d+)$/, async ctx => {
 const oid = Number(ctx.match[1]); const uid = Number(ctx.match[2]); const page = Number(ctx.match[3]);
 await showAdminOrderDetails(ctx, oid, `adm:userOrders:${uid}:${page}`);
@@ -4032,6 +4047,29 @@ bot.action(/^adm:orderReject:(\d+)$/, async ctx => { await adminChangeOrderStatu
 bot.action(/^adm:orderAccept:(\d+)$/, async ctx => { await adminChangeOrderStatus(ctx, Number(ctx.match[1]), "accept"); });
 
 bot.action(/^adm:userMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const uid = Number(ctx.match[1]); const u = await getUser(uid); setStep(ctx.from.id, { kind: "admin:setUserMarkup", userId: uid }); await ctx.reply(`% نسبة ربح ${u?.first_name ?? uid}\nالحالية: ${u?.custom_markup_percent ?? "غير محددة"}\nأرسل النسبة أو reset:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `adm:user:${uid}`)]])); });
+
+// ── Admin: orders ─────────────────────────────────────────────────────
+// طلبات آخر 24 ساعة: منفصلة عن القائمة الحالية حتى تبقى ميزة "كل الطلبات" كما هي.
+bot.action(/^adm:orders24:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const page = Number(ctx.match[1]); const limit = 8; const offset = (page - 1) * limit;
+const res = await q(
+  "SELECT o.*, u.username AS uname, u.first_name AS ufirst FROM orders o LEFT JOIN users u ON u.id=o.user_id WHERE o.created_at >= NOW() - INTERVAL '24 hours' ORDER BY o.created_at DESC LIMIT $1 OFFSET $2",
+  [limit + 1, offset]
+);
+const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
+if (!slice.length) {
+  await sendOrEdit(ctx, "📭 لا توجد طلبات خلال آخر 24 ساعة.", Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "admin:menu")]]));
+  return;
+}
+const kb = slice.map(r => [Markup.button.callback(`${statusLabel(r.status)} ${r.ufirst ?? "—"} • ${r.product_name}`.slice(0, 60), `adm:userOrder:${r.id}:${r.user_id}:24:${page}`)]);
+const nav = [];
+if (page > 1) nav.push(Markup.button.callback("⬅️ السابق", `adm:orders24:${page - 1}`));
+if (hasNext) nav.push(Markup.button.callback("التالي ➡️", `adm:orders24:${page + 1}`));
+if (nav.length) kb.push(nav);
+kb.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
+await sendOrEdit(ctx, "📦 طلبات آخر 24 ساعة\n\nاختر الطلب لعرض تفاصيله وتعديل حالته:", Markup.inlineKeyboard(kb));
+});
 
 // ── Admin: orders ─────────────────────────────────────────────────────
 bot.action(/^adm:allOrders:(\d+)$/, async ctx => {
