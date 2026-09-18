@@ -24,7 +24,7 @@ const _needSSL =
   _dbUrl.includes("railway") ||
   _dbUrl.includes("neon") ||
   _dbUrl.includes("supabase");
-const DB_POOL_MAX = Math.max(4, Math.min(50, Number(process.env.DB_POOL_MAX) || 20));
+const DB_POOL_MAX = Math.max(2, Math.min(50, Number(process.env.DB_POOL_MAX) || 10));
 const DB_POOL_MIN = Math.max(0, Math.min(DB_POOL_MAX, Number(process.env.DB_POOL_MIN) || 2));
 const pool = new Pool({
 connectionString: _dbUrl,
@@ -2434,31 +2434,37 @@ function normalizeProviderStatus(value) {
 }
 
 function extractApiStatuses(resp) {
-const values = [];
-const seen = new Set();
-const walk = (value, key = "") => {
-  if (value == null) return;
-  if (Array.isArray(value)) { for (const item of value) walk(item, key); return; }
-  if (typeof value !== "object") {
-    const rootOrStatusField = !key || /status|state|result|order_status|orderstate|success|completed|accepted|approved|message/i.test(key);
-    if (rootOrStatusField) {
-      const n = normalizeProviderStatus(value);
-      if (n && !seen.has(n)) { seen.add(n); values.push(n); }
-      // Some providers return a human-readable completion message instead of a status field.
-      const text = String(value).trim().toLowerCase();
-      if (/(?:order|request).*(?:completed|complete|accepted|approved|delivered|finished)|(?:completed|accepted|approved|delivered|finished).*(?:order|request)|^(?:completed|complete|accepted|approved|delivered|finished)$/i.test(text)) {
-        if (!seen.has("accepted")) { seen.add("accepted"); values.push("accepted"); }
-      }
-      if (/(?:order|request).*(?:rejected|declined|failed|cancelled|canceled)|(?:rejected|declined|failed|cancelled|canceled).*(?:order|request)|^(?:rejected|declined|failed|cancelled|canceled)$/i.test(text)) {
-        if (!seen.has("rejected")) { seen.add("rejected"); values.push("rejected"); }
-      }
+  const values = [];
+  const seen = new Set();
+  const add = value => {
+    const n = normalizeProviderStatus(value);
+    if (!n) return;
+    if (!seen.has(n)) { seen.add(n); values.push(n); }
+  };
+
+  const walk = (value, key = "", parentKey = "") => {
+    if (value == null) return;
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item, key, parentKey);
+      return;
     }
-    return;
-  }
-  for (const [k, v] of Object.entries(value)) walk(v, k);
-};
-walk(resp);
-return values;
+    if (typeof value !== "object") {
+      // Most providers put the state under status/state/result, but some
+      // return an object such as { orders: { "12345": "Completed" } }.
+      // In that case the value itself is the status even though the key is
+      // the order id. Only accept primitive values that normalize to a known
+      // terminal/pending state, so ordinary response text cannot trigger it.
+      const n = normalizeProviderStatus(value);
+      const looksLikeStatusKey = /status|state|result|order_status|orderstate|success|completed|accepted|approved/i.test(key);
+      const knownStatus = ACCEPT_STATUSES.has(n) || REJECT_STATUSES.has(n) || n === "pending" || n === "accepted" || n === "rejected";
+      if (looksLikeStatusKey || knownStatus) add(value);
+      return;
+    }
+    for (const [k, v] of Object.entries(value)) walk(v, k, key);
+  };
+
+  walk(resp);
+  return values;
 }
 
 function getBestApiStatus(resp) {
@@ -2803,7 +2809,7 @@ await q(
 "UPDATE orders SET status='pending', oranos_order_id=$1, api_response=$2 WHERE id=$3 AND status='pending'",
 [orderApiId, JSON.stringify(resp), order.id]
 );
-await fastPollOrder(order.id, 15, 1000);
+await fastPollOrder(order.id, 20, 1500);
 }
 
 async function showMyOrders(ctx, page) {
@@ -3118,7 +3124,7 @@ for (const ident of identifiers) {
 return false;
 }
 
-async function fastPollOrder(orderId, attempts = 5, delayMs = 1200) {
+async function fastPollOrder(orderId, attempts = 20, delayMs = 1500) {
 if (!_botRef) return;
 for (let i = 0; i < attempts; i++) {
   await new Promise(r => setTimeout(r, delayMs));
@@ -3170,7 +3176,7 @@ if (polling) return;
 polling = true;
 try {
 const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-const batchSize = Math.max(10, Math.min(200, Number(process.env.ORDER_POLL_BATCH) || 40));
+const batchSize = Math.max(10, Math.min(100, Number(process.env.ORDER_POLL_BATCH) || 50));
 const res = await q(
 "SELECT * FROM orders WHERE status='pending' AND created_at > $1 ORDER BY created_at ASC LIMIT $2",
 [cutoff, batchSize]
@@ -3197,7 +3203,7 @@ console.error("Order poller failed:", e.message);
 } finally {
 polling = false;
 }
-}, Math.max(1_000, Number(process.env.ORDER_POLL_INTERVAL_MS) || 3_000).unref());
+}, Math.max(1_500, Number(process.env.ORDER_POLL_INTERVAL_MS) || 3_000).unref());
 }
 
 
@@ -3256,15 +3262,15 @@ const u = await getUser(ctx.from.id);
 const isSA = !!u?.is_super_admin;
 const rows = [
 [Markup.button.callback("📥 طلبات الإيداع", "adm:depList:1"), Markup.button.callback("👥 المستخدمون", "adm:users:1")],
-[Markup.button.callback("🔍 بحث مستخدم", "adm:findUser"), Markup.button.callback("📦 طلبات آخر 24 ساعة", "adm:orders24:1")],
-[Markup.button.callback("📦 كل الطلبات", "adm:allOrders:1")],
-[Markup.button.callback("📣 رسالة جماعية", "adm:broadcast"), Markup.button.callback("💳 طرق الإيداع", "adm:methods")],
-[Markup.button.callback("🛒 إدارة المنتجات", "cat:0:1:0"), Markup.button.callback("⚙️ الإعدادات", "adm:settings")],
-[Markup.button.callback("📞 وسائل التواصل", "adm:contacts"), Markup.button.callback("📁 أقسام مخصصة", "adm:vcList")],
-[Markup.button.callback("📁 أقسام يدوية", "adm:manualCats"), Markup.button.callback("➕ منتج يدوي", "adm:manualProds")],
-[Markup.button.callback("🔌 مصادر المنتجات", "adm:apiSources"), Markup.button.callback("🛟 مساعد الإدارة", "adm:aiSupport")],
-[Markup.button.callback("🔄 بينج تلقائي", "adm:ping"), Markup.button.callback(status === "on" ? "🟢 البوت: شغال" : "🔴 البوت: متوقف", "adm:toggleStatus")],
-[Markup.button.callback("🚪 تسجيل خروج", "adm:logout"), Markup.button.callback("🏠 الرئيسية", "home")],
+[Markup.button.callback("🔍 بحث مستخدم", "adm:findUser"), Markup.button.callback("🕐 طلبات آخر 24 ساعة", "adm:orders24h:1")],
+[Markup.button.callback("📦 كل الطلبات", "adm:allOrders:1"), Markup.button.callback("📣 رسالة جماعية", "adm:broadcast")],
+[Markup.button.callback("💳 طرق الإيداع", "adm:methods"), Markup.button.callback("⚙️ الإعدادات", "adm:settings")],
+[Markup.button.callback("🛒 إدارة المنتجات", "cat:0:1:0"), Markup.button.callback("📞 وسائل التواصل", "adm:contacts")],
+[Markup.button.callback("📁 أقسام مخصصة", "adm:vcList"), Markup.button.callback("📁 أقسام يدوية", "adm:manualCats")],
+[Markup.button.callback("➕ منتج يدوي", "adm:manualProds"), Markup.button.callback("🔌 مصادر المنتجات", "adm:apiSources")],
+[Markup.button.callback("🛟 مساعد الإدارة", "adm:aiSupport"), Markup.button.callback("🔄 بينج تلقائي", "adm:ping")],
+[Markup.button.callback(status === "on" ? "🟢 البوت: شغال" : "🔴 البوت: متوقف", "adm:toggleStatus"), Markup.button.callback("🚪 تسجيل خروج", "adm:logout")],
+[Markup.button.callback("🏠 الرئيسية", "home")],
 ];
 await sendOrEdit(ctx, `👑 لوحة الإدارة${isSA ? " (مدير أعلى)" : ""}`, Markup.inlineKeyboard(rows));
 }
@@ -4033,11 +4039,6 @@ if (nav.length) kb.push(nav); kb.push([Markup.button.callback("⬅️ رجوع",
 await sendOrEdit(ctx, `📦 طلبات المستخدم ${uid}\n\nاختر الطلب لعرض تفاصيله وتعديل حالته:`, Markup.inlineKeyboard(kb));
 });
 
-bot.action(/^adm:userOrder:(\d+):(\d+):24:(\d+)$/, async ctx => {
-const oid = Number(ctx.match[1]); const uid = Number(ctx.match[2]); const page = Number(ctx.match[3]);
-await showAdminOrderDetails(ctx, oid, `adm:orders24:${page}`);
-});
-
 bot.action(/^adm:userOrder:(\d+):(\d+):(\d+)$/, async ctx => {
 const oid = Number(ctx.match[1]); const uid = Number(ctx.match[2]); const page = Number(ctx.match[3]);
 await showAdminOrderDetails(ctx, oid, `adm:userOrders:${uid}:${page}`);
@@ -4048,27 +4049,30 @@ bot.action(/^adm:orderAccept:(\d+)$/, async ctx => { await adminChangeOrderStatu
 
 bot.action(/^adm:userMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const uid = Number(ctx.match[1]); const u = await getUser(uid); setStep(ctx.from.id, { kind: "admin:setUserMarkup", userId: uid }); await ctx.reply(`% نسبة ربح ${u?.first_name ?? uid}\nالحالية: ${u?.custom_markup_percent ?? "غير محددة"}\nأرسل النسبة أو reset:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `adm:user:${uid}`)]])); });
 
-// ── Admin: orders ─────────────────────────────────────────────────────
-// طلبات آخر 24 ساعة: منفصلة عن القائمة الحالية حتى تبقى ميزة "كل الطلبات" كما هي.
-bot.action(/^adm:orders24:(\d+)$/, async ctx => {
-if (!(await requireAdmin(ctx))) return;
-const page = Number(ctx.match[1]); const limit = 8; const offset = (page - 1) * limit;
-const res = await q(
-  "SELECT o.*, u.username AS uname, u.first_name AS ufirst FROM orders o LEFT JOIN users u ON u.id=o.user_id WHERE o.created_at >= NOW() - INTERVAL '24 hours' ORDER BY o.created_at DESC LIMIT $1 OFFSET $2",
-  [limit + 1, offset]
-);
-const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
-if (!slice.length) {
-  await sendOrEdit(ctx, "📭 لا توجد طلبات خلال آخر 24 ساعة.", Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "admin:menu")]]));
-  return;
-}
-const kb = slice.map(r => [Markup.button.callback(`${statusLabel(r.status)} ${r.ufirst ?? "—"} • ${r.product_name}`.slice(0, 60), `adm:userOrder:${r.id}:${r.user_id}:24:${page}`)]);
-const nav = [];
-if (page > 1) nav.push(Markup.button.callback("⬅️ السابق", `adm:orders24:${page - 1}`));
-if (hasNext) nav.push(Markup.button.callback("التالي ➡️", `adm:orders24:${page + 1}`));
-if (nav.length) kb.push(nav);
-kb.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
-await sendOrEdit(ctx, "📦 طلبات آخر 24 ساعة\n\nاختر الطلب لعرض تفاصيله وتعديل حالته:", Markup.inlineKeyboard(kb));
+// ── Admin: orders last 24 hours ───────────────────────────────────────
+bot.action(/^adm:orders24h:(\d+)$/, async ctx => {
+  if (!(await requireAdmin(ctx))) return;
+  const page = Number(ctx.match[1]);
+  const limit = 8;
+  const offset = (page - 1) * limit;
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const res = await q(
+    "SELECT o.*, u.username AS uname, u.first_name AS ufirst FROM orders o LEFT JOIN users u ON u.id=o.user_id WHERE o.created_at >= $1 ORDER BY o.created_at DESC LIMIT $2 OFFSET $3",
+    [since, limit + 1, offset]
+  );
+  const hasNext = res.rows.length > limit;
+  const slice = res.rows.slice(0, limit);
+  if (!slice.length) {
+    await sendOrEdit(ctx, "📭 لا توجد طلبات خلال آخر 24 ساعة.", Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "admin:menu")]]));
+    return;
+  }
+  const kb = slice.map(r => [Markup.button.callback(`${statusLabel(r.status)} ${r.ufirst ?? "—"} • ${r.product_name}`.slice(0, 60), `adm:userOrder:${r.id}:${r.user_id}:${page}`)]);
+  const nav = [];
+  if (page > 1) nav.push(Markup.button.callback("⬅️ السابق", `adm:orders24h:${page - 1}`));
+  if (hasNext) nav.push(Markup.button.callback("التالي ➡️", `adm:orders24h:${page + 1}`));
+  if (nav.length) kb.push(nav);
+  kb.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
+  await sendOrEdit(ctx, "🕐 طلبات آخر 24 ساعة\n\nاختر الطلب لعرض تفاصيله وتعديل حالته:", Markup.inlineKeyboard(kb));
 });
 
 // ── Admin: orders ─────────────────────────────────────────────────────
