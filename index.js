@@ -43,6 +43,21 @@ try { return await client.query(text, params); }
 finally { client.release(); }
 }
 
+async function withTransaction(work) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await work(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (e) {
+    try { await client.query("ROLLBACK"); } catch {}
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 // ── Create tables if not exist ─────────────────────────────────────────
 async function ensureTables() {
 await q(`
@@ -261,10 +276,12 @@ created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 // ── Migration: add columns if not exist ──
 const migrations = [
 "ALTER TABLE category_overrides ADD COLUMN IF NOT EXISTS custom_parent_id INTEGER",
+"ALTER TABLE category_overrides ADD COLUMN IF NOT EXISTS image_file_id TEXT",
 "ALTER TABLE deposit_methods ADD COLUMN IF NOT EXISTS image_file_id TEXT",
 "ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_session_active BOOLEAN NOT NULL DEFAULT false",
 "ALTER TABLE users ADD COLUMN IF NOT EXISTS can_delete_products BOOLEAN NOT NULL DEFAULT false",
 "ALTER TABLE product_overrides ADD COLUMN IF NOT EXISTS api_source_id INTEGER",
+"ALTER TABLE product_overrides ADD COLUMN IF NOT EXISTS image_file_id TEXT",
 "ALTER TABLE product_overrides ADD COLUMN IF NOT EXISTS external_id TEXT",
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS api_source_id INTEGER",
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_enabled BOOLEAN NOT NULL DEFAULT false",
@@ -275,7 +292,12 @@ const migrations = [
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS pending_notice_sent BOOLEAN NOT NULL DEFAULT false",
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS result_notified_at TIMESTAMPTZ",
 "ALTER TABLE orders ADD COLUMN IF NOT EXISTS result_notify_attempts INTEGER NOT NULL DEFAULT 0",
+"ALTER TABLE orders ADD COLUMN IF NOT EXISTS execution_started_at TIMESTAMPTZ",
+"ALTER TABLE orders ADD COLUMN IF NOT EXISTS execution_completed_at TIMESTAMPTZ",
+"ALTER TABLE orders ADD COLUMN IF NOT EXISTS execution_duration_ms BIGINT",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS manual_category_id INTEGER",
+"ALTER TABLE manual_categories ADD COLUMN IF NOT EXISTS image_file_id TEXT",
+"ALTER TABLE virtual_categories ADD COLUMN IF NOT EXISTS image_file_id TEXT",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS description TEXT",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS image_file_id TEXT",
 "ALTER TABLE manual_products ADD COLUMN IF NOT EXISTS stock_qty INTEGER NOT NULL DEFAULT -1",
@@ -300,9 +322,11 @@ const migrations = [
 "ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS admin_deleted BOOLEAN NOT NULL DEFAULT false",
 "ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS admin_hidden BOOLEAN NOT NULL DEFAULT false",
 "ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS custom_name TEXT",
+"ALTER TABLE api_source_products ADD COLUMN IF NOT EXISTS image_file_id TEXT",
 "ALTER TABLE api_source_categories ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT true",
 "ALTER TABLE api_source_categories ADD COLUMN IF NOT EXISTS custom_parent_id INTEGER",
 "ALTER TABLE api_source_categories ADD COLUMN IF NOT EXISTS admin_deleted BOOLEAN NOT NULL DEFAULT false",
+"ALTER TABLE api_source_categories ADD COLUMN IF NOT EXISTS image_file_id TEXT",
 "CREATE INDEX IF NOT EXISTS idx_api_source_products_category_available ON api_source_products(category_id, available)",
 "CREATE INDEX IF NOT EXISTS idx_api_source_products_source_available ON api_source_products(api_source_id, available)",
 "CREATE INDEX IF NOT EXISTS idx_api_source_products_source_category_available ON api_source_products(api_source_id, category_id, available)",
@@ -530,6 +554,7 @@ customPriceUsd: r.custom_price_usd != null ? Number(r.custom_price_usd) : null,
 customMarkupPercent: r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null,
 customName: r.custom_name,
 customCategoryId: r.custom_category_id,
+imageFileId: r.image_file_id ?? null,
 hidden: r.hidden,
 instructions: r.instructions,
 });
@@ -546,6 +571,7 @@ customPriceUsd: r.custom_price_usd != null ? Number(r.custom_price_usd) : null,
 customMarkupPercent: r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null,
 customName: r.custom_name,
 customCategoryId: r.custom_category_id,
+imageFileId: r.image_file_id ?? null,
 hidden: r.hidden,
 instructions: r.instructions,
 });
@@ -1346,7 +1372,7 @@ async function getAllCategoryOverridesCached() {
 if (allCategoryOverridesCache && allCategoryOverridesCache.expiry > Date.now()) return allCategoryOverridesCache.map;
 if (_categoryOverridesInFlight) return _categoryOverridesInFlight;
 _categoryOverridesInFlight = (async () => {
-const res = await q("SELECT category_id, custom_name, hidden, sort_order, custom_markup_percent, custom_parent_id FROM category_overrides");
+const res = await q("SELECT category_id, custom_name, hidden, sort_order, custom_markup_percent, custom_parent_id, image_file_id FROM category_overrides");
 const map = new Map();
 for (const r of res.rows) map.set(Number(r.category_id), {
 customName: r.custom_name,
@@ -1354,6 +1380,7 @@ hidden: !!r.hidden,
 sortOrder: r.sort_order != null ? Number(r.sort_order) : null,
 customMarkupPercent: r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null,
 customParentId: r.custom_parent_id != null ? Number(r.custom_parent_id) : null,
+imageFileId: r.image_file_id ?? null,
 });
 allCategoryOverridesCache = { map, expiry: Date.now() + CATEGORY_OVERRIDES_TTL };
 return map;
@@ -1793,6 +1820,19 @@ const moved = await Promise.all(rows.map(async r => {
 return moved.filter(Boolean);
 }
 
+
+async function sendImageOrEdit(ctx, imageFileId, text, keyboard) {
+if (imageFileId) {
+  try {
+    await ctx.replyWithPhoto(imageFileId, { caption: text, ...keyboard });
+    return;
+  } catch (e) {
+    console.error("send image failed:", e.message);
+  }
+}
+await sendOrEdit(ctx, text, keyboard);
+}
+
 async function showCategory(ctx, parentId, page, backTo) {
 const [u, _catSessActive] = await Promise.all([getUser(ctx.from.id), isAdminSessionActive(ctx.from.id)]);
 const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || _catSessActive);
@@ -1810,6 +1850,7 @@ getAllCategoryOverridesCached(),
 ]);
 const excludedCats = new Set(excludedStr.split(",").map(s => Number(s.trim())).filter(Number.isFinite));
 const catOv = categoryOvMap;
+const currentCategoryImage = catOv.get(Number(parentId))?.imageFileId ?? null;
 
 // لا نفحص كل قسم عبر API عند كل ضغطة. content نفسه محفوظ في قاعدة البيانات،
 // لذلك نعرض الأقسام مباشرة ونترك التحديث للمزامنة الخلفية. هذا يمنع البطء
@@ -1962,7 +2003,11 @@ rows.push([Markup.button.callback(backLabel, backAction), Markup.button.callback
 }
 
 const title = parentId === 0 ? "🛒 الأقسام الرئيسية" : `📂 ${catOv.get(parentId)?.customName ?? "محتويات القسم"}`;
-await sendOrEdit(ctx, title, Markup.inlineKeyboard(rows));
+if (isAdmin && parentId !== 0) {
+  rows.splice(0, 0, [Markup.button.callback(currentCategoryImage ? "🖼️ تغيير صورة القسم" : "🖼️ إضافة صورة للقسم", `adm:catImg:${parentId}`)]);
+  if (currentCategoryImage) rows.splice(1, 0, [Markup.button.callback("🗑️ حذف صورة القسم", `adm:catImgDel:${parentId}`)]);
+}
+await sendImageOrEdit(ctx, currentCategoryImage, title, Markup.inlineKeyboard(rows));
 }
 
 async function showProduct(ctx, productId, backTo) {
@@ -2008,6 +2053,7 @@ else qtyInfo = `الكمية بين ${qtyDisplay.min.toLocaleString("en-US")} و
 
 const displayName = ov?.customName ?? p.name;
 const instructions = ov?.instructions?.trim() || getProductApiNotes(p);
+const productImage = ov?.imageFileId ?? null;
 const text = `🛒 ${displayName}\n${p.category_name ? `القسم: ${p.category_name}\n` : ""}السعر: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س\n${qtyInfo}${instructions ? `\n\n📋 تعليمات:\n${instructions}` : ""}`;
 
 const backBtnResolved = await resolveBackBtn(backTo);
@@ -2015,12 +2061,13 @@ const btns = [];
 if (p.available || isAdmin) btns.push([Markup.button.callback("🛒 طلب الآن", `buy:${p.id}:${backTo}`)]);
 if (isAdmin) {
 btns.push([Markup.button.callback("✏️ تعديل السعر", `adm:editPrice:${p.id}`), Markup.button.callback("📋 تعليمات", `adm:editInstr:${p.id}`)]);
+btns.push([Markup.button.callback(productImage ? "🖼️ تغيير صورة المنتج" : "🖼️ إضافة صورة للمنتج", `adm:prodImg:${p.id}`), ...(productImage ? [Markup.button.callback("🗑️ حذف الصورة", `adm:prodImgDel:${p.id}`)] : [])]);
 btns.push([Markup.button.callback("📝 تعديل الاسم", `adm:renameProd:${p.id}`), Markup.button.callback("🚚 نقل لقسم آخر", `adm:moveProd:${p.id}`)]);
 btns.push([Markup.button.callback(ov?.hidden ? "👁 إظهار" : "🙈 إخفاء", `adm:hideProd:${p.id}`)]);
 if (isSuperAdmin || !!u?.can_delete_products) btns.push([Markup.button.callback("🗑️ حذف من المتجر", `adm:deleteProd:${p.id}`)]);
 }
 btns.push([backBtnResolved, Markup.button.callback(homeLabel, "home")]);
-await sendOrEdit(ctx, text, Markup.inlineKeyboard(btns));
+await sendImageOrEdit(ctx, productImage, text, Markup.inlineKeyboard(btns));
 }
 
 async function showVirtualCategory(ctx, vcId, page, backTo) {
@@ -2040,6 +2087,7 @@ getSocialMarkupPercent(),
 getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel(),
 ]);
 const vc = vcRes.rows[0];
+const categoryImage = vc?.image_file_id ?? null;
 if (!vc || (!vc.active && !isAdmin)) { await sendOrEdit(ctx, "⚠️ هذا القسم غير متاح.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
 let backBtn;
 if (backTo === 0) {
@@ -2100,7 +2148,11 @@ nav.push(Markup.button.callback(`${safe}/${totalPages}`, "noop"));
 if (safe < totalPages) nav.push(Markup.button.callback(nextLabel, `vcat:${vcId}:${safe + 1}:${backTo}`));
 if (nav.length > 1) rows.push(nav);
 rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
-await sendOrEdit(ctx, `📂 ${vc.name}`, Markup.inlineKeyboard(rows));
+if (isAdmin) {
+  rows.unshift([Markup.button.callback(categoryImage ? "🖼️ تغيير صورة القسم" : "🖼️ إضافة صورة للقسم", `adm:vcImg:${vcId}`)]);
+  if (categoryImage) rows.unshift([Markup.button.callback("🗑️ حذف صورة القسم", `adm:vcImgDel:${vcId}`)]);
+}
+await sendImageOrEdit(ctx, categoryImage, `📂 ${vc.name}`, Markup.inlineKeyboard(rows));
 }
 
 // ============================================================
@@ -2118,6 +2170,7 @@ getExchangeRate(),
 getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel(),
 ]);
 const mc = mcRes.rows[0];
+const categoryImage = mc?.image_file_id ?? null;
 if (!mc || (!mc.active && !isAdmin)) { await sendOrEdit(ctx, "⚠️ هذا القسم غير متاح.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
 
 let backBtn;
@@ -2170,7 +2223,11 @@ nav.push(Markup.button.callback(`${safe}/${totalPages}`, "noop"));
 if (safe < totalPages) nav.push(Markup.button.callback(nextLabel, `mcat:${mcId}:${safe + 1}:${backTo}`));
 if (nav.length > 1) rows.push(nav);
 rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
-await sendOrEdit(ctx, `📁 ${mc.name}`, Markup.inlineKeyboard(rows));
+if (isAdmin) {
+  rows.unshift([Markup.button.callback(categoryImage ? "🖼️ تغيير صورة القسم" : "🖼️ إضافة صورة للقسم", `adm:mcImg:${mcId}`)]);
+  if (categoryImage) rows.unshift([Markup.button.callback("🗑️ حذف صورة القسم", `adm:mcImgDel:${mcId}`)]);
+}
+await sendImageOrEdit(ctx, categoryImage, `📁 ${mc.name}`, Markup.inlineKeyboard(rows));
 }
 
 async function showManualProduct(ctx, mId, backTo) {
@@ -2215,11 +2272,7 @@ else if (m.active && !canAfford) rows.push([Markup.button.callback("💳 شحن 
 else if (!stockAvailable) rows.push([Markup.button.callback("❌ نفذ المخزون", "noop")]);
 rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
 
-if (m.image_file_id) {
-await ctx.replyWithPhoto(m.image_file_id, { caption: text, ...Markup.inlineKeyboard(rows) });
-} else {
-await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
-}
+await sendImageOrEdit(ctx, m.image_file_id ?? null, text, Markup.inlineKeyboard(rows));
 }
 
 // ============================================================
@@ -2236,6 +2289,7 @@ getExchangeRate(),
 getBtnBackLabel(), getBtnHomeLabel(), getBtnPrevLabel(), getBtnNextLabel(),
 ]);
 const cat = catRes.rows[0];
+const categoryImage = cat.image_file_id ?? null;
 if (!cat) { await sendOrEdit(ctx, "⚠️ القسم غير موجود.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
 
 let backBtn;
@@ -2282,7 +2336,11 @@ rows.push([Markup.button.callback("📁 نقل القسم إلى قسم", `adm:m
 rows.push([Markup.button.callback("🗑️ حذف القسم", `adm:deleteApi2Cat:${cat.id}`)]);
 }
 rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
-await sendOrEdit(ctx, `📂 ${cat.name}`, Markup.inlineKeyboard(rows));
+if (isAdmin) {
+  rows.unshift([Markup.button.callback(categoryImage ? "🖼️ تغيير صورة القسم" : "🖼️ إضافة صورة للقسم", `adm:api2CatImg:${catId}`)]);
+  if (categoryImage) rows.unshift([Markup.button.callback("🗑️ حذف صورة القسم", `adm:api2CatImgDel:${catId}`)]);
+}
+await sendImageOrEdit(ctx, categoryImage, `📂 ${cat.name}`, Markup.inlineKeyboard(rows));
 }
 
 async function showApi2Product(ctx, prodId, backTo) {
@@ -2319,16 +2377,18 @@ if (p.category_name) text += `القسم: ${p.category_name}\n`;
 text += `السعر: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س\n`;
 if (qtyInfo) text += `${qtyInfo}\n`;
 if (p.notes) text += `\n📋 ${p.notes}`;
+const productImage = p.image_file_id ?? null;
 
 const rows = [
 [Markup.button.callback("🛒 طلب الآن", `api2buy:${p.id}:${backTo}`)],
 ];
 if (isAdmin) {
 rows.push([Markup.button.callback("📝 تعديل اسم المنتج", `adm:api2RenameProd:${p.id}`), Markup.button.callback(p.admin_hidden ? "👁 إظهار المنتج" : "🙈 إخفاء المنتج", `adm:api2HideProd:${p.id}`)]);
+rows.push([Markup.button.callback(productImage ? "🖼️ تغيير صورة المنتج" : "🖼️ إضافة صورة للمنتج", `adm:api2ProdImg:${p.id}`), ...(productImage ? [Markup.button.callback("🗑️ حذف الصورة", `adm:api2ProdImgDel:${p.id}`)] : [])]);
 if (isSuperAdmin || !!u?.can_delete_products) rows.push([Markup.button.callback("🗑️ حذف المنتج", `adm:deleteApi2Prod:${p.id}`)]);
 }
 rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
-await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
+await sendImageOrEdit(ctx, productImage, text, Markup.inlineKeyboard(rows));
 }
 
 // ============================================================
@@ -2658,8 +2718,8 @@ if (step.qty && step.qty !== 1) params.qty = step.qty;
 let insRes;
 try {
 insRes = await q(
-`INSERT INTO orders(user_id,product_id,product_name,qty,params,price_usd,oranos_uuid,status,api_source_id,cancel_enabled,cancel_seconds,cancel_url,cancel_available_at)
-VALUES($1,$2,$3,$4,$5,$6,$7,'pending',$8,$9,$10,$11,$12) RETURNING *`,
+`INSERT INTO orders(user_id,product_id,product_name,qty,params,price_usd,oranos_uuid,status,api_source_id,cancel_enabled,cancel_seconds,cancel_url,cancel_available_at,execution_started_at)
+VALUES($1,$2,$3,$4,$5,$6,$7,'pending',$8,$9,$10,$11,$12,NOW()) RETURNING *`,
 [ctx.from.id, p.id, p.name, String(step.qty), JSON.stringify(step.collected), String(totalUsd), orderUuid, p._source === "api2" ? p._source_id : null, p._source === "api2" ? !!p.cancel_enabled && !!p.cancel_url && Number(p.cancel_seconds) > 0 : false, p._source === "api2" ? (Number(p.cancel_seconds) || null) : null, p._source === "api2" ? (p.cancel_url || null) : null, p._source === "api2" && p.cancel_enabled && p.cancel_url && Number(p.cancel_seconds) > 0 ? new Date(Date.now() + Number(p.cancel_seconds) * 1000) : null]
 );
 } catch (e) {
@@ -2706,24 +2766,25 @@ const orderApiId = extractProviderOrderId(resp) || order.oranos_uuid;
 
 if (REJECT_STATUSES.has(initialStatus) || initialStatus === "err") {
 const updated = await q(
-"UPDATE orders SET status='reject', oranos_order_id=$1, api_response=$2 WHERE id=$3 AND status='pending' RETURNING id",
+"UPDATE orders SET status='reject', oranos_order_id=$1, api_response=$2, execution_completed_at=NOW(), execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint), refunded_at=COALESCE(refunded_at,NOW()) WHERE id=$3 AND status='pending' RETURNING id",
 [orderApiId, JSON.stringify(resp), order.id]
 );
 if (!updated.rows.length) return;
 await adjustBalance(order.user_id, totalUsd);
-const reason = extractDeliveredCode(resp) || (resp?.message && resp.message !== "Network error" ? resp.message : null);
-await notifyOrderResult(_botRef, { ...order, price_usd: totalUsd, status: "reject" }, "reject", reason);
+const latest = (await q("SELECT * FROM orders WHERE id=$1", [order.id])).rows[0] || { ...order, price_usd: totalUsd, status: "reject", api_response: resp };
+await notifyOrderResult(_botRef, latest, "reject", extractDeliveredCode(resp), resp);
 return;
 }
 
 if (ACCEPT_STATUSES.has(initialStatus)) {
 const deliveredCode = extractDeliveredCode(resp);
 const updated = await q(
-"UPDATE orders SET status='accept', oranos_order_id=$1, api_response=$2, delivered_code=$3 WHERE id=$4 AND status='pending' RETURNING id",
+"UPDATE orders SET status='accept', oranos_order_id=$1, api_response=$2, delivered_code=$3, execution_completed_at=NOW(), execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint) WHERE id=$4 AND status='pending' RETURNING id",
 [orderApiId, JSON.stringify(resp), deliveredCode ?? null, order.id]
 );
 if (!updated.rows.length) return;
-await notifyOrderResult(_botRef, { ...order, product_name: p.name, price_usd: totalUsd, status: "accept" }, "accept", deliveredCode);
+const latest = (await q("SELECT * FROM orders WHERE id=$1", [order.id])).rows[0] || { ...order, product_name: p.name, price_usd: totalUsd, status: "accept", delivered_code: deliveredCode, api_response: resp };
+await notifyOrderResult(_botRef, latest, "accept", deliveredCode, resp);
 return;
 }
 
@@ -2837,20 +2898,101 @@ if (!refunded) { await ctx.reply("⚠️ تم إرسال الإلغاء لكن �
 await ctx.reply("✅ تم إلغاء الطلب وإعادة قيمته إلى رصيدك.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
 }
 
-async function notifyOrderResult(bot, order, status, deliveredCode = null) {
+function formatExecutionDuration(ms) {
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n < 0) return null;
+  const totalSeconds = Math.max(0, Math.round(n / 1000));
+  if (totalSeconds < 60) return `${totalSeconds} ثانية`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (!seconds) return `${minutes} دقيقة`;
+  return `${minutes} دقيقة و${seconds} ثانية`;
+}
+
+function formatOrderInputLines(order) {
+  const params = order?.params && typeof order.params === "object" ? order.params : {};
+  const entries = Object.entries(params).filter(([k, v]) => k !== "qty" && v != null && String(v).trim() !== "");
+  if (!entries.length) return [];
+  return entries.map(([k, v]) => `📌 ${String(k)}: ${String(v)}`);
+}
+
+function providerReplyText(resp, deliveredCode = null) {
+  const preferred = [];
+  const add = v => {
+    if (v == null) return;
+    if (typeof v === "string" || typeof v === "number") {
+      const t = String(v).trim();
+      if (t && !/^success$/i.test(t)) preferred.push(t);
+      return;
+    }
+    if (Array.isArray(v)) v.forEach(add);
+    else if (typeof v === "object") {
+      for (const [k, val] of Object.entries(v)) {
+        if (/^(status|state|success|order_id|orderId|order_number|orderNumber|uuid|order_uuid|orderUuid)$/i.test(k)) continue;
+        if (typeof val === "object") add(val);
+        else if (val != null && String(val).trim()) preferred.push(`${k}: ${String(val).trim()}`);
+      }
+    }
+  };
+  if (deliveredCode) add(deliveredCode);
+  const roots = [resp?.replay_api, resp?.response, resp?.result, resp?.note, resp?.notes, resp?.message];
+  roots.forEach(add);
+  if (!preferred.length) {
+    const clean = formatApiResponseClean(resp || "");
+    if (clean) return clean.replace(/^📊 الحالة:.*$/gm, "").trim();
+  }
+  return [...new Set(preferred)].join("\n").trim() || null;
+}
+
+
+function extractProviderDuration(resp) {
+  const keys = [
+    "duration", "execution_duration", "execution_time",
+    "processing_time", "elapsed_time", "time_taken", "time"
+  ];
+  const found = [];
+  const walk = v => {
+    if (v == null || typeof v !== "object") return;
+    if (Array.isArray(v)) { v.forEach(walk); return; }
+    for (const [k, val] of Object.entries(v)) {
+      if (keys.includes(String(k).trim().toLowerCase()) && val != null && String(val).trim()) {
+        const x = String(val).trim();
+        if (!found.includes(x)) found.push(x);
+      }
+      if (val && typeof val === "object") walk(val);
+    }
+  };
+  walk(resp);
+  return found[0] ?? null;
+}
+
+function buildOrderResultMessage(order, status, deliveredCode = null, resp = null) {
+  const priceUsd = Number(order.price_usd);
+  const ratePromise = getExchangeRate();
+  const inputLines = formatOrderInputLines(order);
+  const providerDuration = extractProviderDuration(resp ?? order.api_response);
+  const providerText = providerReplyText(resp ?? order.api_response, deliveredCode);
+  return ratePromise.then(rate => {
+    const priceSyp = Math.round(priceUsd * rate);
+    const lines = [];
+    if (status === "accept") {
+      lines.push("✅ تم تنفيذ طلبك بنجاح");
+      if (providerDuration) lines.push(`⏱️ مدة التنفيذ: ${providerDuration}`);
+      lines.push(`🛒 ${order.product_name} × ${order.qty}`);
+      lines.push(`💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`);
+      if (providerText) lines.push(providerText);
+    } else {
+      lines.push("❌ تم رفض طلبك");
+      if (providerText) lines.push(providerText);
+    }
+    return lines.filter(Boolean).join("\n");
+  });
+}
+
+async function notifyOrderResult(bot, order, status, deliveredCode = null, resp = null) {
   if (!bot || !order?.user_id || !order?.id || !["accept", "reject"].includes(status)) return false;
   try {
-    const priceUsd = Number(order.price_usd);
-    const rate = await getExchangeRate();
-    const priceSyp = Math.round(priceUsd * rate);
-    let text;
-    if (status === "reject") {
-      text = `❌ تم رفض طلبك.\n💰 تمت إعادة ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س إلى رصيدك.`;
-    } else {
-      const lines = [`✅ تم تنفيذ طلبك بنجاح!`, `🛒 ${order.product_name} × ${order.qty}`, `💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`];
-      if (deliveredCode) lines.push(`\n🔑 تفاصيل الطلب:\n\n${deliveredCode}`);
-      text = lines.join("\n");
-    }
+    const text = await buildOrderResultMessage(order, status, deliveredCode, resp);
     await bot.telegram.sendMessage(order.user_id, text, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
     await q("UPDATE orders SET result_notified_at=NOW(), result_notify_attempts=result_notify_attempts+1 WHERE id=$1", [order.id]);
     return true;
@@ -2873,25 +3015,23 @@ let resp;
 if (row.api_source_id) {
 const src = await getApiSource(row.api_source_id);
 if (!src) throw new Error("مصدر المنتجات غير موجود");
-resp = await checkApiSourceOrder(src, row.oranos_order_id, false);
+if (row.oranos_order_id) resp = await checkApiSourceOrder(src, row.oranos_order_id, false);
 const firstStatus = getBestApiStatus(resp);
 if (!ACCEPT_STATUSES.has(firstStatus) && !REJECT_STATUSES.has(firstStatus) && row.oranos_uuid) {
   const uuidResp = await checkApiSourceOrder(src, row.oranos_uuid, true);
   if (uuidResp) {
     const uuidStatus = getBestApiStatus(uuidResp);
-    if (ACCEPT_STATUSES.has(uuidStatus) || REJECT_STATUSES.has(uuidStatus) || !firstStatus) resp = uuidResp;
-    else if (uuidStatus !== firstStatus) resp = uuidResp;
+    if (ACCEPT_STATUSES.has(uuidStatus) || REJECT_STATUSES.has(uuidStatus) || !firstStatus || uuidStatus !== firstStatus) resp = uuidResp;
   }
 }
 } else {
-resp = await checkOrder(row.oranos_order_id, false);
+if (row.oranos_order_id) resp = await checkOrder(row.oranos_order_id, false);
 const firstStatus = getBestApiStatus(resp);
 if (!ACCEPT_STATUSES.has(firstStatus) && !REJECT_STATUSES.has(firstStatus) && row.oranos_uuid) {
   const uuidResp = await checkOrder(row.oranos_uuid, true);
   if (uuidResp) {
     const uuidStatus = getBestApiStatus(uuidResp);
-    if (ACCEPT_STATUSES.has(uuidStatus) || REJECT_STATUSES.has(uuidStatus) || !firstStatus) resp = uuidResp;
-    else if (uuidStatus !== firstStatus) resp = uuidResp;
+    if (ACCEPT_STATUSES.has(uuidStatus) || REJECT_STATUSES.has(uuidStatus) || !firstStatus || uuidStatus !== firstStatus) resp = uuidResp;
   }
 }
 }
@@ -2901,29 +3041,28 @@ const isAccepted = ACCEPT_STATUSES.has(rawNew);
 const finalStatus = isRejected ? "reject" : isAccepted ? "accept" : "pending";
 const code = extractDeliveredCode(resp);
 let latest = row.status;
-if (finalStatus !== row.status) {
-const updateSql = "UPDATE orders SET status=$1, api_response=$2" + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3") + " AND status=$" + (code ? "5" : "4") + " RETURNING id";
-const updateParams = code ? [finalStatus, JSON.stringify(resp), code, row.id, row.status] : [finalStatus, JSON.stringify(resp), row.id, row.status];
+if (finalStatus !== row.status && row.status === "pending") {
+const updateSql = "UPDATE orders SET status=$1, api_response=$2, execution_completed_at=NOW(), execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint)" + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3") + " AND status='pending' RETURNING id";
+const updateParams = code ? [finalStatus, JSON.stringify(resp), code, row.id] : [finalStatus, JSON.stringify(resp), row.id];
 const updated = await q(updateSql, updateParams);
 if (updated.rows.length) {
 if (isRejected) {
+await q("UPDATE orders SET refunded_at=COALESCE(refunded_at,NOW()) WHERE id=$1", [row.id]);
 await adjustBalance(ctx.from.id, Number(row.price_usd));
-latest = "reject";
-} else if (isAccepted) latest = "accept";
+}
+latest = finalStatus;
+const latestRow = (await q("SELECT * FROM orders WHERE id=$1", [row.id])).rows[0] || { ...row, status: finalStatus, delivered_code: code, api_response: resp };
+await notifyOrderResult(_botRef, latestRow, finalStatus, code, resp);
 } else {
 latest = (await q("SELECT status FROM orders WHERE id=$1", [row.id])).rows[0]?.status ?? finalStatus;
 }
-} else {
-latest = row.status;
 }
 if (latest === "accept") {
-await ctx.reply(code ? `✅ تم تنفيذ طلبك بنجاح.\n🔑 تفاصيل الطلب:\n\n${code}` : "✅ تم تنفيذ طلبك بنجاح.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
-await q("UPDATE orders SET result_notified_at=NOW(), result_notify_attempts=result_notify_attempts+1 WHERE id=$1", [row.id]).catch(() => {});
+await ctx.reply("✅ طلبك مقبول بالفعل.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
 return;
 }
 if (latest === "reject") {
-await ctx.reply("❌ تم رفض طلبك. تمت إعادة المبلغ إلى رصيدك.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
-await q("UPDATE orders SET result_notified_at=NOW(), result_notify_attempts=result_notify_attempts+1 WHERE id=$1", [row.id]).catch(() => {});
+await ctx.reply("❌ طلبك مرفوض بالفعل.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
 return;
 }
 await ctx.reply("⏳ طلبك ما زال قيد التنفيذ.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
@@ -2953,16 +3092,18 @@ for (const ident of identifiers) {
   if (!isRejected && !isAccepted) continue;
   const finalStatus = isRejected ? "reject" : "accept";
   const code = extractDeliveredCode(resp);
-  const updateSql = "UPDATE orders SET status=$1, api_response=$2" + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3") + " AND status=$" + (code ? "5" : "4") + " RETURNING id";
-  const updateParams = code ? [finalStatus, JSON.stringify(resp), code, order.id, order.status] : [finalStatus, JSON.stringify(resp), order.id, order.status];
+  const updateSql = "UPDATE orders SET status=$1, api_response=$2, execution_completed_at=NOW(), execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint)" + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3") + " AND status='pending' RETURNING id";
+  const updateParams = code ? [finalStatus, JSON.stringify(resp), code, order.id] : [finalStatus, JSON.stringify(resp), order.id];
   const updated = await q(updateSql, updateParams);
   if (!updated.rows.length) return false;
 
   const priceUsd = Number(order.price_usd);
   if (isRejected) {
+    await q("UPDATE orders SET refunded_at=COALESCE(refunded_at,NOW()) WHERE id=$1", [order.id]);
     await adjustBalance(order.user_id, priceUsd);
   }
-  await notifyOrderResult(bot, { ...order, status: finalStatus }, finalStatus, code);
+  const latest = (await q("SELECT * FROM orders WHERE id=$1", [order.id])).rows[0] || { ...order, status: finalStatus, delivered_code: code, api_response: resp };
+  await notifyOrderResult(bot, latest, finalStatus, code, resp);
   return true;
 }
 return false;
@@ -2988,7 +3129,7 @@ async function retryUnsentOrderResults(bot) {
   ).catch(() => ({ rows: [] }));
   for (const order of res.rows) {
     const code = order.delivered_code || null;
-    await notifyOrderResult(bot, order, order.status, code);
+    await notifyOrderResult(bot, order, order.status, code, order.api_response);
   }
 }
 
@@ -3340,6 +3481,7 @@ const prods = (await q("SELECT * FROM manual_products WHERE manual_category_id=$
 const rows = prods.map(p => [Markup.button.callback(`${p.active ? "🛒" : "❌"} ${p.name} (${Number(p.price_usd).toFixed(2)}$)`, `adm:manualProdEdit:${p.id}`)]);
 rows.push([Markup.button.callback("➕ إضافة منتج", `adm:addManualProd:${mcId}`)]);
 rows.push([Markup.button.callback("✏️ تعديل اسم القسم", `adm:mcEdit:${mcId}`)]);
+rows.push([Markup.button.callback(mc.image_file_id ? "🖼️ تغيير صورة القسم" : "🖼️ إضافة صورة للقسم", `adm:mcImg:${mcId}`), ...(mc.image_file_id ? [Markup.button.callback("🗑️ حذف الصورة", `adm:mcImgDel:${mcId}`)] : [])]);
 rows.push([Markup.button.callback(mc.active ? "🙈 إخفاء" : "👁 إظهار", `adm:mcToggle:${mcId}`)]);
 rows.push([Markup.button.callback("🗑️ حذف القسم", `adm:mcDel:${mcId}`)]);
 rows.push([Markup.button.callback("⬅️ رجوع", "adm:manualCats")]);
@@ -3399,6 +3541,16 @@ await warmFirstCatalogSnapshot();
 // حتى يستطيع المستخدم فتح البوت فوراً، وتُحفظ النتائج في قاعدة البيانات.
 const bot = new Telegraf(token, { handlerTimeout: 90_000 });
 
+// لا تجعل تحديث تيليجرام التالي ينتظر انتهاء تحديث سابق طويل. كل تحديث يأخذ
+// مساره الخاص، بينما تبقى حماية النقرات وتكرار التحديثات وباقي الأقفال فعالة.
+// هذا يمنع عمليات مثل المزامنة/البحث/تعديل الطلب من حبس /start أو أي رسالة أخرى.
+bot.use((ctx, next) => {
+  void Promise.resolve(next()).catch(err => {
+    console.error("Detached Telegram update failed:", err?.message ?? err);
+  });
+  return;
+});
+
 // ── Rate limiter + رد فوري على callback ────────────────────────────────
 const _rateMap = new Map();
 setInterval(() => {
@@ -3423,6 +3575,36 @@ return;
 times.push(now); _rateMap.set(uid, times);
 if (ctx.callbackQuery) ctx.answerCbQuery().catch(() => {});
 return next();
+});
+
+// أوامر /start و /menu يجب ألا تنتظر أي عملية طويلة أخرى. ننفذها بشكل مستقل
+// حتى تعود القائمة فوراً حتى لو كان مزامنة/طلب/عملية إدارية تعمل بالخلفية.
+bot.use((ctx, next) => {
+  const incoming = ctx.message?.text ?? "";
+  const isStart = /^\/start(?:@\w+)?(?:\s|$)/i.test(incoming);
+  const isMenu = /^\/menu(?:@\w+)?(?:\s|$)/i.test(incoming);
+  if (!isStart && !isMenu) return next();
+  void (async () => {
+    try {
+      const txt = incoming;
+      setStep(ctx.from.id, { kind: "idle" });
+      if (isStart) {
+        const startParam = txt.replace(/^\/start(?:@\w+)?/i, "").trim();
+        if (startParam) {
+          const loginCmd = await getAdminLoginCommand();
+          if (startParam === loginCmd) {
+            setStep(ctx.from.id, { kind: "admin:login" });
+            await ctx.reply("🔑 أرسل كلمة المرور:");
+            return;
+          }
+        }
+      }
+      await showMainMenu(ctx, { forceNew: true });
+    } catch (e) {
+      console.error("Fast start/menu handler failed:", e?.message ?? e);
+    }
+  })();
+  return;
 });
 
 // منع معالجة نفس Telegram update مرتين حتى لو أعاد Telegram الإرسال أو كانت هناك نسخة ثانية من البوت.
@@ -3467,21 +3649,8 @@ return next();
 });
 
 // ── Commands ──────────────────────────────────────────────────────────
-bot.start(async ctx => {
-const txt = ctx.message?.text ?? "";
-setStep(ctx.from.id, { kind: "idle" });
-const startParam = txt.replace("/start", "").trim();
-if (startParam) {
-const loginCmd = await getAdminLoginCommand();
-if (startParam === loginCmd) {
-setStep(ctx.from.id, { kind: "admin:login" });
-await ctx.reply("🔑 أرسل كلمة المرور:");
-return;
-}
-}
-await showMainMenu(ctx, { forceNew: true });
-});
-bot.command("menu", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx, { forceNew: true }); });
+bot.start(async ctx => { await showMainMenu(ctx, { forceNew: true }); });
+bot.command("menu", async ctx => { await showMainMenu(ctx, { forceNew: true }); });
 bot.command("balance", async ctx => { const u = await ensureUser(ctx); if (!u) return; await ctx.reply(`💰 رصيدك: ${formatBalance(Number(u.balance), await getExchangeRate())}`); });
 bot.command("deposit", async ctx => { await ensureUser(ctx); setStep(ctx.from.id, { kind: "idle" }); await showDepositMenu(ctx); });
 bot.command("orders", async ctx => { await ensureUser(ctx); await showMyOrders(ctx, 1); });
@@ -3774,17 +3943,94 @@ await showUserCard(ctx, uid);
 bot.action(/^adm:userAdd:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "add" }); await ctx.reply("💵 أرسل المبلغ بالدولار للإضافة:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "admin:menu")]])); });
 bot.action(/^adm:userSub:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:userBalance", userId: Number(ctx.match[1]), mode: "sub" }); await ctx.reply("💵 أرسل المبلغ بالدولار للخصم:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "admin:menu")]])); });
 bot.action("adm:findUser", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:findUser" }); await ctx.reply("🔍 أرسل اسم المستخدم أو ID:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "admin:menu")]])); });
+async function showAdminOrderDetails(ctx, oid, backAction = "admin:menu") {
+if (!(await requireAdmin(ctx))) return;
+const o = (await q("SELECT * FROM orders WHERE id=$1", [oid])).rows[0];
+if (!o) { await ctx.reply("⚠️ الطلب غير موجود."); return; }
+const u = (await q("SELECT first_name,username,balance FROM users WHERE id=$1", [o.user_id])).rows[0];
+const paramsLines = formatOrderInputLines(o);
+const duration = formatExecutionDuration(o.execution_duration_ms);
+const providerText = providerReplyText(o.api_response, o.delivered_code);
+const lines = [
+`📋 الطلب #${o.id}`,
+`👤 ${u?.first_name ?? "—"}${u?.username ? ` @${u.username}` : ""}`,
+`🆔 المستخدم: ${o.user_id}`,
+`🛒 ${o.product_name} × ${o.qty}`,
+`💰 ${Number(o.price_usd).toFixed(2)}$`,
+`📊 الحالة: ${statusLabel(o.status)}`,
+...(duration ? [`⏱️ مدة التنفيذ: ${duration}`] : []),
+...(paramsLines.length ? ["", ...paramsLines] : []),
+...(providerText ? ["", providerText] : []),
+];
+const rows = [];
+if (o.status === "accept") rows.push([Markup.button.callback("❌ جعل الطلب مرفوضاً + إعادة الرصيد", `adm:orderReject:${o.id}`)]);
+if (o.status === "reject") rows.push([Markup.button.callback("✅ جعل الطلب مقبولاً + خصم الرصيد", `adm:orderAccept:${o.id}`)]);
+rows.push([Markup.button.callback("⬅️ رجوع", backAction)]);
+await sendOrEdit(ctx, lines.join("\n"), Markup.inlineKeyboard(rows));
+}
+
+async function adminChangeOrderStatus(ctx, oid, targetStatus) {
+if (!(await requireAdmin(ctx))) return;
+let changed = null;
+try {
+  changed = await withTransaction(async client => {
+    const locked = (await client.query("SELECT * FROM orders WHERE id=$1 FOR UPDATE", [oid])).rows[0];
+    if (!locked) return { ok: false, reason: "missing" };
+    const current = String(locked.status || "").toLowerCase();
+    if (current === targetStatus) return { ok: false, reason: "same", order: locked };
+    if (!(["accept", "reject"].includes(current) && ["accept", "reject"].includes(targetStatus))) return { ok: false, reason: "invalid", order: locked };
+    const price = Number(locked.price_usd);
+    if (!Number.isFinite(price) || price <= 0) return { ok: false, reason: "price", order: locked };
+    if (targetStatus === "reject") {
+      if (!locked.refunded_at) {
+        await client.query("UPDATE users SET balance=balance+$1 WHERE id=$2", [price, locked.user_id]);
+      }
+      const up = await client.query("UPDATE orders SET status='reject', refunded_at=COALESCE(refunded_at,NOW()), result_notified_at=NULL, result_notify_attempts=0 WHERE id=$1 RETURNING *", [oid]);
+      return { ok: !!up.rows.length, order: up.rows[0] };
+    }
+    const charge = await client.query("UPDATE users SET balance=balance-$1 WHERE id=$2 AND balance >= $1 RETURNING *", [price, locked.user_id]);
+    if (!charge.rows.length) return { ok: false, reason: "balance", order: locked };
+    const up = await client.query("UPDATE orders SET status='accept', refunded_at=NULL, result_notified_at=NULL, result_notify_attempts=0 WHERE id=$1 RETURNING *", [oid]);
+    if (!up.rows.length) throw new Error("تعذر تحديث الطلب");
+    return { ok: true, order: up.rows[0] };
+  });
+} catch (e) {
+  console.error("adminChangeOrderStatus failed:", e);
+  await ctx.reply("❌ تعذر تعديل حالة الطلب حالياً.");
+  return;
+}
+if (!changed?.ok) {
+  const msg = changed?.reason === "balance" ? "❌ لا يوجد رصيد كافٍ لدى المستخدم لسحب قيمة الطلب." : changed?.reason === "same" ? "⚠️ الطلب بهذه الحالة بالفعل." : changed?.reason === "invalid" ? "⚠️ لا يمكن تعديل هذا الطلب من حالته الحالية." : "⚠️ لم أستطع تعديل الطلب.";
+  await ctx.reply(msg);
+  return;
+}
+invalidateUserCache(Number(changed.order.user_id));
+await ctx.reply(targetStatus === "accept" ? "✅ تم قبول الطلب." : "❌ تم رفض الطلب وإعادة الرصيد.");
+const latest = (await q("SELECT * FROM orders WHERE id=$1", [oid])).rows[0] || changed.order;
+await notifyOrderResult(_botRef, latest, targetStatus, latest.delivered_code, latest.api_response);
+await showAdminOrderDetails(ctx, oid, `adm:userOrders:${latest.user_id}:1`);
+}
+
 bot.action(/^adm:userOrders:(\d+):(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const uid = Number(ctx.match[1]); const page = Number(ctx.match[2]); const limit = 8; const offset = (page - 1) * limit;
 const res = await q("SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3", [uid, limit + 1, offset]);
 const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
 if (!slice.length) { await sendOrEdit(ctx, "📭 لا توجد طلبات.", Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", `adm:user:${uid}`)]])); return; }
-const lines = slice.map(r => `🛒 ${r.product_name} ×${r.qty} • ${Number(r.price_usd).toFixed(2)}$ • ${statusLabel(r.status)}`);
+const kb = slice.map(r => [Markup.button.callback(`${statusLabel(r.status)} ${r.product_name} ×${r.qty}`.slice(0, 60), `adm:userOrder:${r.id}:${uid}:${page}`)]);
 const nav = []; if (page > 1) nav.push(Markup.button.callback("⬅️ السابق", `adm:userOrders:${uid}:${page - 1}`)); if (hasNext) nav.push(Markup.button.callback("التالي ➡️", `adm:userOrders:${uid}:${page + 1}`));
-const kb = []; if (nav.length) kb.push(nav); kb.push([Markup.button.callback("⬅️ رجوع", `adm:user:${uid}`)]);
-await sendOrEdit(ctx, `📦 طلبات المستخدم ${uid}\n\n${lines.join("\n")}`, Markup.inlineKeyboard(kb));
+if (nav.length) kb.push(nav); kb.push([Markup.button.callback("⬅️ رجوع", `adm:user:${uid}`)]);
+await sendOrEdit(ctx, `📦 طلبات المستخدم ${uid}\n\nاختر الطلب لعرض تفاصيله وتعديل حالته:`, Markup.inlineKeyboard(kb));
 });
+
+bot.action(/^adm:userOrder:(\d+):(\d+):(\d+)$/, async ctx => {
+const oid = Number(ctx.match[1]); const uid = Number(ctx.match[2]); const page = Number(ctx.match[3]);
+await showAdminOrderDetails(ctx, oid, `adm:userOrders:${uid}:${page}`);
+});
+
+bot.action(/^adm:orderReject:(\d+)$/, async ctx => { await adminChangeOrderStatus(ctx, Number(ctx.match[1]), "reject"); });
+bot.action(/^adm:orderAccept:(\d+)$/, async ctx => { await adminChangeOrderStatus(ctx, Number(ctx.match[1]), "accept"); });
+
 bot.action(/^adm:userMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const uid = Number(ctx.match[1]); const u = await getUser(uid); setStep(ctx.from.id, { kind: "admin:setUserMarkup", userId: uid }); await ctx.reply(`% نسبة ربح ${u?.first_name ?? uid}\nالحالية: ${u?.custom_markup_percent ?? "غير محددة"}\nأرسل النسبة أو reset:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `adm:user:${uid}`)]])); });
 
 // ── Admin: orders ─────────────────────────────────────────────────────
@@ -3796,8 +4042,9 @@ const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
 if (!slice.length) { await sendOrEdit(ctx, "📭 لا توجد طلبات.", Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", "admin:menu")]])); return; }
 const lines = slice.map(r => `${r.ufirst ?? "—"}${r.uname ? " @" + r.uname : ""}\n   ${r.product_name} ×${r.qty} • ${Number(r.price_usd).toFixed(2)}$ • ${statusLabel(r.status)}`);
 const nav = []; if (page > 1) nav.push(Markup.button.callback("⬅️ السابق", `adm:allOrders:${page - 1}`)); if (hasNext) nav.push(Markup.button.callback("التالي ➡️", `adm:allOrders:${page + 1}`));
-const kb = []; if (nav.length) kb.push(nav); kb.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
-await sendOrEdit(ctx, `📦 كل الطلبات\n\n${lines.join("\n\n")}`, Markup.inlineKeyboard(kb));
+const kb = slice.map(r => [Markup.button.callback(`${statusLabel(r.status)} ${r.ufirst ?? "—"} • ${r.product_name}`.slice(0, 60), `adm:userOrder:${r.id}:${r.user_id}:${page}`)]);
+if (nav.length) kb.push(nav); kb.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
+await sendOrEdit(ctx, `📦 كل الطلبات\n\nاختر الطلب لعرض تفاصيله وتعديل حالته:`, Markup.inlineKeyboard(kb));
 });
 
 // ── Admin: broadcast ──────────────────────────────────────────────────
@@ -4010,6 +4257,88 @@ setStep(ctx.from.id, { kind: "admin:renameApi2Product", productId: pid });
 await ctx.reply(`📝 أرسل الاسم الجديد للمنتج «${row.name}»:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `api2prod:${pid}:0`)]]));
 });
 
+
+// ── Admin: product/category images ────────────────────────────────────
+bot.action(/^adm:prodImg:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const pid = Number(ctx.match[1]);
+setStep(ctx.from.id, { kind: "admin:setProductImage", productId: pid });
+await ctx.reply("🖼️ أرسل صورة المنتج الآن:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `prod:${pid}:0`)]]));
+});
+bot.action(/^adm:prodImgDel:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const pid = Number(ctx.match[1]);
+await q("UPDATE product_overrides SET image_file_id=NULL, updated_at=NOW() WHERE product_id=$1", [pid]);
+invalidateCaches(); await ctx.reply("✅ تم حذف صورة المنتج.");
+});
+bot.action(/^adm:api2ProdImg:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const pid = Number(ctx.match[1]);
+setStep(ctx.from.id, { kind: "admin:setApi2ProductImage", productId: pid });
+await ctx.reply("🖼️ أرسل صورة المنتج الآن:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `api2prod:${pid}:0`)]]));
+});
+bot.action(/^adm:api2ProdImgDel:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+await q("UPDATE api_source_products SET image_file_id=NULL, updated_at=NOW() WHERE id=$1", [Number(ctx.match[1])]);
+invalidateCaches(); await ctx.reply("✅ تم حذف صورة المنتج.");
+});
+bot.action(/^adm:manualProdImg:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const pid = Number(ctx.match[1]);
+setStep(ctx.from.id, { kind: "admin:setManualProductImage", productId: pid });
+await ctx.reply("🖼️ أرسل صورة المنتج الآن:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `adm:manualProd:${pid}`)]]));
+});
+bot.action(/^adm:manualProdImgDel:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+await q("UPDATE manual_products SET image_file_id=NULL, updated_at=NOW() WHERE id=$1", [Number(ctx.match[1])]);
+invalidateCaches(); await ctx.reply("✅ تم حذف صورة المنتج.");
+});
+
+bot.action(/^adm:catImg:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const cid = Number(ctx.match[1]);
+setStep(ctx.from.id, { kind: "admin:setCategoryImage", categoryId: cid });
+await ctx.reply("🖼️ أرسل صورة القسم الآن:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `cat:${cid}:1:0`)]]));
+});
+bot.action(/^adm:catImgDel:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+await q("UPDATE category_overrides SET image_file_id=NULL, updated_at=NOW() WHERE category_id=$1", [Number(ctx.match[1])]);
+invalidateCaches(); await ctx.reply("✅ تم حذف صورة القسم.");
+});
+bot.action(/^adm:api2CatImg:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const cid = Number(ctx.match[1]);
+setStep(ctx.from.id, { kind: "admin:setApi2CategoryImage", categoryId: cid });
+await ctx.reply("🖼️ أرسل صورة القسم الآن:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `api2cat:${cid}:1:0`)]]));
+});
+bot.action(/^adm:api2CatImgDel:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+await q("UPDATE api_source_categories SET image_file_id=NULL, updated_at=NOW() WHERE id=$1", [Number(ctx.match[1])]);
+invalidateCaches(); await ctx.reply("✅ تم حذف صورة القسم.");
+});
+bot.action(/^adm:mcImg:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const cid = Number(ctx.match[1]);
+setStep(ctx.from.id, { kind: "admin:setManualCategoryImage", categoryId: cid });
+await ctx.reply("🖼️ أرسل صورة القسم الآن:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `adm:mcManage:${cid}`)]]));
+});
+bot.action(/^adm:mcImgDel:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+await q("UPDATE manual_categories SET image_file_id=NULL, updated_at=NOW() WHERE id=$1", [Number(ctx.match[1])]);
+invalidateCaches(); await ctx.reply("✅ تم حذف صورة القسم.");
+});
+bot.action(/^adm:vcImg:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const cid = Number(ctx.match[1]);
+setStep(ctx.from.id, { kind: "admin:setVirtualCategoryImage", categoryId: cid });
+await ctx.reply("🖼️ أرسل صورة القسم الآن:", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `vcat:${cid}:1:0`)]]));
+});
+bot.action(/^adm:vcImgDel:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+await q("UPDATE virtual_categories SET image_file_id=NULL, updated_at=NOW() WHERE id=$1", [Number(ctx.match[1])]);
+invalidateCaches(); await ctx.reply("✅ تم حذف صورة القسم.");
+});
+
 // ── Admin: settings ───────────────────────────────────────────────────
 bot.action("adm:settings", async ctx => { await showSettingsMenu(ctx); });
 bot.action("adm:setMarkup", async ctx => { if (!(await requireAdmin(ctx))) return; setStep(ctx.from.id, { kind: "admin:setMarkup" }); await ctx.reply("✏️ أرسل نسبة الربح العام (مثال: 5):", Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "adm:settings")]])); });
@@ -4143,6 +4472,7 @@ const canDelete = !!viewer?.is_super_admin || !!viewer?.can_delete_products;
 await sendOrEdit(ctx, `🛒 ${p.name}\nالسعر: ${Number(p.price_usd).toFixed(2)}$\nالربح: ${p.markup_percent ?? "افتراضي"}%\nالمخزون: ${p.stock_qty === -1 ? "غير محدود" : p.stock_qty}\nالحالة: ${p.active ? "✅" : "❌"}`,
 Markup.inlineKeyboard([
 [Markup.button.callback("✏️ تعديل", `adm:manualProdEdit:${pid}`)],
+[Markup.button.callback(p.image_file_id ? "🖼️ تغيير صورة المنتج" : "🖼️ إضافة صورة للمنتج", `adm:manualProdImg:${pid}`), ...(p.image_file_id ? [Markup.button.callback("🗑️ حذف الصورة", `adm:manualProdImgDel:${pid}`)] : [])],
 [Markup.button.callback(p.active ? "❌ تعطيل" : "✅ تفعيل", `adm:manualToggle:${pid}`)],
 ...(canDelete ? [[Markup.button.callback("🗑️ حذف", `adm:manualDel:${pid}`)]] : []),
 [Markup.button.callback("⬅️ رجوع", "adm:manualProds")]
@@ -4506,7 +4836,7 @@ return;
 case "admin:moveCatToPosition": {
 if (txt.toLowerCase() === "cancel") { setStep(ctx.from.id, { kind: "idle" }); await showAdminMenu(ctx); return; }
 const sourceId = Number(step.categoryId);
-const targetPos = Number(txt.trim());
+const targetPos = Number(normalizePastedInput(txt));
 if (!Number.isInteger(sourceId) || sourceId <= 0) {
 setStep(ctx.from.id, { kind: "idle" });
 await ctx.reply("⚠️ القسم المصدر غير صالح.");
@@ -4926,6 +5256,48 @@ bot.on("photo", async ctx => {
 const step = getStep(ctx.from.id);
 const photo = ctx.message?.photo?.at(-1);
 if (!photo) return;
+if (step.kind === "admin:setProductImage") {
+await q("INSERT INTO product_overrides(product_id,image_file_id) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET image_file_id=$2, updated_at=NOW()", [step.productId, photo.file_id]);
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply("✅ تم حفظ صورة المنتج.");
+return;
+}
+if (step.kind === "admin:setApi2ProductImage") {
+await q("UPDATE api_source_products SET image_file_id=$1, updated_at=NOW() WHERE id=$2", [photo.file_id, step.productId]);
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply("✅ تم حفظ صورة المنتج.");
+return;
+}
+if (step.kind === "admin:setManualProductImage") {
+await q("UPDATE manual_products SET image_file_id=$1, updated_at=NOW() WHERE id=$2", [photo.file_id, step.productId]);
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply("✅ تم حفظ صورة المنتج.");
+return;
+}
+if (step.kind === "admin:setCategoryImage") {
+await q("INSERT INTO category_overrides(category_id,image_file_id) VALUES($1,$2) ON CONFLICT(category_id) DO UPDATE SET image_file_id=$2, updated_at=NOW()", [step.categoryId, photo.file_id]);
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply("✅ تم حفظ صورة القسم.");
+return;
+}
+if (step.kind === "admin:setApi2CategoryImage") {
+await q("UPDATE api_source_categories SET image_file_id=$1, updated_at=NOW() WHERE id=$2", [photo.file_id, step.categoryId]);
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply("✅ تم حفظ صورة القسم.");
+return;
+}
+if (step.kind === "admin:setManualCategoryImage") {
+await q("UPDATE manual_categories SET image_file_id=$1, updated_at=NOW() WHERE id=$2", [photo.file_id, step.categoryId]);
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply("✅ تم حفظ صورة القسم.");
+return;
+}
+if (step.kind === "admin:setVirtualCategoryImage") {
+await q("UPDATE virtual_categories SET image_file_id=$1, updated_at=NOW() WHERE id=$2", [photo.file_id, step.categoryId]);
+invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply("✅ تم حفظ صورة القسم.");
+return;
+}
 if (step.kind === "deposit:info") {
 const next = { ...step, photoFileId: photo.file_id };
 setStep(ctx.from.id, next);
