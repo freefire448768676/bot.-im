@@ -1,5 +1,5 @@
 // ============================================================
-//  متجر المروان — بوت تيليجرام v4.7 (سلوك تلقائي لحالة الطلب + نقل القسم بين صفحات المنتجات + تحسين التحمل)
+//  متجر المروان — بوت تيليجرام v4.8 (إصلاح فتح الأقسام + إصلاح حالة الطلبات + منع سقوط أوامر المصدر الثاني)
 //  إضافات: API ثاني، منتجات يدوية متكاملة، أقسام يدوية، ردود متعددة
 // ============================================================
 "use strict";
@@ -1795,19 +1795,20 @@ if (notifications.length) depositNotifications.set(depositRow.id, notifications)
 async function findApi1CategoryById(targetId) {
 const wanted = Number(targetId);
 if (!Number.isInteger(wanted) || wanted <= 0) return null;
-const visited = new Set();
-const walk = async parentId => {
-if (visited.has(Number(parentId))) return null;
-visited.add(Number(parentId));
-const content = await getCachedContent(parentId);
-for (const c of content.categories || []) {
-if (Number(c.id) === wanted) return c;
-const nested = await walk(c.id);
-if (nested) return nested;
+// بحث فوري بدون أي طلبات API متسلسلة: الطريقة القديمة كانت تجلب كل قسم حيّاً
+// وكانت تجمّد فتح الأقسام لعشرات الثوانٍ.
+const rootCached = contentCache.get(0)?.content ?? await loadCatalogCache("api1_content_0");
+if (Array.isArray(rootCached?.categories)) {
+const hit = rootCached.categories.find(c => Number(c.id) === wanted);
+if (hit) return hit;
+}
+const all = await getCachedProducts().catch(() => []);
+for (const p of all) {
+if (p._source !== "api2" && Number(p.parent_id) === wanted && p.category_name) {
+return { id: wanted, name: p.category_name };
+}
 }
 return null;
-};
-try { return await walk(0); } catch { return null; }
 }
 
 async function getMovedApi1Categories(parentId) {
@@ -2809,12 +2810,15 @@ const totalSyp = Math.round(totalUsd * execRate);
 const params = { ...step.collected };
 if (step.qty && step.qty !== 1) params.qty = step.qty;
 
+// product_id في قاعدة البيانات من نوع INTEGER. منتجات المصدر الثاني تستخدم معرفاً نصياً مركباً
+// (ext_...) كان يسبب فشل الإدراج وبالتالي ضياع الطلب وحالته بالكامل. نخزن معرف صف المصدر بدله.
+const orderProductId = p._source === "api2" ? Number(step._api2_id || 0) : Number(p.id);
 let insRes;
 try {
 insRes = await q(
 `INSERT INTO orders(user_id,product_id,product_name,qty,params,price_usd,oranos_uuid,status,api_source_id,cancel_enabled,cancel_seconds,cancel_url,cancel_available_at,execution_started_at)
 VALUES($1,$2,$3,$4,$5,$6,$7,'pending',$8,$9,$10,$11,$12,NOW()) RETURNING *`,
-[ctx.from.id, p.id, p.name, String(step.qty), JSON.stringify(step.collected), String(totalUsd), orderUuid, p._source === "api2" ? p._source_id : null, p._source === "api2" ? !!p.cancel_enabled && !!p.cancel_url && Number(p.cancel_seconds) > 0 : false, p._source === "api2" ? (Number(p.cancel_seconds) || null) : null, p._source === "api2" ? (p.cancel_url || null) : null, p._source === "api2" && p.cancel_enabled && p.cancel_url && Number(p.cancel_seconds) > 0 ? new Date(Date.now() + Number(p.cancel_seconds) * 1000) : null]
+[ctx.from.id, orderProductId, p.name, String(step.qty), JSON.stringify(step.collected), String(totalUsd), orderUuid, p._source === "api2" ? p._source_id : null, p._source === "api2" ? !!p.cancel_enabled && !!p.cancel_url && Number(p.cancel_seconds) > 0 : false, p._source === "api2" ? (Number(p.cancel_seconds) || null) : null, p._source === "api2" ? (p.cancel_url || null) : null, p._source === "api2" && p.cancel_enabled && p.cancel_url && Number(p.cancel_seconds) > 0 ? new Date(Date.now() + Number(p.cancel_seconds) * 1000) : null]
 );
 } catch (e) {
 await adjustBalance(ctx.from.id, totalUsd);
@@ -2900,7 +2904,10 @@ const lines = slice.map(r => `🛒 ${r.product_name} ×${r.qty} • ${Number(r.p
 const orderRows = [];
 for (const r of slice) {
 const row = [];
-if (r.status === "pending" && r.cancel_enabled && r.cancel_url && r.cancel_available_at && new Date(r.cancel_available_at).getTime() <= Date.now()) row.push(Markup.button.callback("❌ إلغاء الطلب", `api2cancel:${r.id}`));
+if (r.status === "pending") {
+row.push(Markup.button.callback("🔄 تحديث الحالة", `ord:check:${r.id}`));
+if (r.cancel_enabled && r.cancel_url && r.cancel_available_at && new Date(r.cancel_available_at).getTime() <= Date.now()) row.push(Markup.button.callback("❌ إلغاء الطلب", `api2cancel:${r.id}`));
+}
 if (row.length) orderRows.push(row);
 }
 const navRow = [];
@@ -3129,7 +3136,9 @@ if (!ACCEPT_STATUSES.has(firstStatus) && !REJECT_STATUSES.has(firstStatus) && ro
   }
 }
 }
-const rawNew = getBestApiStatus(resp) || String(row.status ?? "").toLowerCase();
+// البحث الموجّه برقم الطلب/الـUUID أولاً قبل الاعتماد على أي حالة عامة في الرد.
+const targeted = extractStatusForOrder(resp, [row.oranos_order_id, row.oranos_uuid]);
+const rawNew = targeted || getBestApiStatus(resp) || String(row.status ?? "").toLowerCase();
 const isRejected = REJECT_STATUSES.has(rawNew);
 const isAccepted = ACCEPT_STATUSES.has(rawNew);
 const finalStatus = isRejected ? "reject" : isAccepted ? "accept" : "pending";
@@ -3744,8 +3753,8 @@ bot.use((ctx, next) => {
 const _rateMap = new Map();
 setInterval(() => {
 const now = Date.now();
-for (const [uid, times] of _rateMap) {
-if (times.every(t => now - t > 5_000)) _rateMap.delete(uid);
+for (const [uid, rec] of _rateMap) {
+if (!rec.times.length || rec.times.every(t => now - t > 10_000)) _rateMap.delete(uid);
 }
 }, 60_000).unref();
 
@@ -3756,12 +3765,18 @@ const isSafeCommand = /^\/(?:start|menu)(?:@\w+)?(?:\s|$)/i.test(incoming);
 // /start و /menu لا يتم إسقاطهما بسبب محدد النقرات؛ تكرارهما يعاد استخدام نفس رسالة القائمة.
 if (isSafeCommand) return next();
 const now = Date.now();
-const times = (_rateMap.get(uid) ?? []).filter(t => now - t < 2_000);
-if (times.length >= 5) {
-if (ctx.callbackQuery) ctx.answerCbQuery("⏱️ الرجاء الانتظار...").catch(() => {});
+const data = ctx.callbackQuery?.data ?? incoming;
+let rec = _rateMap.get(uid);
+if (!rec) { rec = { times: [], dataCounts: new Map() }; _rateMap.set(uid, rec); }
+rec.times = rec.times.filter(t => now - t < 3_000);
+// السماح بالنقر السريع على أزرار مختلفة أثناء تصفح الأقسام، ومنع تكرار نفس الزر فقط.
+const same = (rec.dataCounts.get(data) ?? []).filter(t => now - t < 2_000);
+if (same.length >= 4 || rec.times.length >= 30) {
+if (ctx.callbackQuery) ctx.answerCbQuery("⏱️ الرجاء الانتظار قليلاً...").catch(() => {});
 return;
 }
-times.push(now); _rateMap.set(uid, times);
+same.push(now); rec.dataCounts.set(data, same);
+rec.times.push(now);
 if (ctx.callbackQuery) ctx.answerCbQuery().catch(() => {});
 return next();
 });
@@ -3799,7 +3814,6 @@ bot.use((ctx, next) => {
 // منع معالجة نفس Telegram update مرتين حتى لو أعاد Telegram الإرسال أو كانت هناك نسخة ثانية من البوت.
 const _processedUpdateIds = new Set();
 const _processedUpdateTimers = new Map();
-const _replyDedup = new Map();
 bot.use(async (ctx, next) => {
 const updateId = ctx.update?.update_id;
 if (updateId != null) {
@@ -3816,20 +3830,8 @@ _processedUpdateTimers.set(updateId, timer);
 }
 const originalReply = ctx.reply.bind(ctx);
 ctx.reply = async (...args) => {
-const text = typeof args[0] === "string" ? args[0] : JSON.stringify(args[0]);
-const userId = ctx.from?.id ?? 0;
-const incoming = ctx.message?.text ?? "";
-const isStartOrMenu = /^\/(?:start|menu)(?:@\w+)?(?:\s|$)/i.test(incoming);
-if (!isStartOrMenu) {
-  const key = `${userId}:reply:${text}`;
-  const now = Date.now();
-  const last = _replyDedup.get(key) ?? 0;
-  if (now - last < 2500) return;
-  _replyDedup.set(key, now);
-  if (_replyDedup.size > 2000) {
-    for (const [k, t] of _replyDedup) if (now - t > 10000) _replyDedup.delete(k);
-  }
-}
+// لا نحجب الردود المتشابهة هنا: منع تكرار التحديثات يتم عبر update_id أعلاه،
+// أما حجب الردود بنفس النص فكان يسبب اختفاء فتح الأقسام والقوائم عند التنقل السريع.
 ctx.state = ctx.state || {};
 ctx.state._replySent = true;
 return originalReply(...args);
@@ -3859,6 +3861,20 @@ return;
 }
 await showAdminMenu(ctx);
 });
+
+// ── حارس التنقل: أي خطأ داخل عرض قسم/منتج يظهر للمستخدم مع زر إعادة محاولة بدل الصمت التام ──
+async function safeNav(ctx, action, retryData) {
+try { await action(); }
+catch (e) {
+console.error("Navigation failed:", retryData, e?.message ?? e);
+try {
+await ctx.reply("⚠️ تعذر تحميل هذا القسم حالياً.\nاضغط إعادة المحاولة.", Markup.inlineKeyboard([
+[Markup.button.callback("🔄 إعادة المحاولة", retryData)],
+[Markup.button.callback("⬅️ رجوع", "home")],
+]));
+} catch { /* ignore */ }
+}
+}
 
 // ── Callback Queries ──────────────────────────────────────────────────
 bot.action("home", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
@@ -3897,31 +3913,31 @@ bot.action("dep:cancel", async ctx => { setStep(ctx.from.id, { kind: "idle" }); 
 // ── Category / Product navigation ─────────────────────────────────────
 bot.action(/^cat:(\d+):(\d+):(\d+)$/, async ctx => {
 await ensureUser(ctx);
-await showCategory(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3]));
+await safeNav(ctx, () => showCategory(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3])), ctx.match[0]);
 });
 bot.action(/^prod:(\d+):(\d+)$/, async ctx => {
 await ensureUser(ctx);
-await showProduct(ctx, Number(ctx.match[1]), Number(ctx.match[2]));
+await safeNav(ctx, () => showProduct(ctx, Number(ctx.match[1]), Number(ctx.match[2])), ctx.match[0]);
 });
 bot.action(/^vcat:(\d+):(\d+):(\d+)$/, async ctx => {
 await ensureUser(ctx);
-await showVirtualCategory(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3]));
+await safeNav(ctx, () => showVirtualCategory(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3])), ctx.match[0]);
 });
 bot.action(/^mprod:(\d+):(\d+)$/, async ctx => {
 await ensureUser(ctx);
-await showManualProduct(ctx, Number(ctx.match[1]), Number(ctx.match[2]));
+await safeNav(ctx, () => showManualProduct(ctx, Number(ctx.match[1]), Number(ctx.match[2])), ctx.match[0]);
 });
 bot.action(/^mcat:(\d+):(\d+):(\d+)$/, async ctx => {
 await ensureUser(ctx);
-await showManualCategory(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3]));
+await safeNav(ctx, () => showManualCategory(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3])), ctx.match[0]);
 });
 bot.action(/^api2cat:(\d+):(\d+):(\d+)$/, async ctx => {
 await ensureUser(ctx);
-await showApi2Category(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3]));
+await safeNav(ctx, () => showApi2Category(ctx, Number(ctx.match[1]), Number(ctx.match[2]), Number(ctx.match[3])), ctx.match[0]);
 });
 bot.action(/^api2prod:(\d+):(\d+)$/, async ctx => {
 await ensureUser(ctx);
-await showApi2Product(ctx, Number(ctx.match[1]), Number(ctx.match[2]));
+await safeNav(ctx, () => showApi2Product(ctx, Number(ctx.match[1]), Number(ctx.match[2])), ctx.match[0]);
 });
 
 // ── Buy flow ──────────────────────────────────────────────────────────
@@ -3981,7 +3997,7 @@ await askNextParam(ctx, p, step.priceUsd, qty, step.paramKeys, {}, 0, step.backT
 });
 bot.action("ord:confirm", async ctx => { await executeOrder(ctx); });
 bot.action("ord:cancel", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
-bot.action(/^ord:check:(\d+)$/, async ctx => { await checkOrderStatus(ctx, Number(ctx.match[1])); }); // compatibility for old messages; no new UI button is generated
+bot.action(/^ord:check:(\d+)$/, async ctx => { await checkOrderStatus(ctx, Number(ctx.match[1])); }); // زر "🔄 تحديث الحالة" في قائمة طلباتي
 bot.action(/^api2cancel:(\d+)$/, async ctx => { await cancelApi2Order(ctx, Number(ctx.match[1])); });
 
 // ── Manual product buy (NO NOTE REQUIRED) ─────────────────────────────
