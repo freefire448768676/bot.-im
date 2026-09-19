@@ -1,0 +1,36 @@
+diff --git a/index.js b/index.js
+--- a/index.js
++++ b/index.js
+@@
+ const bot = new Telegraf(token, { handlerTimeout: 90_000 });
++
++// حفظ مرجع البوت قبل تشغيل المهام الخلفية حتى تكون إشعارات الطلبات متاحة دائماً.
++_botRef = bot;
+@@
+ async function notifyOrderResult(bot, order, status, deliveredCode = null, resp = null) {
+-  if (!bot || !order?.user_id || !order?.id || !["accept", "reject"].includes(status)) return false;
++  if (!order?.user_id || !order?.id || !["accept", "reject"].includes(status)) return false;
++
++  // استخدم المرجع المرسل، مع احتياط للمرجع العام.
++  const telegram = bot?.telegram ?? _botRef?.telegram;
++  if (!telegram) {
++    console.error("Order notification skipped: Telegram bot is not ready", order.id);
++    return false;
++  }
++
+   try {
+     const text = await buildOrderResultMessage(order, status, deliveredCode, resp);
+-    await bot.telegram.sendMessage(order.user_id, text, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
++    await telegram.sendMessage(
++      Number(order.user_id),
++      text,
++      Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])
++    );
+     await q("UPDATE orders SET result_notified_at=NOW(), result_notify_attempts=result_notify_attempts+1 WHERE id=$1", [order.id]);
++    console.log(`Order result notification sent: order=${order.id}, user=${order.user_id}, status=${status}`);
+     return true;
+   } catch (e) {
+@@
+-_botRef = bot;
+ startBackgroundRefresher();
+*** End Patch
