@@ -1317,7 +1317,7 @@ const all = [...api1, ...api2];
 productsCache = { products: all, expiry: Date.now() + PRODUCTS_TTL };
 _productsInFlight = null;
 // Refresh silently; the user gets the DB snapshot immediately.
-refreshCatalogCache().catch(() => {});
+void refreshCatalogCache().catch(err => console.error("Background catalog refresh failed:", err?.message ?? err));
 return all;
 }
 
@@ -1447,8 +1447,8 @@ cleanup();
 function startBackgroundRefresher() {
 if (refresherStarted) return;
 refresherStarted = true;
-setInterval(() => { refreshCatalogCache().catch(() => {}); }, CATALOG_REFRESH_MS).unref();
-refreshCatalogCache().catch(() => {});
+setInterval(() => { void refreshCatalogCache().catch(err => console.error("Background catalog refresh failed:", err?.message ?? err)); }, CATALOG_REFRESH_MS).unref();
+void refreshCatalogCache().catch(err => console.error("Background catalog refresh failed:", err?.message ?? err));
 }
 
 function isExcludedProduct(p, kws) {
@@ -1597,25 +1597,35 @@ setInterval(() => {
 }, 10 * 60_000).unref();
 
 async function sendOrEdit(ctx, text, extra) {
-const cb = ctx.callbackQuery;
-const msg = cb?.message;
-if (msg && !("photo" in msg && msg.photo)) {
+const msg = ctx.callbackQuery?.message;
+const chatId = ctx.chat?.id ?? ctx.from?.id;
+if (msg?.photo) {
 try {
-await ctx.editMessageText(text, extra);
-lastBotMessageIds.set(ctx.chat?.id ?? ctx.from?.id, msg.message_id);
-lastBotMessageTouched.set(ctx.chat?.id ?? ctx.from?.id, Date.now());
+await ctx.editMessageCaption(text, extra);
+lastBotMessageIds.set(chatId, msg.message_id);
+lastBotMessageTouched.set(chatId, Date.now());
 return msg;
 } catch (err) {
-const desc = err?.description ?? "";
-if (/not modified/i.test(desc)) {
-lastBotMessageIds.set(ctx.chat?.id ?? ctx.from?.id, msg.message_id);
-lastBotMessageTouched.set(ctx.chat?.id ?? ctx.from?.id, Date.now());
-return msg;
+const desc = err?.description ?? err?.message ?? "";
+if (/not modified/i.test(desc)) return msg;
 }
+}
+if (msg) {
+try {
+await ctx.editMessageText(text, extra);
+lastBotMessageIds.set(chatId, msg.message_id);
+lastBotMessageTouched.set(chatId, Date.now());
+return msg;
+} catch (err) {
+const desc = err?.description ?? err?.message ?? "";
+if (/not modified/i.test(desc)) return msg;
 }
 }
 const sent = await ctx.reply(text, extra);
-if (sent?.message_id != null) { lastBotMessageIds.set(ctx.chat?.id ?? ctx.from?.id, sent.message_id); lastBotMessageTouched.set(ctx.chat?.id ?? ctx.from?.id, Date.now()); }
+if (sent?.message_id != null) {
+lastBotMessageIds.set(chatId, sent.message_id);
+lastBotMessageTouched.set(chatId, Date.now());
+}
 return sent;
 }
 
@@ -1828,15 +1838,40 @@ return moved.filter(Boolean);
 
 
 async function sendImageOrEdit(ctx, imageFileId, text, keyboard) {
+const msg = ctx.callbackQuery?.message;
+const replyMarkup = keyboard?.reply_markup ?? keyboard;
+if (msg?.photo) {
 if (imageFileId) {
-  try {
-    await ctx.replyWithPhoto(imageFileId, { caption: text, ...keyboard });
-    return;
-  } catch (e) {
-    console.error("send image failed:", e.message);
-  }
+try {
+await ctx.editMessageMedia(
+{ type: "photo", media: imageFileId, caption: text },
+{ reply_markup: replyMarkup }
+);
+return msg;
+} catch (err) {
+const desc = err?.description ?? err?.message ?? "";
+if (/not modified/i.test(desc)) return msg;
+try { await ctx.editMessageCaption(text, keyboard); return msg; } catch (_) {}
 }
-await sendOrEdit(ctx, text, keyboard);
+} else {
+try { await ctx.editMessageCaption(text, keyboard); return msg; } catch (_) {}
+}
+}
+if (msg && !msg.photo && imageFileId) {
+try {
+await ctx.editMessageMedia(
+{ type: "photo", media: imageFileId, caption: text },
+{ reply_markup: replyMarkup }
+);
+return msg;
+} catch (_) {}
+}
+if (msg && !msg.photo && !imageFileId) return sendOrEdit(ctx, text, keyboard);
+if (imageFileId) {
+try { return await ctx.replyWithPhoto(imageFileId, { caption: text, ...keyboard }); }
+catch (err) { console.error("send image failed:", err?.message ?? err); }
+}
+return sendOrEdit(ctx, text, keyboard);
 }
 
 async function showCategory(ctx, parentId, page, backTo) {
@@ -1879,7 +1914,6 @@ if (!visibleCats.some(x => Number(x.id) === Number(c.id))) visibleCats.push(c);
 }
 
 const visibleProds = content.products.filter(p => {
-if (!p.available && !isAdmin) return false;
 if (isExcludedProduct(p, kws)) return false;
 const ov = ovMap.get(p.id);
 if (ov?.hidden && !isAdmin) return false;
@@ -1958,14 +1992,15 @@ const ov = ovMap.get(p.id);
 const usd = await effectivePriceUsd(p, ov, markup, socialMarkup, socialKws, null, userMarkupPercent);
 const syp = Math.round(usd * rate);
 const name = ov?.customName ?? p.name;
-return Markup.button.callback(`${ov?.hidden ? "🔒 " : "🛒 "}${name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `prod:${p.id}:${parentId}`);
+const icon = p.available ? (ov?.hidden ? "🔒 " : "🛒 ") : "⚠️ ";
+return Markup.button.callback(`${icon}${name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `prod:${p.id}:${parentId}`);
 }));
 
 // المصدر الثاني product buttons
 const api2SourceIds = [...new Set(api2Prods.rows.map(p => Number(p.api_source_id)).filter(Boolean))];
 const api2Sources = api2SourceIds.length ? (await q("SELECT id, markup_percent FROM api_sources WHERE id = ANY($1)", [api2SourceIds])).rows : [];
 const api2MarkupMap = new Map(api2Sources.map(src => [Number(src.id), Number(src.markup_percent ?? markup)]));
-const api2CatOvRes = api2Prods.rows.length ? await q("SELECT category_id, custom_markup_percent FROM category_overrides WHERE category_id = ANY($1)", [[...new Set(api2Prods.rows.map(p => Number(p.category_id)).filter(Boolean))]]) : { rows: [] };
+const api2CatOvRes = api2Prods.rows.length ? await q("SELECT category_id, custom_markup_percent FROM category_overrides WHERE category_id = ANY($1)", [[...new Set(api2Prods.rows.map(p => Number(p.category_id)).filter(Boolean))]] ) : { rows: [] };
 const api2CatMarkupMap = new Map(api2CatOvRes.rows.map(r => [Number(r.category_id), r.custom_markup_percent != null ? Number(r.custom_markup_percent) : null]));
 const api2ProdBtns = await Promise.all(api2Prods.rows.map(async p => {
 if (p.admin_hidden && !isAdmin) return null;
@@ -2065,7 +2100,8 @@ else qtyInfo = `الكمية بين ${qtyDisplay.min.toLocaleString("en-US")} و
 const displayName = ov?.customName ?? p.name;
 const instructions = ov?.instructions?.trim() || getProductApiNotes(p);
 const productImage = ov?.imageFileId ?? null;
-const text = `🛒 ${displayName}\n${p.category_name ? `القسم: ${p.category_name}\n` : ""}السعر: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س\n${qtyInfo}${instructions ? `\n\n📋 تعليمات:\n${instructions}` : ""}`;
+const unavailableMessage = !p.available && !isAdmin ? "\n\n⚠️ هذا المنتج غير متوفر حالياً." : "";
+const text = `🛒 ${displayName}\n${p.category_name ? `القسم: ${p.category_name}\n` : ""}السعر: ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س\n${qtyInfo}${instructions ? `\n\n📋 تعليمات:\n${instructions}` : ""}${unavailableMessage}`;
 
 const backBtnResolved = await resolveBackBtn(backTo);
 const btns = [];
@@ -2119,7 +2155,6 @@ const visible = products.filter(p => {
 if (isExcludedProduct(p, kws)) return false;
 const ov = allOv.get(p.id);
 if (ov?.hidden && !isAdmin) return false;
-if (!p.available && !isAdmin) return false;
 return true;
 });
 
@@ -2405,8 +2440,8 @@ await sendImageOrEdit(ctx, productImage, text, Markup.inlineKeyboard(rows));
 // ============================================================
 //  ORDER FLOW
 // ============================================================
-const REJECT_STATUSES = new Set(["reject","rejected","error","refused","cancel","cancelled","canceled","fail","failed","denied","declined"]);
-const ACCEPT_STATUSES = new Set(["accept","accepted","success","done","complete","completed","delivered","finished","fulfilled","approved"]);
+const REJECT_STATUSES = new Set(["reject","rejected","error","refused","cancel","cancelled","canceled","fail","failed","denied","declined","false","0"]);
+const ACCEPT_STATUSES = new Set(["accept","accepted","success","successful","done","complete","completed","delivered","finished","fulfilled","approved","true","1"]);
 const TERMINAL_STATUSES = ["accept","accepted","success","done","complete","completed","delivered","reject","rejected","error","refused","cancel","cancelled","canceled","fail","failed"];
 
 function normalizePastedInput(value) {
@@ -2439,10 +2474,10 @@ function normalizeProviderStatus(value) {
   if (!raw) return "";
   const compact = raw.replace(/[\s_-]+/g, "");
 
-  if (["1","true","ok","success","successful","accept","accepted","done","complete","completed","delivered","finished","fulfilled","approved","تم","مقبول","مكتمل","مكتملة","منفذ","منفذة"].includes(raw) ||
-      ["successfully","completed","delivered","approved"].includes(compact)) return "accepted";
-
-  if (["0","false","reject","rejected","error","refused","cancel","cancelled","canceled","fail","failed","denied","declined","مرفوض","مرفوضة","فشل","ملغى","ملغاة"].includes(raw)) return "rejected";
+  const acceptedValues = new Set(["1","true","ok","success","successful","accept","accepted","done","complete","completed","delivered","finished","fulfilled","approved","تم","مقبول","مكتمل","مكتملة","منفذ","منفذة"]);
+  const rejectedValues = new Set(["0","false","reject","rejected","error","refused","cancel","cancelled","canceled","fail","failed","denied","declined","مرفوض","مرفوضة","فشل","ملغى","ملغاة"]);
+  if (acceptedValues.has(raw) || acceptedValues.has(compact)) return "accepted";
+  if (rejectedValues.has(raw) || rejectedValues.has(compact)) return "rejected";
 
   if (["pending","wait","waiting","processing","inprogress","queued","queue","new","created","قيدالتنفيذ","انتظار","معلق","معلقة"].includes(compact)) return "pending";
 
@@ -2479,7 +2514,8 @@ function extractApiStatuses(resp) {
       // the order id. Only accept primitive values that normalize to a known
       // terminal/pending state, so ordinary response text cannot trigger it.
       const n = normalizeProviderStatus(value);
-      const looksLikeStatusKey = /status|state|result|order_status|orderstate|success|completed|accepted|approved/i.test(key);
+      const looksLikeStatusKey = /status|state|result|order_status|orderstate|completed|accepted|approved/i.test(key);
+      if (/^(success|successful|ok|message|msg|note|notes|detail|details)$/i.test(key) && ["1","true","ok","success","successful"].includes(String(value).trim().toLowerCase())) return;
       const knownStatus = ACCEPT_STATUSES.has(n) || REJECT_STATUSES.has(n) || n === "pending" || n === "accepted" || n === "rejected";
       if (looksLikeStatusKey || knownStatus) add(value);
       return;
@@ -2659,7 +2695,10 @@ let all = await getCachedProducts();
 let p = all.find(x => x.id === productId);
 if (!p) { all = await fetchAllProducts(); p = all.find(x => x.id === productId); }
 if (!p) { await ctx.reply("⚠️ المنتج غير موجود."); return; }
-if (!p.available) { await ctx.reply("⚠️ هذا المنتج غير متاح حالياً."); return; }
+if (!p.available) {
+await sendOrEdit(ctx, "⚠️ هذا المنتج غير متوفر حالياً.", Markup.inlineKeyboard([[Markup.button.callback("⬅️ رجوع", `cat:${backTo}:1:0`), Markup.button.callback("🏠 الرئيسية", "home")]]));
+return;
+}
 
 const [ovMap, markup, socialKws, socialMarkup, user] = await Promise.all([
 loadOverrideMap([p.id]),
@@ -2845,6 +2884,21 @@ await notifyOrderResult(_botRef, { ...order, price_usd: totalUsd, status: "rejec
 });
 }
 
+function sanitizeApiLog(value) {
+try {
+const clone = JSON.parse(JSON.stringify(value ?? null));
+const walk = node => {
+if (!node || typeof node !== "object") return;
+for (const key of Object.keys(node)) {
+if (/token|api[_-]?key|authorization|secret|password/i.test(key)) node[key] = "[REDACTED]";
+else if (node[key] && typeof node[key] === "object") walk(node[key]);
+}
+};
+walk(clone);
+return clone;
+} catch { return { redacted: true }; }
+}
+
 async function processOrderInBackground(order, p, params, totalUsd, totalSyp) {
 let resp;
 try {
@@ -2859,16 +2913,18 @@ resp = await placeOrder(p.id, params, order.oranos_uuid);
 resp = { status: "ERR", message: e?.message ?? "خطأ شبكة" };
 }
 
-const initialStatus = getBestApiStatus(resp);
 const orderApiId = extractProviderOrderId(resp) || order.oranos_uuid;
+console.log("API1 order create response:", JSON.stringify(sanitizeApiLog(resp)));
+const initialStatus = extractStatusForOrder(resp, [orderApiId, order.oranos_uuid]) || getBestApiStatus(resp);
 
 if (REJECT_STATUSES.has(initialStatus) || initialStatus === "err") {
 const updated = await q(
-"UPDATE orders SET status='reject', oranos_order_id=$1, api_response=$2, execution_completed_at=NOW(), execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint), refunded_at=COALESCE(refunded_at,NOW()) WHERE id=$3 AND status='pending' RETURNING id",
+"UPDATE orders SET status='reject', oranos_order_id=$1, api_response=$2, execution_completed_at=NOW(), execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint) WHERE id=$3 AND status='pending' RETURNING id",
 [orderApiId, JSON.stringify(resp), order.id]
 );
 if (!updated.rows.length) return;
-await adjustBalance(order.user_id, totalUsd);
+const refunded = await q("UPDATE orders SET refunded_at=NOW() WHERE id=$1 AND refunded_at IS NULL RETURNING id", [order.id]);
+if (refunded.rows.length) await adjustBalance(order.user_id, totalUsd);
 const latest = (await q("SELECT * FROM orders WHERE id=$1", [order.id])).rows[0] || { ...order, price_usd: totalUsd, status: "reject", api_response: resp };
 await notifyOrderResult(_botRef, latest, "reject", extractDeliveredCode(resp), resp);
 return;
@@ -2892,7 +2948,7 @@ await q(
 "UPDATE orders SET status='pending', oranos_order_id=$1, api_response=$2 WHERE id=$3 AND status='pending'",
 [orderApiId, JSON.stringify(resp), order.id]
 );
-await fastPollOrder(order.id, 20, 1500);
+void fastPollOrder(order.id, 180, 2000).catch(err => console.error("Background order poll failed:", order.id, err?.message ?? err));
 }
 
 async function showMyOrders(ctx, page) {
@@ -3047,51 +3103,52 @@ function providerReplyText(resp, deliveredCode = null) {
 
 
 function extractProviderDuration(resp) {
-  const keys = [
-    "duration", "execution_duration", "execution_time",
-    "processing_time", "elapsed_time", "time_taken", "time"
-  ];
-  const found = [];
-  const walk = v => {
-    if (v == null || typeof v !== "object") return;
-    if (Array.isArray(v)) { v.forEach(walk); return; }
-    for (const [k, val] of Object.entries(v)) {
-      if (keys.includes(String(k).trim().toLowerCase()) && val != null && String(val).trim()) {
-        const x = String(val).trim();
-        if (!found.includes(x)) found.push(x);
-      }
-      if (val && typeof val === "object") walk(val);
-    }
-  };
-  walk(resp);
-  return found[0] ?? null;
+const keys = new Set(["duration","execution_duration","execution_time","processing_time","elapsed_time","time_taken","duration_seconds"]);
+const found = [];
+const walk = value => {
+if (value == null) return;
+if (Array.isArray(value)) { value.forEach(walk); return; }
+if (typeof value !== "object") return;
+for (const [key, val] of Object.entries(value)) {
+if (keys.has(String(key).trim().toLowerCase()) && val != null && String(val).trim()) {
+const x = String(val).trim(); if (!found.includes(x)) found.push(x);
+}
+if (val && typeof val === "object") walk(val);
+}
+};
+walk(resp);
+return found[0] ?? null;
 }
 
 function buildOrderResultMessage(order, status, deliveredCode = null, resp = null) {
-  const priceUsd = Number(order.price_usd);
-  const ratePromise = getExchangeRate();
-  const inputLines = formatOrderInputLines(order);
-  const providerDuration = extractProviderDuration(resp ?? order.api_response);
-  const providerText = providerReplyText(resp ?? order.api_response, deliveredCode);
-  return ratePromise.then(rate => {
-    const priceSyp = Math.round(priceUsd * rate);
-    const lines = [];
-    if (status === "accept") {
-      lines.push("✅ تم تنفيذ طلبك بنجاح");
-      if (providerDuration) lines.push(`⏱️ مدة التنفيذ: ${providerDuration}`);
-      lines.push(`🛒 ${order.product_name} × ${order.qty}`);
-      lines.push(`💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`);
-      if (providerText) lines.push(providerText);
-    } else {
-      lines.push("❌ تم رفض طلبك");
-      if (providerText) lines.push(providerText);
-    }
-    return lines.filter(Boolean).join("\n");
-  });
+const priceUsd = Number(order.price_usd);
+const response = resp ?? order.api_response;
+const inputLines = formatOrderInputLines(order);
+const providerDuration = extractProviderDuration(response);
+const providerText = providerReplyText(response, deliveredCode);
+return getExchangeRate().then(rate => {
+const priceSyp = Math.round(priceUsd * rate);
+const lines = [];
+if (status === "accept") {
+lines.push("✅ تم تنفيذ طلبك بنجاح");
+if (providerDuration) lines.push(`⏱️ مدة التنفيذ: ${providerDuration}`);
+lines.push(`🛒 ${order.product_name} × ${order.qty}`);
+lines.push(`💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`);
+if (inputLines.length) lines.push(...inputLines);
+if (providerText) lines.push(providerText);
+} else {
+lines.push("❌ تم رفض طلبك");
+if (providerText) lines.push(providerText);
+}
+return lines.filter(Boolean).join("\\n");
+});
 }
 
+const _resultNotifyInFlight = new Set();
 async function notifyOrderResult(bot, order, status, deliveredCode = null, resp = null) {
   if (!bot || !order?.user_id || !order?.id || !["accept", "reject"].includes(status)) return false;
+  if (_resultNotifyInFlight.has(order.id)) return false;
+  _resultNotifyInFlight.add(order.id);
   try {
     const text = await buildOrderResultMessage(order, status, deliveredCode, resp);
     await bot.telegram.sendMessage(order.user_id, text, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
@@ -3101,6 +3158,8 @@ async function notifyOrderResult(bot, order, status, deliveredCode = null, resp 
     await q("UPDATE orders SET result_notify_attempts=result_notify_attempts+1 WHERE id=$1", [order.id]).catch(() => {});
     console.error("Order result notification failed:", order.id, "status=", status, e?.message ?? e);
     return false;
+  } finally {
+    _resultNotifyInFlight.delete(order.id);
   }
 }
 
@@ -3112,20 +3171,8 @@ await ctx.reply(`الحالة الحالية لطلبك: ${statusLabel(row.statu
 return;
 }
 try {
-let resp;
-if (row.api_source_id) {
-const src = await getApiSource(row.api_source_id);
-if (!src) throw new Error("مصدر المنتجات غير موجود");
-if (row.oranos_order_id) resp = await checkApiSourceOrder(src, row.oranos_order_id, false);
-const firstStatus = getBestApiStatus(resp);
-if (!ACCEPT_STATUSES.has(firstStatus) && !REJECT_STATUSES.has(firstStatus) && row.oranos_uuid) {
-  const uuidResp = await checkApiSourceOrder(src, row.oranos_uuid, true);
-  if (uuidResp) {
-    const uuidStatus = getBestApiStatus(uuidResp);
-    if (ACCEPT_STATUSES.has(uuidStatus) || REJECT_STATUSES.has(uuidStatus) || !firstStatus || uuidStatus !== firstStatus) resp = uuidResp;
-  }
-}
-} else {
+let resp = null;
+// فحص حالة الطلبات الحالية يستخدم API1 فقط.
 if (row.oranos_order_id) resp = await checkOrder(row.oranos_order_id, false);
 const firstStatus = getBestApiStatus(resp);
 if (!ACCEPT_STATUSES.has(firstStatus) && !REJECT_STATUSES.has(firstStatus) && row.oranos_uuid) {
@@ -3134,7 +3181,6 @@ if (!ACCEPT_STATUSES.has(firstStatus) && !REJECT_STATUSES.has(firstStatus) && ro
     const uuidStatus = getBestApiStatus(uuidResp);
     if (ACCEPT_STATUSES.has(uuidStatus) || REJECT_STATUSES.has(uuidStatus) || !firstStatus || uuidStatus !== firstStatus) resp = uuidResp;
   }
-}
 }
 // البحث الموجّه برقم الطلب/الـUUID أولاً قبل الاعتماد على أي حالة عامة في الرد.
 const targeted = extractStatusForOrder(resp, [row.oranos_order_id, row.oranos_uuid]);
@@ -3150,8 +3196,8 @@ const updateParams = code ? [finalStatus, JSON.stringify(resp), code, row.id] : 
 const updated = await q(updateSql, updateParams);
 if (updated.rows.length) {
 if (isRejected) {
-await q("UPDATE orders SET refunded_at=COALESCE(refunded_at,NOW()) WHERE id=$1", [row.id]);
-await adjustBalance(ctx.from.id, Number(row.price_usd));
+const refunded = await q("UPDATE orders SET refunded_at=NOW() WHERE id=$1 AND refunded_at IS NULL RETURNING id", [row.id]);
+if (refunded.rows.length) await adjustBalance(ctx.from.id, Number(row.price_usd));
 }
 latest = finalStatus;
 const latestRow = (await q("SELECT * FROM orders WHERE id=$1", [row.id])).rows[0] || { ...row, status: finalStatus, delivered_code: code, api_response: resp };
@@ -3191,19 +3237,15 @@ async function pollOneOrder(bot, order) {
   for (const ident of identifiers) {
     let resp = null;
     try {
-      if (order.api_source_id) {
-        const src = await getApiSource(order.api_source_id);
-        if (!src) continue;
-        resp = await checkApiSourceOrder(src, ident.value, ident.byUuid);
-      } else {
-        resp = await checkOrder(ident.value, ident.byUuid);
-      }
+      // API1 فقط لمسار فحص حالة الطلب الحالي.
+      resp = await checkOrder(ident.value, ident.byUuid);
     } catch (e) {
       console.error("Order status check failed:", order.id, e?.message ?? e);
       continue;
     }
 
     if (!resp) continue;
+    console.log("API1 order status response:", order.id, JSON.stringify(sanitizeApiLog(resp)));
     const targeted = extractStatusForOrder(resp, [ident.value]);
     const rawNew = targeted || getBestApiStatus(resp);
     if (!rawNew || ["err","error"].includes(String(rawNew).toLowerCase())) continue;
@@ -3236,11 +3278,11 @@ async function pollOneOrder(bot, order) {
     }
 
     if (isRejected) {
-      await q(
-        "UPDATE orders SET refunded_at=COALESCE(refunded_at,NOW()) WHERE id=$1",
+      const refunded = await q(
+        "UPDATE orders SET refunded_at=NOW() WHERE id=$1 AND refunded_at IS NULL RETURNING id",
         [order.id]
       );
-      await adjustBalance(order.user_id, Number(order.price_usd));
+      if (refunded.rows.length) await adjustBalance(order.user_id, Number(order.price_usd));
     }
 
     const latest = (await q("SELECT * FROM orders WHERE id=$1", [order.id])).rows[0] ||
@@ -3252,7 +3294,7 @@ async function pollOneOrder(bot, order) {
 
   return false;
 }
-async function fastPollOrder(orderId, attempts = 150, delayMs = 2000) {
+async function fastPollOrder(orderId, attempts = 180, delayMs = 2000) {
   if (!_botRef) return;
   for (let i = 0; i < attempts; i++) {
     const row = (await q("SELECT * FROM orders WHERE id=$1", [orderId])).rows[0];
@@ -3269,8 +3311,7 @@ async function fastPollOrder(orderId, attempts = 150, delayMs = 2000) {
 async function retryUnsentOrderResults(bot) {
   if (!bot) return;
   const res = await q(
-    "SELECT * FROM orders WHERE status IN ('accept','reject') AND result_notified_at IS NULL AND created_at > $1 AND result_notify_attempts < 60 ORDER BY created_at ASC LIMIT 100",
-    [new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)]
+    "SELECT * FROM orders WHERE status IN ('accept','reject') AND result_notified_at IS NULL AND result_notify_attempts < 60 ORDER BY created_at ASC LIMIT 200"
   ).catch(() => ({ rows: [] }));
   for (const order of res.rows) {
     const code = order.delivered_code || null;
@@ -3305,63 +3346,15 @@ setInterval(async () => {
 if (polling) return;
 polling = true;
 try {
-const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 const batchSize = Math.max(10, Math.min(100, Number(process.env.ORDER_POLL_BATCH) || 50));
 const res = await q(
-"SELECT * FROM orders WHERE status='pending' AND created_at > $1 ORDER BY created_at ASC LIMIT $2",
-[cutoff, batchSize]
+"SELECT * FROM orders WHERE status='pending' ORDER BY created_at ASC LIMIT $1",
+[batchSize]
 );
 
-// API2 يدعم فحص عدة طلبات دفعة واحدة. هذا يمنع طلباً بطيئاً من تعطيل بقية الطلبات.
-const api2Groups = new Map();
-const normalOrders = [];
-for (const order of res.rows) {
-  if (order.api_source_id && order.oranos_order_id) {
-    const key = String(order.api_source_id);
-    if (!api2Groups.has(key)) api2Groups.set(key, []);
-    api2Groups.get(key).push(order);
-  } else {
-    normalOrders.push(order);
-  }
-}
-
-for (const [sourceId, orders] of api2Groups) {
-  const src = await getApiSource(Number(sourceId)).catch(() => null);
-  if (!src) continue;
-  for (let i = 0; i < orders.length; i += 50) {
-    const chunk = orders.slice(i, i + 50);
-    try {
-      const ids = chunk.map(o => String(o.oranos_order_id)).join(",");
-      const client = getApiSourceClient(src);
-      const resApi = await client.get(`/api/v2/check?orders=${encodeURIComponent(ids)}`);
-      const payload = resApi.data;
-      for (const order of chunk) {
-        const targeted = extractStatusForOrder(payload, [order.oranos_order_id, order.oranos_uuid]);
-        if (!targeted || targeted === "pending") continue;
-        const finalStatus = REJECT_STATUSES.has(targeted) || targeted === "rejected" ? "reject" :
-          ACCEPT_STATUSES.has(targeted) || targeted === "accepted" ? "accept" : null;
-        if (!finalStatus) continue;
-        const code = extractDeliveredCode(payload?.[order.oranos_order_id] ?? payload);
-        const updateSql =
-          "UPDATE orders SET status=$1, api_response=$2, execution_completed_at=NOW(), " +
-          "execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint)" +
-          (code ? ", delivered_code=$3" : "") +
-          " WHERE id=" + (code ? "$4" : "$3") + " AND status='pending' RETURNING id";
-        const params = code ? [finalStatus, JSON.stringify(payload?.[order.oranos_order_id] ?? payload), code, order.id] : [finalStatus, JSON.stringify(payload?.[order.oranos_order_id] ?? payload), order.id];
-        const updated = await q(updateSql, params);
-        if (!updated.rows.length) continue;
-        if (finalStatus === "reject") {
-          await q("UPDATE orders SET refunded_at=COALESCE(refunded_at,NOW()) WHERE id=$1", [order.id]);
-          await adjustBalance(order.user_id, Number(order.price_usd));
-        }
-        const latest = (await q("SELECT * FROM orders WHERE id=$1", [order.id])).rows[0] || { ...order, status: finalStatus, delivered_code: code, api_response: payload?.[order.oranos_order_id] ?? payload };
-        await notifyOrderResult(bot, latest, finalStatus, code, latest.api_response);
-      }
-    } catch (e) {
-      console.error("API2 batch order status check failed:", e?.message ?? e);
-    }
-  }
-}
+// فحص حالة الطلبات الحالية يعتمد على مسار API1. تبقى ميزات API2 موجودة
+// للكتالوج/الإدارة، لكن لا نستخدمها لتحديد حالة الطلبات هنا.
+const normalOrders = res.rows;
 
 // الطلبات الأخرى: فحص متوازٍ حتى لا يوقف طلب بطيء بقية البوت.
 const CHUNK = Math.max(4, Math.min(12, Number(process.env.ORDER_POLL_CONCURRENCY) || 8));
@@ -3720,33 +3713,14 @@ await ensureTables();
 await ensureDefaults();
 await ensureDefaultDepositMethods();
 const defaultApi2Id = await ensureDefaultApi2();
-// نفّذ مزامنة أولية قصيرة قبل تشغيل البوت حتى لا يظهر المتجر فارغاً من المصدر الثاني.
-// إذا كان المصدر متوقفاً مؤقتاً، نكمل تشغيل البوت ونحاول تلقائياً في الخلفية لاحقاً.
-if (defaultApi2Id) {
-  try {
-    const result = await Promise.race([
-      syncApiSource(defaultApi2Id),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("initial sync timeout")), 30000))
-    ]);
-    console.log(`المصدر الثاني initial sync completed: ${result} products`);
-  } catch (e) {
-    console.error("Default Source2 initial sync failed:", e.message);
-  }
-}
-// Build a local snapshot before Telegram starts.
-await warmFirstCatalogSnapshot();
-// لا ننتظر مزامنة الـAPI قبل تشغيل البوت. المزامنة تعمل بالخلفية
-// حتى يستطيع المستخدم فتح البوت فوراً، وتُحفظ النتائج في قاعدة البيانات.
+// لا ننتظر أي مزامنة أو warmup طويل قبل تشغيل Telegram.
+// الكتالوج والمصدر الثاني يتم تحديثهما في الخلفية بعد الإقلاع.
 const bot = new Telegraf(token, { handlerTimeout: 90_000 });
 
-// لا تجعل تحديث تيليجرام التالي ينتظر انتهاء تحديث سابق طويل. كل تحديث يأخذ
-// مساره الخاص، بينما تبقى حماية النقرات وتكرار التحديثات وباقي الأقفال فعالة.
-// هذا يمنع عمليات مثل المزامنة/البحث/تعديل الطلب من حبس /start أو أي رسالة أخرى.
-bot.use((ctx, next) => {
-  void Promise.resolve(next()).catch(err => {
-    console.error("Detached Telegram update failed:", err?.message ?? err);
-  });
-  return;
+// Telegraf middleware must await the next handler so callback/query errors propagate correctly.
+bot.use(async (ctx, next) => {
+try { await next(); }
+catch (err) { console.error("Telegram update failed:", err?.message ?? err); throw err; }
 });
 
 // ── Rate limiter + رد فوري على callback ────────────────────────────────
@@ -3781,35 +3755,7 @@ if (ctx.callbackQuery) ctx.answerCbQuery().catch(() => {});
 return next();
 });
 
-// أوامر /start و /menu يجب ألا تنتظر أي عملية طويلة أخرى. ننفذها بشكل مستقل
-// حتى تعود القائمة فوراً حتى لو كان مزامنة/طلب/عملية إدارية تعمل بالخلفية.
-bot.use((ctx, next) => {
-  const incoming = ctx.message?.text ?? "";
-  const isStart = /^\/start(?:@\w+)?(?:\s|$)/i.test(incoming);
-  const isMenu = /^\/menu(?:@\w+)?(?:\s|$)/i.test(incoming);
-  if (!isStart && !isMenu) return next();
-  void (async () => {
-    try {
-      const txt = incoming;
-      setStep(ctx.from.id, { kind: "idle" });
-      if (isStart) {
-        const startParam = txt.replace(/^\/start(?:@\w+)?/i, "").trim();
-        if (startParam) {
-          const loginCmd = await getAdminLoginCommand();
-          if (startParam === loginCmd) {
-            setStep(ctx.from.id, { kind: "admin:login" });
-            await ctx.reply("🔑 أرسل كلمة المرور:");
-            return;
-          }
-        }
-      }
-      await showMainMenu(ctx, { forceNew: true });
-    } catch (e) {
-      console.error("Fast start/menu handler failed:", e?.message ?? e);
-    }
-  })();
-  return;
-});
+// /start and /menu are handled by Telegraf's command handlers below; no detached middleware is used.
 
 // منع معالجة نفس Telegram update مرتين حتى لو أعاد Telegram الإرسال أو كانت هناك نسخة ثانية من البوت.
 const _processedUpdateIds = new Set();
@@ -4212,7 +4158,9 @@ if (!changed?.ok) {
 invalidateUserCache(Number(changed.order.user_id));
 await ctx.reply(targetStatus === "accept" ? "✅ تم قبول الطلب." : "❌ تم رفض الطلب وإعادة الرصيد.");
 const latest = (await q("SELECT * FROM orders WHERE id=$1", [oid])).rows[0] || changed.order;
-await notifyOrderResult(_botRef, latest, targetStatus, latest.delivered_code, latest.api_response);
+void notifyOrderResult(_botRef, latest, targetStatus, latest.delivered_code, latest.api_response).catch(err => {
+console.error("Admin result notification failed:", err?.message ?? err);
+});
 await showAdminOrderDetails(ctx, oid, `adm:userOrders:${latest.user_id}:1`);
 }
 
@@ -4797,15 +4745,17 @@ await ctx.reply(src.active ? "🔴 تم التعطيل." : "✅ تم التفع�
 bot.action(/^adm:apiSync:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
 const id = Number(ctx.match[1]);
-await ctx.reply("🔄 جاري تحديث المنتجات...");
+await ctx.reply("🔄 بدأ تحديث المنتجات في الخلفية.");
+void (async () => {
 try {
 const count = await syncApiSource(id);
 invalidateCaches();
-await refreshCatalogCache().catch(() => {});
-await ctx.reply(`✅ تم تحديث ${count} منتج.`);
+void refreshCatalogCache().catch(err => console.error("Background catalog refresh failed:", err?.message ?? err));
+console.log(`API source background sync completed: source=${id}, products=${count}`);
 } catch (err) {
-await ctx.reply(`❌ خطأ: ${err.message}`);
+console.error(`API source background sync failed: source=${id}`, err?.message ?? err);
 }
+})();
 });
 bot.action(/^adm:apiMarkup:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
@@ -5580,6 +5530,14 @@ console.log("Polling mode started");
 }
 
 _botRef = bot;
+// الأعمال الطويلة تبدأ بعد إتاحة البوت، حتى لا تحجب /start و /menu.
+void warmFirstCatalogSnapshot().catch(err => console.error("Initial catalog warmup failed:", err?.message ?? err));
+if (defaultApi2Id) {
+  void syncApiSource(defaultApi2Id).then(count => {
+    invalidateCaches();
+    console.log(`Default API2 background sync completed: ${count} products`);
+  }).catch(err => console.error("Default API2 background sync failed:", err?.message ?? err));
+}
 startBackgroundRefresher();
 startUpdateCleanup();
 startOrderPoller(bot);
