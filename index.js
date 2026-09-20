@@ -271,6 +271,13 @@ CREATE TABLE IF NOT EXISTS processed_telegram_updates (
 update_id BIGINT PRIMARY KEY,
 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+CREATE TABLE IF NOT EXISTS user_favorites (
+user_id BIGINT NOT NULL,
+item_type TEXT NOT NULL,
+item_id TEXT NOT NULL,
+created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+PRIMARY KEY (user_id, item_type, item_id)
+);
 `);
 
 // ── Migration: add columns if not exist ──
@@ -336,6 +343,7 @@ const migrations = [
 "CREATE INDEX IF NOT EXISTS idx_deposit_requests_pending_created ON deposit_requests(created_at DESC) WHERE status='pending'",
 "CREATE INDEX IF NOT EXISTS idx_manual_orders_pending_created ON manual_orders(created_at DESC) WHERE status='pending'",
 "CREATE INDEX IF NOT EXISTS idx_processed_updates_created_at ON processed_telegram_updates(created_at)",
+"CREATE INDEX IF NOT EXISTS idx_user_favorites_user_created ON user_favorites(user_id, created_at DESC)",
 ];
 for (const mig of migrations) {
 try { await q(mig); }
@@ -372,6 +380,8 @@ btn_back_label: "⬅️ رجوع",
 btn_home_label: "🏠 الرئيسية",
 btn_prev_label: "⬅️ السابق",
 btn_next_label: "التالي ➡️",
+favorites_enabled: "on",
+main_menu_image_file_id: "",
 };
 
 async function loadAllSettings() {
@@ -1254,12 +1264,12 @@ return "📞 استخدم زر الدعم من القائمة للتواصل م�
 // ============================================================
 //  PRODUCT CACHE — DB first, API refresh in background
 // ============================================================
-const PRODUCTS_TTL = 5 * 60_000;
-const CONTENT_TTL = 5 * 60_000;
+const PRODUCTS_TTL = 30_000;
+const CONTENT_TTL = 30_000;
 const OVERRIDES_TTL = 2 * 60_000;
 const CATEGORY_OVERRIDES_TTL = 2 * 60_000;
 const PAGE_SIZE = 8;
-const CATALOG_REFRESH_MS = Math.max(30_000, Number(process.env.CATALOG_REFRESH_MS) || 60_000);
+const CATALOG_REFRESH_MS = Math.max(30_000, Number(process.env.CATALOG_REFRESH_MS) || 30_000);
 
 let productsCache = null;
 const contentCache = new Map();
@@ -1564,6 +1574,8 @@ const authedAdminIds = new Set();
 
 // ── حالة التنقل: userId → Map<catId, page> ────────────────────────────
 const navState = new Map();
+const favoriteViewState = new Map();
+function saveFavoriteView(uid,state){favoriteViewState.set(uid,state);}
 function saveNavPage(uid, catId, page) {
 if (!navState.has(uid)) navState.set(uid, new Map());
 navState.get(uid).set(catId, page);
@@ -1600,6 +1612,17 @@ async function sendOrEdit(ctx, text, extra) {
 const msg = ctx.callbackQuery?.message;
 const chatId = ctx.chat?.id ?? ctx.from?.id;
 if (msg?.photo) {
+// Telegram cannot convert a media message into a pure text message.
+// When navigation leaves an image page, remove the old photo so it cannot remain visible.
+try {
+await ctx.deleteMessage();
+} catch {}
+try {
+const sent = await ctx.reply(text, extra);
+lastBotMessageIds.set(chatId, sent?.message_id ?? msg.message_id);
+lastBotMessageTouched.set(chatId, Date.now());
+return sent;
+} catch {}
 try {
 await ctx.editMessageCaption(text, extra);
 lastBotMessageIds.set(chatId, msg.message_id);
@@ -1666,24 +1689,20 @@ return p;
 }
 
 // ── لوحة الإدارة مخفية - لا تظهر في القائمة الرئيسية ──────────────
-function mainMenu() {
-return Markup.inlineKeyboard([
-[Markup.button.callback("🛒 المنتجات", "cat:0:1:0"), Markup.button.callback("💰 رصيدي", "balance")],
-[Markup.button.callback("💳 إيداع", "deposit"), Markup.button.callback("📦 طلباتي", "myorders:1")],
-[Markup.button.callback("📞 الدعم", "support"), Markup.button.callback("🔄 تحديث", "home")],
-]);
+async function mainMenu() {
+const rows=[[Markup.button.callback("🛒 المنتجات","cat:0:1:0"),Markup.button.callback("💰 رصيدي","balance")],[Markup.button.callback("💳 إيداع","deposit"),Markup.button.callback("📦 طلباتي","myorders:1")]];
+if(await areFavoritesEnabled())rows.push([Markup.button.callback("⭐ قائمتي","favorites")]);
+rows.push([Markup.button.callback("📞 الدعم","support"),Markup.button.callback("🔄 تحديث","home")]);
+return Markup.inlineKeyboard(rows);
 }
-
-function mainMenuAdmin() {
-return Markup.inlineKeyboard([
-[Markup.button.callback("🛒 المنتجات", "cat:0:1:0"), Markup.button.callback("💰 رصيدي", "balance")],
-[Markup.button.callback("💳 إيداع", "deposit"), Markup.button.callback("📦 طلباتي", "myorders:1")],
-[Markup.button.callback("📞 الدعم", "support"), Markup.button.callback("🔄 تحديث", "home")],
-[Markup.button.callback("👑 الدخول للوحة الإدارة", "admin:menu")],
-]);
+async function mainMenuAdmin() {
+const rows=[[Markup.button.callback("🛒 المنتجات","cat:0:1:0"),Markup.button.callback("💰 رصيدي","balance")],[Markup.button.callback("💳 إيداع","deposit"),Markup.button.callback("📦 طلباتي","myorders:1")]];
+if(await areFavoritesEnabled())rows.push([Markup.button.callback("⭐ قائمتي","favorites")]);
+rows.push([Markup.button.callback("📞 الدعم","support"),Markup.button.callback("🔄 تحديث","home")],[Markup.button.callback("👑 الدخول للوحة الإدارة","admin:menu")]);
+return Markup.inlineKeyboard(rows);
 }
-
 async function showMainMenu(ctx, options = {}) {
+saveFavoriteView(ctx.from.id,{kind:"main"});
 const user = await ensureUser(ctx);
 if (!user) return;
 setStep(user.id, { kind: "idle" });
@@ -1708,14 +1727,10 @@ if (authedAdminIds.has(user.id) && !adminSessionActive && !user.is_admin) {
 authedAdminIds.delete(user.id);
 }
 const isAuthed = adminSessionActive || (authedAdminIds.has(user.id) && !!user.is_admin);
-const keyboard = isAuthed ? mainMenuAdmin() : mainMenu();
-// /start يجب أن يعمل دائماً حتى لو كان المستخدم داخل قسم أو خطوة سابقة.
-// في هذه الحالة نرسل قائمة جديدة بدلاً من محاولة تعديل رسالة قديمة.
-if (options.forceNew) {
-  await ctx.reply(greeting, keyboard);
-  return;
-}
-await sendOrEdit(ctx, greeting, keyboard);
+const keyboard = isAuthed ? await mainMenuAdmin() : await mainMenu();
+const mainImage=(await getSetting("main_menu_image_file_id"))||null;
+if(options.forceNew){if(mainImage)await ctx.replyWithPhoto(mainImage,{caption:greeting,...keyboard}).catch(()=>ctx.reply(greeting,keyboard));else await ctx.reply(greeting,keyboard);return;}
+await sendImageOrEdit(ctx,mainImage,greeting,keyboard);
 }
 
 async function showContactLinks(ctx) {
@@ -1838,43 +1853,47 @@ return moved.filter(Boolean);
 
 
 async function sendImageOrEdit(ctx, imageFileId, text, keyboard) {
-const msg = ctx.callbackQuery?.message;
-const replyMarkup = keyboard?.reply_markup ?? keyboard;
-if (msg?.photo) {
-if (imageFileId) {
-try {
-await ctx.editMessageMedia(
-{ type: "photo", media: imageFileId, caption: text },
-{ reply_markup: replyMarkup }
-);
-return msg;
-} catch (err) {
-const desc = err?.description ?? err?.message ?? "";
-if (/not modified/i.test(desc)) return msg;
-try { await ctx.editMessageCaption(text, keyboard); return msg; } catch (_) {}
+const msg=ctx.callbackQuery?.message;
+const replyMarkup=keyboard?.reply_markup??keyboard;
+if(msg?.photo){
+ if(imageFileId){try{await ctx.editMessageMedia({type:"photo",media:imageFileId,caption:text},{reply_markup:replyMarkup});return msg;}catch(err){const d=err?.description??err?.message??"";if(/not modified/i.test(d))return msg;try{await ctx.editMessageCaption(text,keyboard);return msg;}catch(_){}}}
+ else {try{await ctx.deleteMessage();}catch(_){} try{return await ctx.reply(text,keyboard);}catch(_){} }
 }
-} else {
-try { await ctx.editMessageCaption(text, keyboard); return msg; } catch (_) {}
+if(msg&&!msg.photo&&imageFileId){try{await ctx.editMessageMedia({type:"photo",media:imageFileId,caption:text},{reply_markup:replyMarkup});return msg;}catch(_){} }
+if(msg&&!msg.photo&&!imageFileId)return sendOrEdit(ctx,text,keyboard);
+if(imageFileId){try{return await ctx.replyWithPhoto(imageFileId,{caption:text,...keyboard});}catch(err){console.error("send image failed:",err?.message??err);}}
+return sendOrEdit(ctx,text,keyboard);
 }
-}
-if (msg && !msg.photo && imageFileId) {
-try {
-await ctx.editMessageMedia(
-{ type: "photo", media: imageFileId, caption: text },
-{ reply_markup: replyMarkup }
-);
-return msg;
-} catch (_) {}
-}
-if (msg && !msg.photo && !imageFileId) return sendOrEdit(ctx, text, keyboard);
-if (imageFileId) {
-try { return await ctx.replyWithPhoto(imageFileId, { caption: text, ...keyboard }); }
-catch (err) { console.error("send image failed:", err?.message ?? err); }
-}
-return sendOrEdit(ctx, text, keyboard);
+
+
+function favoriteKey(type,id){return `${String(type)}:${String(id)}`;}
+async function areFavoritesEnabled(){return (await getSetting("favorites_enabled"))!=="off";}
+async function getUserFavoriteSet(userId){const r=await q("SELECT item_type,item_id FROM user_favorites WHERE user_id=$1",[userId]);return new Set(r.rows.map(x=>favoriteKey(x.item_type,x.item_id)));}
+async function isFavorite(userId,type,id){const r=await q("SELECT 1 FROM user_favorites WHERE user_id=$1 AND item_type=$2 AND item_id=$3 LIMIT 1",[userId,type,String(id)]);return !!r.rows.length;}
+async function toggleFavorite(userId,type,id){const itemId=String(id);const removed=await q("DELETE FROM user_favorites WHERE user_id=$1 AND item_type=$2 AND item_id=$3 RETURNING item_id",[userId,type,itemId]);if(removed.rows.length)return false;await q("INSERT INTO user_favorites(user_id,item_type,item_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING",[userId,type,itemId]);return true;}
+function favoriteToggleButton(type,id,selected){return Markup.button.callback(selected?"⭐ إزالة من قائمتي":"⭐ أضف إلى قائمتي",`fav:toggle:${type}:${id}`);}
+async function showFavorites(ctx){
+saveFavoriteView(ctx.from.id,{kind:"favorites"});
+const enabled=await areFavoritesEnabled();
+if(!enabled){await sendOrEdit(ctx,"⭐ قائمتي مخفية حالياً.",Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية","home")]]));return;}
+const favs=(await q("SELECT item_type,item_id FROM user_favorites WHERE user_id=$1 ORDER BY created_at DESC",[ctx.from.id])).rows;
+if(!favs.length){await sendOrEdit(ctx,"⭐ قائمتي فارغة حالياً.\nادخل إلى المنتجات واضغط «⭐ أضف إلى قائمتي».",Markup.inlineKeyboard([[Markup.button.callback("🛒 المنتجات","cat:0:1:0")],[Markup.button.callback("🏠 الرئيسية","home")]]));return;}
+const products=await getCachedProducts();const root=(await loadCatalogCache("api1_content_0"))||{categories:[]};const catMap=new Map((root.categories||[]).map(c=>[String(c.id),c]));const rows=[];
+for(const fav of favs){const id=String(fav.item_id);let label=null,action=null;
+if(fav.item_type==="api1prod"){const x=products.find(p=>p._source!=="api2"&&String(p.id)===id);if(x){label=`🛒 ${x.name}`;action=`prod:${Number(id)}:0`;}}
+else if(fav.item_type==="api1cat"){const x=catMap.get(id)||await findApi1CategoryById(Number(id));if(x){label=`📂 ${x.name}`;action=`cat:${Number(id)}:1:0`;}}
+else if(fav.item_type==="vcat"){const x=(await q("SELECT id,name FROM virtual_categories WHERE id=$1",[Number(id)])).rows[0];if(x){label=`📂 ${x.name}`;action=`vcat:${Number(id)}:1:0`;}}
+else if(fav.item_type==="mcat"){const x=(await q("SELECT id,name FROM manual_categories WHERE id=$1",[Number(id)])).rows[0];if(x){label=`📁 ${x.name}`;action=`mcat:${Number(id)}:1:0`;}}
+else if(fav.item_type==="mprod"){const x=(await q("SELECT id,name FROM manual_products WHERE id=$1",[Number(id)])).rows[0];if(x){label=`🛒 ${x.name}`;action=`mprod:${Number(id)}:0`;}}
+else if(fav.item_type==="api2cat"){const x=(await q("SELECT id,name FROM api_source_categories WHERE id=$1",[Number(id)])).rows[0];if(x){label=`📂 ${x.name}`;action=`api2cat:${Number(id)}:1:0`;}}
+else if(fav.item_type==="api2prod"){const x=(await q("SELECT id,name FROM api_source_products WHERE id=$1",[Number(id)])).rows[0];if(x){label=`🛒 ${x.name}`;action=`api2prod:${Number(id)}:0`;}}
+if(label&&action)rows.push([Markup.button.callback(label.slice(0,60),action),Markup.button.callback("⭐",`fav:toggle:${fav.item_type}:${id}`)]);}
+if(!rows.length){await q("DELETE FROM user_favorites WHERE user_id=$1",[ctx.from.id]).catch(()=>{});await sendOrEdit(ctx,"⭐ قائمتك فارغة حالياً.\nبعض العناصر لم تعد موجودة.",Markup.inlineKeyboard([[Markup.button.callback("🛒 المنتجات","cat:0:1:0")],[Markup.button.callback("🏠 الرئيسية","home")]]));return;}
+rows.push([Markup.button.callback("🏠 الرئيسية","home")]);await sendOrEdit(ctx,"⭐ قائمتي\n\nاختر قسماً أو منتجاً:",Markup.inlineKeyboard(rows));
 }
 
 async function showCategory(ctx, parentId, page, backTo) {
+saveFavoriteView(ctx.from.id,{kind:"cat",parentId:Number(parentId),page:Number(page),backTo:Number(backTo)});
 const [u, _catSessActive] = await Promise.all([getUser(ctx.from.id), isAdminSessionActive(ctx.from.id)]);
 const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || _catSessActive);
 const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
@@ -1892,6 +1911,9 @@ getAllCategoryOverridesCached(),
 const excludedCats = new Set(excludedStr.split(",").map(s => Number(s.trim())).filter(Number.isFinite));
 const catOv = categoryOvMap;
 const currentCategoryImage = catOv.get(Number(parentId))?.imageFileId ?? null;
+const favoritesEnabled=await areFavoritesEnabled();
+const favoriteSet=favoritesEnabled?await getUserFavoriteSet(ctx.from.id):new Set();
+void fetchAndCacheContent(parentId).catch(()=>{});
 
 // لا نفحص كل قسم عبر API عند كل ضغطة. content نفسه محفوظ في قاعدة البيانات،
 // لذلك نعرض الأقسام مباشرة ونترك التحديث للمزامنة الخلفية. هذا يمنع البطء
@@ -2014,7 +2036,7 @@ return Markup.button.callback(`🛒 ${name} • ${usd.toFixed(2)}$ | ${syp.toLoc
 }));
 const api2ProdBtnsSafe = api2ProdBtns.filter(Boolean);
 
-const all = [...catBtns, ...prodBtns, ...manualBtns, ...api2ProdBtnsSafe];
+const all=[...catBtns.map((button,i)=>({button,type:i<vcBtns.length?"vcat":i<vcBtns.length+manualCatBtns.length?"mcat":i<vcBtns.length+manualCatBtns.length+api2CatBtns.length?"api2cat":"api1cat",id:i<vcBtns.length?vcRows[i]?.id:i<vcBtns.length+manualCatBtns.length?manualCats[i-vcBtns.length]?.id:i<vcBtns.length+manualCatBtns.length+api2CatBtns.length?api2Cats.rows[i-vcBtns.length-manualCatBtns.length]?.id:visibleCats[i-vcBtns.length-manualCatBtns.length-api2CatBtns.length]?.id})),...prodBtns.map((button,i)=>({button,type:"api1prod",id:visibleProds[i]?.id})),...manualBtns.map((button,i)=>({button,type:"mprod",id:mpRes.rows[i]?.id})),...api2ProdBtnsSafe.map((button,i)=>({button,type:"api2prod",id:api2Prods.rows.filter(p=>!(p.admin_hidden&&!isAdmin))[i]?.id}))];
 const totalPages = Math.max(1, Math.ceil(all.length / PAGE_SIZE));
 const safe = Math.min(Math.max(1, page), totalPages);
 saveNavPage(ctx.from.id, parentId, safe);
@@ -2028,7 +2050,7 @@ rows.push([Markup.button.callback("% نسبة ربح القسم", `adm:catMarkup
 rows.push([Markup.button.callback("🚚 نقل كل منتجات القسم", `adm:moveCatAll:${parentId}`), Markup.button.callback("📁 نقل القسم", `adm:moveCatToParent:${parentId}`)]);
 rows.push([Markup.button.callback("🗑️ حذف القسم", `adm:catDelete:${parentId}`)]);
 }
-for (const b of slice) rows.push([b]);
+for(const item of slice){if(favoritesEnabled&&item.id!=null)rows.push([item.button,favoriteToggleButton(item.type,item.id,favoriteSet.has(favoriteKey(item.type,item.id)))]);else rows.push([item.button]);}
 
 const nav = [];
 if (safe > 1) nav.push(Markup.button.callback(prevLabel, `cat:${parentId}:${safe - 1}:${backTo}`));
@@ -2036,6 +2058,7 @@ nav.push(Markup.button.callback(`${safe}/${totalPages}`, "noop"));
 if (safe < totalPages) nav.push(Markup.button.callback(nextLabel, `cat:${parentId}:${safe + 1}:${backTo}`));
 if (nav.length > 1) rows.push(nav);
 
+if(favoritesEnabled&&parentId!==0)rows.push([favoriteToggleButton("api1cat",parentId,favoriteSet.has(favoriteKey("api1cat",parentId)))]);
 if (parentId === 0) {
 if (isAdmin) {
 rows.push([Markup.button.callback(backLabel, "admin:menu"), Markup.button.callback(homeLabel, "home")]);
@@ -2057,6 +2080,7 @@ await sendImageOrEdit(ctx, currentCategoryImage, title, Markup.inlineKeyboard(ro
 }
 
 async function showProduct(ctx, productId, backTo) {
+saveFavoriteView(ctx.from.id,{kind:"prod",productId:Number(productId),backTo:Number(backTo)});
 const all = await getCachedProducts();
 const p = all.find(x => x.id === productId);
 const [backLabel, homeLabel] = await Promise.all([getBtnBackLabel(), getBtnHomeLabel()]);
@@ -2083,6 +2107,9 @@ isAdminSessionActive(ctx.from.id),
 ]);
 const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || sessionActive);
 const isSuperAdmin = !!u?.is_super_admin && isAdmin;
+const favoritesEnabled=await areFavoritesEnabled();
+const productFavorite=favoritesEnabled?await isFavorite(ctx.from.id,"api1prod",p.id):false;
+void refreshCatalogCache().catch(()=>{});
 const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
 if (isExcludedProduct(p, kws) && !isAdmin) { await sendOrEdit(ctx, "⚠️ هذا المنتج غير متاح.", Markup.inlineKeyboard([[await resolveBackBtn(backTo)]])); return; }
@@ -2106,6 +2133,7 @@ const text = `🛒 ${displayName}\n${p.category_name ? `القسم: ${p.category
 const backBtnResolved = await resolveBackBtn(backTo);
 const btns = [];
 if (p.available || isAdmin) btns.push([Markup.button.callback("🛒 طلب الآن", `buy:${p.id}:${backTo}`)]);
+if(favoritesEnabled)btns.push([favoriteToggleButton("api1prod",p.id,productFavorite)]);
 if (isAdmin) {
 btns.push([Markup.button.callback("✏️ تعديل السعر", `adm:editPrice:${p.id}`), Markup.button.callback("📋 تعليمات", `adm:editInstr:${p.id}`)]);
 btns.push([Markup.button.callback(productImage ? "🖼️ تغيير صورة المنتج" : "🖼️ إضافة صورة للمنتج", `adm:prodImg:${p.id}`), ...(productImage ? [Markup.button.callback("🗑️ حذف الصورة", `adm:prodImgDel:${p.id}`)] : [])]);
@@ -2118,8 +2146,11 @@ await sendImageOrEdit(ctx, productImage, text, Markup.inlineKeyboard(btns));
 }
 
 async function showVirtualCategory(ctx, vcId, page, backTo) {
+saveFavoriteView(ctx.from.id,{kind:"vcat",vcId:Number(vcId),page:Number(page),backTo:Number(backTo)});
 const [u, _vcSessActive] = await Promise.all([getUser(ctx.from.id), isAdminSessionActive(ctx.from.id)]);
 const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || _vcSessActive);
+const favoritesEnabled=await areFavoritesEnabled();
+const favoriteSet=favoritesEnabled?await getUserFavoriteSet(ctx.from.id):new Set();
 const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
 const [vcRes, allOv, allProducts, kws, markup, rate, socialKws, socialMarkup, backLabel, homeLabel, prevLabel, nextLabel] = await Promise.all([
@@ -2187,12 +2218,13 @@ if (isAdmin) {
 rows.push([Markup.button.callback("✏️ تعديل الاسم", `adm:vcEdit:${vcId}`), Markup.button.callback(vc.active ? "🙈 إخفاء" : "👁 إظهار", `adm:vcToggle:${vcId}`)]);
 rows.push([Markup.button.callback("➕ قسم فرعي", `adm:addVCatSub:${vcId}`), Markup.button.callback("🗑️ حذف القسم", `adm:vcDel:${vcId}`)]);
 }
-for (const b of slice) rows.push([b]);
+for(let i=0;i<slice.length;i++){const item=slice[i],subCount=subVcs.length,prodCount=visible.length;let type,id;if(i<subCount){type="vcat";id=subVcs[i]?.id;}else if(i<subCount+prodCount){type="api1prod";id=visible[i-subCount]?.id;}else{type="mprod";id=mpRes.rows[i-subCount-prodCount]?.id;}rows.push(favoritesEnabled&&id!=null?[item,favoriteToggleButton(type,id,favoriteSet.has(favoriteKey(type,id)))]:[item]);}
 const nav = [];
 if (safe > 1) nav.push(Markup.button.callback(prevLabel, `vcat:${vcId}:${safe - 1}:${backTo}`));
 nav.push(Markup.button.callback(`${safe}/${totalPages}`, "noop"));
 if (safe < totalPages) nav.push(Markup.button.callback(nextLabel, `vcat:${vcId}:${safe + 1}:${backTo}`));
 if (nav.length > 1) rows.push(nav);
+if(favoritesEnabled)rows.push([favoriteToggleButton("vcat",vcId,favoriteSet.has(favoriteKey("vcat",vcId)))]);
 rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
 if (isAdmin) {
   rows.unshift([Markup.button.callback(categoryImage ? "🖼️ تغيير صورة القسم" : "🖼️ إضافة صورة للقسم", `adm:vcImg:${vcId}`)]);
@@ -2205,8 +2237,11 @@ await sendImageOrEdit(ctx, categoryImage, `📂 ${vc.name}`, Markup.inlineKeyboa
 //  MANUAL CATEGORIES
 // ============================================================
 async function showManualCategory(ctx, mcId, page, backTo) {
+saveFavoriteView(ctx.from.id,{kind:"mcat",mcId:Number(mcId),page:Number(page),backTo:Number(backTo)});
 const [u, _sessActive] = await Promise.all([getUser(ctx.from.id), isAdminSessionActive(ctx.from.id)]);
 const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || _sessActive);
+const favoritesEnabled=await areFavoritesEnabled();
+const favoriteSet=favoritesEnabled?await getUserFavoriteSet(ctx.from.id):new Set();
 const isSuperAdmin = !!u?.is_super_admin && isAdmin;
 const userMarkupPercent = u?.custom_markup_percent != null ? Number(u.custom_markup_percent) : null;
 
@@ -2262,12 +2297,13 @@ rows.push([Markup.button.callback("✏️ تعديل الاسم", `adm:mcEdit:${
 rows.push([Markup.button.callback("➕ قسم فرعي", `adm:addMcSub:${mcId}`), Markup.button.callback("🗑️ حذف القسم", `adm:mcDel:${mcId}`)]);
 rows.push([Markup.button.callback("➕ إضافة منتج", `adm:addManualProd:${mcId}`)]);
 }
-for (const b of slice) rows.push([b]);
+for(let i=0;i<slice.length;i++){const item=slice[i],subCount=subMcBtns.length;let type,id;if(i<subCount){type="mcat";id=subMcs[i]?.id;}else{type="mprod";id=mpRes.rows[i-subCount]?.id;}rows.push(favoritesEnabled&&id!=null?[item,favoriteToggleButton(type,id,favoriteSet.has(favoriteKey(type,id)))]:[item]);}
 const nav = [];
 if (safe > 1) nav.push(Markup.button.callback(prevLabel, `mcat:${mcId}:${safe - 1}:${backTo}`));
 nav.push(Markup.button.callback(`${safe}/${totalPages}`, "noop"));
 if (safe < totalPages) nav.push(Markup.button.callback(nextLabel, `mcat:${mcId}:${safe + 1}:${backTo}`));
 if (nav.length > 1) rows.push(nav);
+if(favoritesEnabled)rows.push([favoriteToggleButton("mcat",mcId,favoriteSet.has(favoriteKey("mcat",mcId)))]);
 rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
 if (isAdmin) {
   rows.unshift([Markup.button.callback(categoryImage ? "🖼️ تغيير صورة القسم" : "🖼️ إضافة صورة للقسم", `adm:mcImg:${mcId}`)]);
@@ -2277,6 +2313,7 @@ await sendImageOrEdit(ctx, categoryImage, `📁 ${mc.name}`, Markup.inlineKeyboa
 }
 
 async function showManualProduct(ctx, mId, backTo) {
+saveFavoriteView(ctx.from.id,{kind:"mprod",mId:Number(mId),backTo:Number(backTo)});
 const [backLabel, homeLabel] = await Promise.all([getBtnBackLabel(), getBtnHomeLabel()]);
 let backBtn;
 if (backTo === 0) {
@@ -2292,6 +2329,8 @@ const mRes = await q("SELECT * FROM manual_products WHERE id=$1", [mId]);
 const m = mRes.rows[0];
 const u = await getUser(ctx.from.id);
 const isAdmin = !!u?.is_admin;
+const favoritesEnabled=await areFavoritesEnabled();
+const productFavorite=favoritesEnabled?await isFavorite(ctx.from.id,"mprod",mId):false;
 if (!m || (!m.active && !isAdmin)) { await sendOrEdit(ctx, "⚠️ المنتج غير متاح.", Markup.inlineKeyboard([[backBtn, Markup.button.callback(homeLabel, "home")]])); return; }
 const rate = await getExchangeRate();
 const usd = Number(m.price_usd);
@@ -2316,6 +2355,7 @@ const rows = [];
 if (m.active && canAfford && stockAvailable) rows.push([Markup.button.callback("🛒 طلب الآن", `mbuy:${m.id}`)]);
 else if (m.active && !canAfford) rows.push([Markup.button.callback("💳 شحن رصيد", "deposit")]);
 else if (!stockAvailable) rows.push([Markup.button.callback("❌ نفذ المخزون", "noop")]);
+if(favoritesEnabled)rows.push([favoriteToggleButton("mprod",mId,productFavorite)]);
 rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
 
 await sendImageOrEdit(ctx, m.image_file_id ?? null, text, Markup.inlineKeyboard(rows));
@@ -2325,8 +2365,11 @@ await sendImageOrEdit(ctx, m.image_file_id ?? null, text, Markup.inlineKeyboard(
 //  المصدر الثاني CATEGORY & PRODUCT DISPLAY
 // ============================================================
 async function showApi2Category(ctx, catId, page, backTo) {
+saveFavoriteView(ctx.from.id,{kind:"api2cat",catId:Number(catId),page:Number(page),backTo:Number(backTo)});
 const [u, _sessActive] = await Promise.all([getUser(ctx.from.id), isAdminSessionActive(ctx.from.id)]);
 const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || _sessActive);
+const favoritesEnabled=await areFavoritesEnabled();
+const favoriteSet=favoritesEnabled?await getUserFavoriteSet(ctx.from.id):new Set();
 const isSuperAdmin = !!u?.is_super_admin && isAdmin;
 
 const [catRes, rate, backLabel, homeLabel, prevLabel, nextLabel] = await Promise.all([
@@ -2356,14 +2399,14 @@ q("SELECT custom_markup_percent FROM category_overrides WHERE category_id=$1", [
 const categoryMarkup = catOvRes.rows[0]?.custom_markup_percent != null ? Number(catOvRes.rows[0].custom_markup_percent) : null;
 const userMarkupPercent = user?.custom_markup_percent != null ? Number(user.custom_markup_percent) : null;
 
-const prodBtns = (await Promise.all(prodRes.rows.map(async p => {
-if (p.admin_hidden && !isAdmin) return null;
+const visibleProdRows=prodRes.rows.filter(p=>!(p.admin_hidden&&!isAdmin));
+const prodBtns=await Promise.all(visibleProdRows.map(async p=>{
 const override = null;
 const usd = await effectivePriceUsd({ ...p, _source: "api2", _source_id: p.api_source_id, id: `ext_${p.api_source_id}_${p.external_id}` }, override, Number(src?.markup_percent ?? markup), socialMarkup, socialKws, categoryMarkup, userMarkupPercent);
 const syp = Math.round(usd * rate);
 const name = p.custom_name ?? p.name;
 return Markup.button.callback(`🛒 ${name} • ${usd.toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`.slice(0, 60), `api2prod:${p.id}:${catId}`);
-}))).filter(Boolean);
+}));
 
 const allBtns = [...subBtns, ...prodBtns];
 const totalPages = Math.max(1, Math.ceil(allBtns.length / PAGE_SIZE));
@@ -2371,7 +2414,7 @@ const safe = Math.min(Math.max(1, page), totalPages);
 const slice = allBtns.slice((safe - 1) * PAGE_SIZE, safe * PAGE_SIZE);
 
 const rows = [];
-for (const b of slice) rows.push([b]);
+for(let i=0;i<slice.length;i++){const item=slice[i],subCount=subBtns.length,type=i<subCount?"api2cat":"api2prod",id=i<subCount?subRes.rows[i]?.id:visibleProdRows[i-subCount]?.id;rows.push(favoritesEnabled&&id!=null?[item,favoriteToggleButton(type,id,favoriteSet.has(favoriteKey(type,id)))]:[item]);}
 const nav = [];
 if (safe > 1) nav.push(Markup.button.callback(prevLabel, `api2cat:${catId}:${safe - 1}:${backTo}`));
 nav.push(Markup.button.callback(`${safe}/${totalPages}`, "noop"));
@@ -2381,6 +2424,7 @@ if (isAdmin) {
 rows.push([Markup.button.callback("📁 نقل القسم إلى قسم", `adm:moveApi2CatToParent:${cat.id}`)]);
 rows.push([Markup.button.callback("🗑️ حذف القسم", `adm:deleteApi2Cat:${cat.id}`)]);
 }
+if(favoritesEnabled)rows.push([favoriteToggleButton("api2cat",catId,favoriteSet.has(favoriteKey("api2cat",catId)))]);
 rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
 if (isAdmin) {
   rows.unshift([Markup.button.callback(categoryImage ? "🖼️ تغيير صورة القسم" : "🖼️ إضافة صورة للقسم", `adm:api2CatImg:${catId}`)]);
@@ -2390,8 +2434,11 @@ await sendImageOrEdit(ctx, categoryImage, `📂 ${cat.name}`, Markup.inlineKeybo
 }
 
 async function showApi2Product(ctx, prodId, backTo) {
+saveFavoriteView(ctx.from.id,{kind:"api2prod",prodId:Number(prodId),backTo:Number(backTo)});
 const [backLabel, homeLabel, u, sessionActive] = await Promise.all([getBtnBackLabel(), getBtnHomeLabel(), getUser(ctx.from.id), isAdminSessionActive(ctx.from.id)]);
 const isAdmin = !!u?.is_admin && (authedAdminIds.has(ctx.from.id) || sessionActive);
+const favoritesEnabled=await areFavoritesEnabled();
+const productFavorite=favoritesEnabled?await isFavorite(ctx.from.id,"api2prod",prodId):false;
 const isSuperAdmin = !!u?.is_super_admin && isAdmin;
 let backBtn;
 if (backTo === 0) backBtn = Markup.button.callback(backLabel, "cat:0:1:0");
@@ -2433,6 +2480,7 @@ rows.push([Markup.button.callback("📝 تعديل اسم المنتج", `adm:ap
 rows.push([Markup.button.callback(productImage ? "🖼️ تغيير صورة المنتج" : "🖼️ إضافة صورة للمنتج", `adm:api2ProdImg:${p.id}`), ...(productImage ? [Markup.button.callback("🗑️ حذف الصورة", `adm:api2ProdImgDel:${p.id}`)] : [])]);
 if (isSuperAdmin || !!u?.can_delete_products) rows.push([Markup.button.callback("🗑️ حذف المنتج", `adm:deleteApi2Prod:${p.id}`)]);
 }
+if(favoritesEnabled)rows.push([favoriteToggleButton("api2prod",prodId,productFavorite)]);
 rows.push([backBtn, Markup.button.callback(homeLabel, "home")]);
 await sendImageOrEdit(ctx, productImage, text, Markup.inlineKeyboard(rows));
 }
@@ -2472,23 +2520,24 @@ function normalizeProviderStatus(value) {
   if (value == null) return "";
   const raw = String(value).trim().toLowerCase();
   if (!raw) return "";
-  const compact = raw.replace(/[\s_-]+/g, "");
+  const cleaned = raw.replace(/[✓✔✅❌⚠️]/g, "").trim();
+  const compact = cleaned.replace(/[\s_-]+/g, "");
 
-  const acceptedValues = new Set(["1","true","ok","success","successful","accept","accepted","done","complete","completed","delivered","finished","fulfilled","approved","تم","مقبول","مكتمل","مكتملة","منفذ","منفذة"]);
-  const rejectedValues = new Set(["0","false","reject","rejected","error","refused","cancel","cancelled","canceled","fail","failed","denied","declined","مرفوض","مرفوضة","فشل","ملغى","ملغاة"]);
+  const acceptedValues = new Set(["1","true","ok","success","successful","accept","accepted","done","complete","completed","delivered","finished","fulfilled","approved","تم","مقبول","مقبولة","مكتمل","مكتملة","منفذ","منفذة","ناجح","ناجحة","تم الشحن","تم التنفيذ","تم التنفيذ بنجاح"]);
+  const rejectedValues = new Set(["0","false","reject","rejected","error","refused","cancel","cancelled","canceled","fail","failed","denied","declined","مرفوض","مرفوضة","فشل","ملغى","ملغاة","ملغى الطلب","تم الرفض"]);
   if (acceptedValues.has(raw) || acceptedValues.has(compact)) return "accepted";
   if (rejectedValues.has(raw) || rejectedValues.has(compact)) return "rejected";
 
   if (["pending","wait","waiting","processing","inprogress","queued","queue","new","created","قيدالتنفيذ","انتظار","معلق","معلقة"].includes(compact)) return "pending";
 
   // دعم النصوص الوصفية التي ترجعها بعض المصادر بدلاً من قيمة ثابتة.
-  if (/(completed?|successfully?|delivered|fulfilled|approved|accepted|finished|done|complete[_\s-]*successfully|success[_\s-]*completed|order[_\s-]*completed)/i.test(raw) ||
-      /(تم\s*(تنفيذ|اكتمال|الطلب)|اكتمل|مكتمل|منفذ|تم\s*قبول|تم\s*التنفيذ|نجح\s*الطلب)/i.test(raw)) return "accepted";
+  if (/(completed?|successfully?|delivered|fulfilled|approved|accepted|finished|done|complete[_\s-]*successfully|success[_\s-]*completed|order[_\s-]*completed)/i.test(cleaned) ||
+      /(تم\s*(تنفيذ|اكتمال|الطلب)|اكتمل|مكتمل|منفذ|مقبول|تم\s*قبول|تم\s*التنفيذ|نجح\s*الطلب|تم\s*الشحن|الشحن\s*بنجاح)/i.test(cleaned)) return "accepted";
 
-  if (/(rejected?|declined|denied|failed?|refused|cancelled?|canceled|error)/i.test(raw) ||
-      /(تم\s*رفض|مرفوض|فشل|ملغى|ملغاة)/i.test(raw)) return "rejected";
+  if (/(rejected?|declined|denied|failed?|refused|cancelled?|canceled|error)/i.test(cleaned) ||
+      /(تم\s*رفض|مرفوض|فشل|ملغى|ملغاة)/i.test(cleaned)) return "rejected";
 
-  if (/(pending|processing|waiting|queued|in\s*progress|قيد\s*التنفيذ|انتظار|معلق)/i.test(raw)) return "pending";
+  if (/(pending|processing|waiting|queued|in\s*progress|قيد\s*التنفيذ|انتظار|معلق)/i.test(cleaned)) return "pending";
 
   return raw;
 }
@@ -2515,7 +2564,6 @@ function extractApiStatuses(resp) {
       // terminal/pending state, so ordinary response text cannot trigger it.
       const n = normalizeProviderStatus(value);
       const looksLikeStatusKey = /status|state|result|order_status|orderstate|completed|accepted|approved/i.test(key);
-      if (/^(success|successful|ok|message|msg|note|notes|detail|details)$/i.test(key) && ["1","true","ok","success","successful"].includes(String(value).trim().toLowerCase())) return;
       const knownStatus = ACCEPT_STATUSES.has(n) || REJECT_STATUSES.has(n) || n === "pending" || n === "accepted" || n === "rejected";
       if (looksLikeStatusKey || knownStatus) add(value);
       return;
@@ -2674,7 +2722,7 @@ function statusLabel(s) {
 const n = (s ?? "").toString().toLowerCase().trim();
 if (ACCEPT_STATUSES.has(n) || n === "1" || n === "true") return "✅ مقبول";
 if (REJECT_STATUSES.has(n) || n === "0" || n === "false") return "❌ مرفوض";
-return "⏳ انتظار";
+return "⏳ قيد التنفيذ";
 }
 
 function formatPriceLabel(qty, unitPriceUsd) {
@@ -2730,7 +2778,7 @@ async function askNextParam(ctx, p, unitPriceUsd, qty, paramKeys, collected, idx
 if (idx >= paramKeys.length) { await showOrderConfirmation(ctx, p, unitPriceUsd, qty, collected, backTo); return; }
 setStep(ctx.from.id, { kind: "order:params", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, qty, paramKeys, collected, idx, backTo });
 const key = paramKeys[idx];
-await ctx.reply(`📋 أدخل قيمة الحقل: ${key}`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]]));
+await ctx.reply(`📋 أدخل قيمة الحقل: ${formatOrderParamLabel(key)}`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", "ord:cancel")]]));
 }
 
 async function showOrderConfirmation(ctx, p, unitPriceUsd, qty, collected, backTo) {
@@ -2739,7 +2787,7 @@ const rate = await getExchangeRate();
 const totalSyp = Math.round(totalUsd * rate);
 const u = await getUser(ctx.from.id);
 const balance = u ? Number(u.balance) : 0;
-const paramsLines = Object.entries(collected).map(([k, v]) => `• ${k}: ${v}`).join("\n");
+const paramsLines = Object.entries(collected).map(([k, v]) => `${formatOrderParamLabel(k)}: ${v}`).join("\n");
 setStep(ctx.from.id, { kind: "order:params", productId: p.id, productName: p.name, priceUsd: unitPriceUsd, qty, paramKeys: Object.keys(collected), collected, idx: Object.keys(collected).length, backTo });
 const lowBalance = balance < totalUsd;
 const totalUsdStr = totalUsd < 0.005 ? totalUsd.toFixed(4) : totalUsd.toFixed(2);
@@ -2875,10 +2923,12 @@ Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]
 processOrderInBackground(order, p, params, totalUsd, totalSyp).catch(async err => {
 console.error("Background order execution failed:", err);
 try {
-const updated = await q("UPDATE orders SET status='reject', api_response=$1 WHERE id=$2 AND status='pending' RETURNING id", [JSON.stringify({ status: "ERR", message: err?.message ?? "خطأ غير معروف" }), order.id]);
+const updated = await q("UPDATE orders SET status='reject', api_response=$1, execution_completed_at=NOW(), execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint) WHERE id=$2 AND status='pending' RETURNING id", [JSON.stringify({ status: "ERR", message: err?.message ?? "خطأ غير معروف" }), order.id]);
 if (updated.rows.length) {
-await adjustBalance(order.user_id, totalUsd).catch(() => {});
-await notifyOrderResult(_botRef, { ...order, price_usd: totalUsd, status: "reject" }, "reject", err?.message ?? "خطأ غير معروف");
+const refunded = await q("UPDATE orders SET refunded_at=NOW() WHERE id=$1 AND refunded_at IS NULL RETURNING id", [order.id]);
+if (refunded.rows.length) await adjustBalance(order.user_id, totalUsd).catch(() => {});
+const latest = (await q("SELECT * FROM orders WHERE id=$1", [order.id])).rows[0] || { ...order, price_usd: totalUsd, status: "reject" };
+await notifyOrderResult(_botRef, latest, "reject", err?.message ?? "خطأ غير معروف");
 }
 } catch {}
 });
@@ -3066,41 +3116,143 @@ function formatExecutionDuration(ms) {
   return `${minutes} دقيقة و${seconds} ثانية`;
 }
 
+function formatOrderParamLabel(key) {
+  const raw = String(key ?? "").trim();
+  if (!raw) return "القيمة";
+  const k = raw.toLowerCase().replace(/[\s-]+/g, "_").replace(/__+/g, "_");
+  const compact = k.replace(/_/g, "");
+  const labels = {
+    id: "الأيدي",
+    ids: "الأيدي",
+    player_id: "الأيدي",
+    playerid: "الأيدي",
+    player: "الأيدي",
+    game_id: "الأيدي",
+    gameid: "الأيدي",
+    game: "الأيدي",
+    user_id: "الأيدي",
+    userid: "الأيدي",
+    uid: "الأيدي",
+    account_id: "الأيدي",
+    accountid: "الأيدي",
+    account: "الحساب",
+    username: "اسم المستخدم",
+    user_name: "اسم المستخدم",
+    user: "اسم المستخدم",
+    email: "الإيميل",
+    mail: "الإيميل",
+    phone: "الرقم",
+    mobile: "الرقم",
+    mobile_number: "الرقم",
+    phone_number: "الرقم",
+    number: "الرقم",
+    msisdn: "الرقم",
+    link: "الرابط",
+    url: "الرابط",
+    website: "الرابط",
+    site: "الرابط",
+    server: "السيرفر",
+    server_id: "السيرفر",
+    serverid: "السيرفر",
+    zone_id: "المنطقة",
+    zoneid: "المنطقة",
+    region: "المنطقة",
+    country: "الدولة",
+    password: "كلمة المرور",
+    pass: "كلمة المرور",
+    code: "الكود",
+    otp: "رمز التحقق",
+    token: "الرمز",
+    username_password: "اسم المستخدم وكلمة المرور",
+    quantity: "الكمية",
+    qty: "الكمية"
+  };
+  if (labels[k]) return labels[k];
+  if (labels[compact]) return labels[compact];
+
+  // أسماء شائعة إضافية حتى لا تظهر مفاتيح إنجليزية للمستخدم.
+  if (/^(player|game|user|account).*id$/.test(compact)) return "الأيدي";
+  if (/(^|_)(phone|mobile|msisdn|number)(_|$)/.test(k)) return "الرقم";
+  if (/(^|_)(url|link|website|site)(_|$)/.test(k)) return "الرابط";
+  if (/(^|_)(email|mail)(_|$)/.test(k)) return "الإيميل";
+  if (/(^|_)(server)(_|$)/.test(k)) return "السيرفر";
+  if (/(^|_)(zone|region)(_|$)/.test(k)) return "المنطقة";
+  if (/(^|_)(password|pass)(_|$)/.test(k)) return "كلمة المرور";
+  if (/(^|_)(code|otp)(_|$)/.test(k)) return k.includes("otp") ? "رمز التحقق" : "الكود";
+
+  // إذا كان اسم الحقل عربيًا أصلاً، اتركه كما هو. وإلا استخدم اسمًا عربيًا عامًا
+  // بدل عرض مفتاح API الإنجليزي للمستخدم.
+  if (/^[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\s_\-]+$/.test(raw)) return raw;
+  return "البيانات";
+}
+
 function formatOrderInputLines(order) {
   const params = order?.params && typeof order.params === "object" ? order.params : {};
   const entries = Object.entries(params).filter(([k, v]) => k !== "qty" && v != null && String(v).trim() !== "");
   if (!entries.length) return [];
-  return entries.map(([k, v]) => `📌 ${String(k)}: ${String(v)}`);
+  // بدون 📌: اسم الحقل العربي ثم القيمة التي أدخلها المستخدم.
+  return entries.map(([k, v]) => `${formatOrderParamLabel(k)}: ${String(v)}`);
 }
 
 function providerReplyText(resp, deliveredCode = null) {
-  const preferred = [];
-  const add = v => {
-    if (v == null) return;
-    if (typeof v === "string" || typeof v === "number") {
-      const t = String(v).trim();
-      if (t && !/^success$/i.test(t)) preferred.push(t);
-      return;
+  // نريد نص الموقع نفسه بدون عناوين مثل "الرد:" أو "رد الموقع:".
+  const preferredKeys = [
+    "reply_api", "replay_api", "response", "site_response",
+    "message", "note", "notes", "text", "reply", "body", "content"
+  ];
+  const ignoredKeys = new Set([
+    "status", "state", "order_status", "orderstate", "order_id", "orderid",
+    "order_number", "ordernumber", "provider_order_id", "uuid", "success",
+    "duration", "execution_duration", "execution_time", "processing_time",
+    "elapsed_time", "time_taken", "duration_seconds", "code", "error_code",
+    "errorcode", "token", "api_key", "authorization", "secret", "password"
+  ]);
+  const cleanScalar = value => {
+    if (value == null) return null;
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      const text = String(value).trim();
+      if (!text) return null;
+      if (/^(success|successful|accepted|accept|completed|complete|done|true|1)$/i.test(text)) return null;
+      return text;
     }
-    if (Array.isArray(v)) v.forEach(add);
-    else if (typeof v === "object") {
-      for (const [k, val] of Object.entries(v)) {
-        if (/^(status|state|success|order_id|orderId|order_number|orderNumber|uuid|order_uuid|orderUuid)$/i.test(k)) continue;
-        if (typeof val === "object") add(val);
-        else if (val != null && String(val).trim()) preferred.push(`${k}: ${String(val).trim()}`);
+    return null;
+  };
+  const preferred = [];
+  const collectPreferred = node => {
+    if (node == null) return;
+    if (Array.isArray(node)) { for (const item of node) collectPreferred(item); return; }
+    if (typeof node !== "object") return;
+    for (const [key, value] of Object.entries(node)) {
+      const lower = String(key).toLowerCase();
+      if (preferredKeys.includes(lower)) {
+        const scalar = cleanScalar(value);
+        if (scalar) preferred.push(scalar);
+        else if (Array.isArray(value)) for (const item of value) { const x = cleanScalar(item); if (x) preferred.push(x); }
       }
+      if (value && typeof value === "object") collectPreferred(value);
     }
   };
-  if (deliveredCode) add(deliveredCode);
-  const roots = [resp?.replay_api, resp?.response, resp?.result, resp?.note, resp?.notes, resp?.message];
-  roots.forEach(add);
-  if (!preferred.length) {
-    const clean = formatApiResponseClean(resp || "");
-    if (clean) return clean.replace(/^📊 الحالة:.*$/gm, "").trim();
-  }
-  return [...new Set(preferred)].join("\n").trim() || null;
+  collectPreferred(resp);
+  if (preferred.length) return [...new Set(preferred)].join("\n").trim();
+  const direct = cleanScalar(resp);
+  if (direct) return direct;
+  const fallback = [];
+  const collectFallback = node => {
+    if (node == null) return;
+    if (Array.isArray(node)) { for (const item of node) collectFallback(item); return; }
+    if (typeof node !== "object") return;
+    for (const [key, value] of Object.entries(node)) {
+      const lower = String(key).toLowerCase();
+      if (ignoredKeys.has(lower)) continue;
+      const scalar = cleanScalar(value);
+      if (scalar && !fallback.includes(scalar)) fallback.push(scalar);
+      else if (value && typeof value === "object") collectFallback(value);
+    }
+  };
+  collectFallback(resp);
+  if (deliveredCode && !fallback.includes(String(deliveredCode).trim())) fallback.unshift(String(deliveredCode).trim());
+  return fallback.join("\n").trim() || null;
 }
-
 
 function extractProviderDuration(resp) {
 const keys = new Set(["duration","execution_duration","execution_time","processing_time","elapsed_time","time_taken","duration_seconds"]);
@@ -3124,23 +3276,24 @@ function buildOrderResultMessage(order, status, deliveredCode = null, resp = nul
 const priceUsd = Number(order.price_usd);
 const response = resp ?? order.api_response;
 const inputLines = formatOrderInputLines(order);
-const providerDuration = extractProviderDuration(response);
+const actualDuration = formatExecutionDuration(order?.execution_duration_ms);
+const providerDuration = extractProviderDuration(response) || extractProviderDuration(order?.api_response) || actualDuration;
 const providerText = providerReplyText(response, deliveredCode);
 return getExchangeRate().then(rate => {
 const priceSyp = Math.round(priceUsd * rate);
 const lines = [];
 if (status === "accept") {
-lines.push("✅ تم تنفيذ طلبك بنجاح");
-if (providerDuration) lines.push(`⏱️ مدة التنفيذ: ${providerDuration}`);
+lines.push("تم تنفيذ طلبك بنجاح✅");
+if (providerDuration) lines.push(`تم تنفيذ طلبك خلال ${providerDuration}`);
 lines.push(`🛒 ${order.product_name} × ${order.qty}`);
 lines.push(`💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`);
 if (inputLines.length) lines.push(...inputLines);
 if (providerText) lines.push(providerText);
 } else {
-lines.push("❌ تم رفض طلبك");
+lines.push("تم رفض طلبك❌");
 if (providerText) lines.push(providerText);
 }
-return lines.filter(Boolean).join("\\n");
+return lines.filter(Boolean).join("\n");
 });
 }
 
@@ -3300,7 +3453,7 @@ async function fastPollOrder(orderId, attempts = 180, delayMs = 2000) {
     const row = (await q("SELECT * FROM orders WHERE id=$1", [orderId])).rows[0];
     if (!row || row.status !== "pending") return;
 
-    // افحص فوراً ثم كل ثانيتين. إذا تأخر المصدر دقائق، يستمر الفحص حتى 5 دقائق.
+    // افحص فوراً ثم كل ثانيتين. إذا تأخر المصدر دقائق، يستمر الفحص حتى نحو 6 دقائق.
     const done = await pollOneOrder(_botRef, row).catch(() => false);
     if (done) return;
     if (i < attempts - 1) await new Promise(r => setTimeout(r, delayMs));
@@ -3311,7 +3464,7 @@ async function fastPollOrder(orderId, attempts = 180, delayMs = 2000) {
 async function retryUnsentOrderResults(bot) {
   if (!bot) return;
   const res = await q(
-    "SELECT * FROM orders WHERE status IN ('accept','reject') AND result_notified_at IS NULL AND result_notify_attempts < 60 ORDER BY created_at ASC LIMIT 200"
+    "SELECT * FROM orders WHERE status IN ('accept','reject') AND result_notified_at IS NULL ORDER BY created_at ASC LIMIT 200"
   ).catch(() => ({ rows: [] }));
   for (const order of res.rows) {
     const code = order.delivered_code || null;
@@ -3465,6 +3618,11 @@ const rows = [
 ];
 const depNotif = (await getSetting("deposit_admin_notifications")) === "on";
 rows.push([Markup.button.callback("🔐 تغيير أمر الدخول السري", "adm:changeLoginCmd")]);
+const favEnabled=(await getSetting("favorites_enabled"))!=="off";
+const mainImage=(await getSetting("main_menu_image_file_id"))||null;
+rows.push([Markup.button.callback(favEnabled?"⭐ قائمتي للجميع: مفعلة":"🚫 قائمتي للجميع: مخفية","adm:favoritesToggle")]);
+rows.push([Markup.button.callback(mainImage?"🖼️ تغيير صورة الواجهة":"🖼️ إضافة صورة للواجهة","adm:mainImg")]);
+if(mainImage)rows.push([Markup.button.callback("🗑️ حذف صورة الواجهة","adm:mainImgDel")]);
 rows.push([Markup.button.callback(depNotif ? "🔔 إشعارات الإيداع: مفعلة" : "🔕 إشعارات الإيداع: متوقفة", "adm:depositNotifToggle")]);
 rows.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
 await sendOrEdit(ctx, `⚙️ الإعدادات\n\nالربح العام: ${m}%\nربح السوشل: ${sm}%\nسعر الصرف: ${r} ل.س/$\nأمر الدخول: ${loginCmd}\nإشعارات طلبات الإيداع: ${depNotif ? "مفعلة" : "متوقفة"}`,
@@ -3824,6 +3982,8 @@ await ctx.reply("⚠️ تعذر تحميل هذا القسم حالياً.\nا�
 
 // ── Callback Queries ──────────────────────────────────────────────────
 bot.action("home", async ctx => { setStep(ctx.from.id, { kind: "idle" }); await showMainMenu(ctx); });
+bot.action("favorites",async ctx=>{await ensureUser(ctx);await showFavorites(ctx);});
+bot.action(/^fav:toggle:(api1cat|api1prod|vcat|mcat|mprod|api2cat|api2prod):(.+)$/,async ctx=>{await ensureUser(ctx);if(!(await areFavoritesEnabled())){await ctx.answerCbQuery("⭐ هذه الميزة مخفية حالياً.").catch(()=>{});return;}const type=ctx.match[1],id=ctx.match[2];const added=await toggleFavorite(ctx.from.id,type,id);await ctx.answerCbQuery(added?"⭐ تمت الإضافة إلى قائمتك":"⭐ تمت الإزالة من قائمتك").catch(()=>{});const st=favoriteViewState.get(ctx.from.id);try{if(!st||st.kind==="favorites")return showFavorites(ctx);if(st.kind==="cat")return showCategory(ctx,st.parentId,st.page,st.backTo);if(st.kind==="prod")return showProduct(ctx,st.productId,st.backTo);if(st.kind==="vcat")return showVirtualCategory(ctx,st.vcId,st.page,st.backTo);if(st.kind==="mcat")return showManualCategory(ctx,st.mcId,st.page,st.backTo);if(st.kind==="mprod")return showManualProduct(ctx,st.mId,st.backTo);if(st.kind==="api2cat")return showApi2Category(ctx,st.catId,st.page,st.backTo);if(st.kind==="api2prod")return showApi2Product(ctx,st.prodId,st.backTo);return showMainMenu(ctx);}catch(e){console.error("Favorite navigation refresh failed:",e?.message??e);}});
 bot.action("balance", async ctx => {
 const u = await ensureUser(ctx); if (!u) return;
 const rate = await getExchangeRate();
@@ -3849,7 +4009,7 @@ setStep(ctx.from.id, { kind: "idle" });
 const user = await getUser(ctx.from.id);
 const rate = await getExchangeRate();
 const greeting = `أهلاً فيك في متجر المروان 🌟\nالاسم: ${user?.first_name ?? "—"}${user?.username ? ` (@${user.username})` : ""}\nالرقم: ${ctx.from.id}\nالرصيد: ${formatBalance(Number(user?.balance ?? 0), rate)}\n\nتم تسجيل الخروج من لوحة الإدارة 👋\nاختر من القائمة 👇`;
-await sendOrEdit(ctx, greeting, mainMenu());
+await sendOrEdit(ctx, greeting, await mainMenu());
 });
 
 // ── Deposit flow ──────────────────────────────────────────────────────
@@ -4517,6 +4677,11 @@ if (!(await requireAdmin(ctx))) return;
 await q("UPDATE virtual_categories SET image_file_id=NULL, updated_at=NOW() WHERE id=$1", [Number(ctx.match[1])]);
 invalidateCaches(); await ctx.reply("✅ تم حذف صورة القسم.");
 });
+
+// ── Admin: global favorites + main interface image ───────────────────
+bot.action("adm:favoritesToggle",async ctx=>{if(!(await requireAdmin(ctx)))return;const enabled=(await getSetting("favorites_enabled"))!=="off";await setSetting("favorites_enabled",enabled?"off":"on");await ctx.answerCbQuery(enabled?"تم إخفاء قائمتي عن المستخدمين.":"تم إظهار قائمتي للمستخدمين.").catch(()=>{});await showSettingsMenu(ctx);});
+bot.action("adm:mainImg",async ctx=>{if(!(await requireAdmin(ctx)))return;setStep(ctx.from.id,{kind:"admin:setMainMenuImage"});await ctx.reply("🖼️ أرسل صورة الواجهة الرئيسية الآن:",Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء","adm:settings")]]));});
+bot.action("adm:mainImgDel",async ctx=>{if(!(await requireAdmin(ctx)))return;await setSetting("main_menu_image_file_id","");await ctx.answerCbQuery("تم حذف صورة الواجهة.").catch(()=>{});await showSettingsMenu(ctx);});
 
 // ── Admin: settings ───────────────────────────────────────────────────
 bot.action("adm:settings", async ctx => { await showSettingsMenu(ctx); });
@@ -5437,6 +5602,7 @@ bot.on("photo", async ctx => {
 const step = getStep(ctx.from.id);
 const photo = ctx.message?.photo?.at(-1);
 if (!photo) return;
+if(step.kind==="admin:setMainMenuImage"){await setSetting("main_menu_image_file_id",photo.file_id);setStep(ctx.from.id,{kind:"idle"});await ctx.reply("✅ تم حفظ صورة الواجهة الرئيسية.");return;}
 if (step.kind === "admin:setProductImage") {
 await q("INSERT INTO product_overrides(product_id,image_file_id) VALUES($1,$2) ON CONFLICT(product_id) DO UPDATE SET image_file_id=$2, updated_at=NOW()", [step.productId, photo.file_id]);
 invalidateCaches(); setStep(ctx.from.id, { kind: "idle" });
