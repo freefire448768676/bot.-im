@@ -1,5 +1,5 @@
 // ============================================================
-//  متجر المروان — بوت تيليجرام v4.8 (إصلاح فتح الأقسام + إصلاح حالة الطلبات + منع سقوط أوامر المصدر الثاني)
+//  متجر المروان — بوت تيليجرام v4.9 (+ تفاصيل الطلب للمستخدم + حذف ناعم للطلبات من الإدارة + تحسين editMessageCaption)
 //  إضافات: API ثاني، منتجات يدوية متكاملة، أقسام يدوية، ردود متعددة
 // ============================================================
 "use strict";
@@ -344,6 +344,8 @@ const migrations = [
 "CREATE INDEX IF NOT EXISTS idx_manual_orders_pending_created ON manual_orders(created_at DESC) WHERE status='pending'",
 "CREATE INDEX IF NOT EXISTS idx_processed_updates_created_at ON processed_telegram_updates(created_at)",
 "CREATE INDEX IF NOT EXISTS idx_user_favorites_user_created ON user_favorites(user_id, created_at DESC)",
+"ALTER TABLE orders ADD COLUMN IF NOT EXISTS admin_hidden BOOLEAN NOT NULL DEFAULT false",
+"CREATE INDEX IF NOT EXISTS idx_orders_user_created_visible ON orders(user_id, created_at DESC) WHERE admin_hidden=false",
 ];
 for (const mig of migrations) {
 try { await q(mig); }
@@ -1612,8 +1614,19 @@ async function sendOrEdit(ctx, text, extra) {
 const msg = ctx.callbackQuery?.message;
 const chatId = ctx.chat?.id ?? ctx.from?.id;
 if (msg?.photo) {
+// حافظ على نفس رسالة Telegram: عندما تكون الرسالة الحالية صورة نعدّل الـcaption
+// والأزرار فقط، ولا نرسل رسالة جديدة إلا إذا تعذّر التعديل فعلياً.
+try {
+await ctx.editMessageCaption(text, extra);
+lastBotMessageIds.set(chatId, msg.message_id);
+lastBotMessageTouched.set(chatId, Date.now());
+return msg;
+} catch (err) {
+const desc0 = err?.description ?? err?.message ?? "";
+if (/not modified/i.test(desc0)) return msg;
+}
 // Telegram cannot convert a media message into a pure text message.
-// When navigation leaves an image page, remove the old photo so it cannot remain visible.
+// Only when editing the caption is impossible do we remove the old photo.
 try {
 await ctx.deleteMessage();
 } catch {}
@@ -1623,15 +1636,6 @@ lastBotMessageIds.set(chatId, sent?.message_id ?? msg.message_id);
 lastBotMessageTouched.set(chatId, Date.now());
 return sent;
 } catch {}
-try {
-await ctx.editMessageCaption(text, extra);
-lastBotMessageIds.set(chatId, msg.message_id);
-lastBotMessageTouched.set(chatId, Date.now());
-return msg;
-} catch (err) {
-const desc = err?.description ?? err?.message ?? "";
-if (/not modified/i.test(desc)) return msg;
-}
 }
 if (msg) {
 try {
@@ -3003,18 +3007,19 @@ void fastPollOrder(order.id, 180, 2000).catch(err => console.error("Background o
 
 async function showMyOrders(ctx, page) {
 const limit = 8; const offset = (page - 1) * limit;
-const res = await q("SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3", [ctx.from.id, limit + 1, offset]);
+// طلباتي تقرأ الحالة مباشرة من PostgreSQL وتخفي الطلبات المحذوفة من الإدارة.
+const res = await q("SELECT * FROM orders WHERE user_id=$1 AND admin_hidden=false ORDER BY created_at DESC LIMIT $2 OFFSET $3", [ctx.from.id, limit + 1, offset]);
 const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
 if (!slice.length) { await sendOrEdit(ctx, "📭 لا يوجد لديك أي طلبات بعد.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
 const lines = slice.map(r => `🛒 ${r.product_name} ×${r.qty} • ${Number(r.price_usd).toFixed(2)}$ • ${statusLabel(r.status)}`);
 const orderRows = [];
 for (const r of slice) {
-const row = [];
+const row = [Markup.button.callback("📄 عرض التفاصيل", `ord:details:${r.id}`)];
 if (r.status === "pending") {
 row.push(Markup.button.callback("🔄 تحديث الحالة", `ord:check:${r.id}`));
 if (r.cancel_enabled && r.cancel_url && r.cancel_available_at && new Date(r.cancel_available_at).getTime() <= Date.now()) row.push(Markup.button.callback("❌ إلغاء الطلب", `api2cancel:${r.id}`));
 }
-if (row.length) orderRows.push(row);
+orderRows.push(row);
 }
 const navRow = [];
 if (page > 1) navRow.push(Markup.button.callback("⬅️ السابق", `myorders:${page - 1}`));
@@ -3024,6 +3029,37 @@ for (const row of orderRows) kb.push(row);
 if (navRow.length) kb.push(navRow);
 kb.push([Markup.button.callback("🏠 الرئيسية", "home")]);
 await sendOrEdit(ctx, `📦 طلباتي\n\n${lines.join("\n")}`, Markup.inlineKeyboard(kb));
+}
+
+// ── تفاصيل الطلب للمستخدم (نفس رسالة Telegram قدر الإمكان) ──────────
+async function showUserOrderDetails(ctx, orderId) {
+const row = (await q("SELECT * FROM orders WHERE id=$1 AND admin_hidden=false", [orderId])).rows[0];
+if (!row || Number(row.user_id) !== Number(ctx.from.id)) {
+await sendOrEdit(ctx, "⚠️ الطلب غير موجود.", Markup.inlineKeyboard([[Markup.button.callback("📦 طلباتي", "myorders:1")], [Markup.button.callback("🏠 الرئيسية", "home")]]));
+return;
+}
+const rate = await getExchangeRate();
+const priceUsd = Number(row.price_usd);
+const priceSyp = Math.round(priceUsd * rate);
+const inputLines = formatOrderInputLines(row);
+const duration = formatExecutionDuration(row.execution_duration_ms);
+const providerText = providerReplyText(row.api_response, row.delivered_code);
+const lines = [
+`📄 تفاصيل الطلب #${row.id}`,
+`📊 الحالة: ${statusLabel(row.status)}`,
+`🛒 ${row.product_name} × ${row.qty}`,
+`💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`,
+`🕐 التاريخ: ${new Date(row.created_at).toLocaleString("en-US")}`,
+];
+if (duration) lines.push(`⏱️ مدة التنفيذ: ${duration}`);
+if (inputLines.length) lines.push("", ...inputLines);
+// نص API1 يوضع كما هو بدون كلمة "الرد" أو أي شرح من البوت.
+if (providerText) lines.push("", providerText);
+if (row.status === "pending") lines.push("", "⏳ سأُعلمك تلقائياً عند اكتمال طلبك.");
+const kb = [];
+if (row.status === "pending") kb.push([Markup.button.callback("🔄 تحديث الحالة", `ord:check:${row.id}`)]);
+kb.push([Markup.button.callback("📦 طلباتي", "myorders:1"), Markup.button.callback("🏠 الرئيسية", "home")]);
+await sendOrEdit(ctx, lines.filter(Boolean).join("\n"), Markup.inlineKeyboard(kb));
 }
 
 function buildCancelUrl(rawUrl, source, order) {
@@ -3306,6 +3342,7 @@ async function notifyOrderResult(bot, order, status, deliveredCode = null, resp 
     const text = await buildOrderResultMessage(order, status, deliveredCode, resp);
     await bot.telegram.sendMessage(order.user_id, text, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
     await q("UPDATE orders SET result_notified_at=NOW(), result_notify_attempts=result_notify_attempts+1 WHERE id=$1", [order.id]);
+    console.log("Order result sent:", { orderId: order.id, userId: order.user_id, status, attempts: "ok" });
     return true;
   } catch (e) {
     await q("UPDATE orders SET result_notify_attempts=result_notify_attempts+1 WHERE id=$1", [order.id]).catch(() => {});
@@ -3317,7 +3354,7 @@ async function notifyOrderResult(bot, order, status, deliveredCode = null, resp 
 }
 
 async function checkOrderStatus(ctx, orderId) {
-const row = (await q("SELECT * FROM orders WHERE id=$1", [orderId])).rows[0];
+const row = (await q("SELECT * FROM orders WHERE id=$1 AND admin_hidden=false", [orderId])).rows[0];
 if (!row || Number(row.user_id) !== Number(ctx.from.id)) { await ctx.reply("⚠️ غير موجود."); return; }
 if (!row.oranos_order_id && !row.oranos_uuid) {
 await ctx.reply(`الحالة الحالية لطلبك: ${statusLabel(row.status)}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
@@ -3441,6 +3478,7 @@ async function pollOneOrder(bot, order) {
     const latest = (await q("SELECT * FROM orders WHERE id=$1", [order.id])).rows[0] ||
       { ...order, status: finalStatus, delivered_code: code, api_response: resp };
 
+    console.log("Order final status extracted:", { orderId: order.id, finalStatus, providerOrderId: order.oranos_order_id ?? null, duration: extractProviderDuration(resp) ?? null });
     await notifyOrderResult(bot, latest, finalStatus, code, resp);
     return true;
   }
@@ -4276,6 +4314,8 @@ const lines = [
 const rows = [];
 if (o.status === "accept") rows.push([Markup.button.callback("❌ جعل الطلب مرفوضاً + إعادة الرصيد", `adm:orderReject:${o.id}`)]);
 if (o.status === "reject") rows.push([Markup.button.callback("✅ جعل الطلب مقبولاً + خصم الرصيد", `adm:orderAccept:${o.id}`)]);
+// حذف ناعم: يخفي الطلب من قائمة "طلباتي" عند المستخدم فقط، ويبقى في السجل الإداري.
+rows.push([Markup.button.callback(o.admin_hidden ? "♻️ إظهار في قائمة المستخدم" : "🗑️ حذف من قائمة المستخدم", `adm:orderHideAsk:${o.id}`)]);
 rows.push([Markup.button.callback("⬅️ رجوع", backAction)]);
 await sendOrEdit(ctx, lines.join("\n"), Markup.inlineKeyboard(rows));
 }
@@ -4343,6 +4383,35 @@ await showAdminOrderDetails(ctx, oid, `adm:userOrders:${uid}:${page}`);
 
 bot.action(/^adm:orderReject:(\d+)$/, async ctx => { await adminChangeOrderStatus(ctx, Number(ctx.match[1]), "reject"); });
 bot.action(/^adm:orderAccept:(\d+)$/, async ctx => { await adminChangeOrderStatus(ctx, Number(ctx.match[1]), "accept"); });
+
+// ── تفاصيل الطلب للمستخدم ───────────────────────────────────────────
+bot.action(/^ord:details:(\d+)$/, async ctx => {
+await ensureUser(ctx);
+await safeNav(ctx, () => showUserOrderDetails(ctx, Number(ctx.match[1])), ctx.match[0]);
+});
+
+// ── حذف/إظهار الطلب من قائمة المستخدم (soft delete للإدارة) ─────────
+bot.action(/^adm:orderHideAsk:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const oid = Number(ctx.match[1]);
+const o = (await q("SELECT admin_hidden FROM orders WHERE id=$1", [oid])).rows[0];
+if (!o) { await ctx.reply("⚠️ الطلب غير موجود."); return; }
+if (o.admin_hidden) {
+await q("UPDATE orders SET admin_hidden=false WHERE id=$1", [oid]);
+await ctx.reply("♻️ تم إظهار الطلب في قائمة المستخدم.");
+return;
+}
+await ctx.reply("⚠️ حذف الطلب من قائمة المستخدم\n\nسيبقى الطلب محفوظاً في السجل الإداري، ولن يظهر بعد الآن في «طلباتي» عند المستخدم.",
+Markup.inlineKeyboard([[Markup.button.callback("✅ تأكيد الحذف", `adm:orderHide:${oid}`), Markup.button.callback("❌ إلغاء", "admin:menu")]]));
+});
+bot.action(/^adm:orderHide:(\d+)$/, async ctx => {
+if (!(await requireAdmin(ctx))) return;
+const oid = Number(ctx.match[1]);
+const o = (await q("SELECT user_id FROM orders WHERE id=$1", [oid])).rows[0];
+if (!o) { await ctx.reply("⚠️ الطلب غير موجود."); return; }
+await q("UPDATE orders SET admin_hidden=true WHERE id=$1", [oid]);
+await ctx.reply("🗑️ تم حذف الطلب من قائمة المستخدم.");
+});
 
 bot.action(/^adm:userMarkup:(\d+)$/, async ctx => { if (!(await requireAdmin(ctx))) return; const uid = Number(ctx.match[1]); const u = await getUser(uid); setStep(ctx.from.id, { kind: "admin:setUserMarkup", userId: uid }); await ctx.reply(`% نسبة ربح ${u?.first_name ?? uid}\nالحالية: ${u?.custom_markup_percent ?? "غير محددة"}\nأرسل النسبة أو reset:`, Markup.inlineKeyboard([[Markup.button.callback("❌ إلغاء", `adm:user:${uid}`)]])); });
 
