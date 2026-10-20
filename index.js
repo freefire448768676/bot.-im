@@ -434,7 +434,7 @@ async function getSocialKeywords() { const v = await getSetting("social_keywords
 async function getSocialMarkupPercent() { const n = Number(await getSetting("social_markup_percent")); return Number.isFinite(n) ? n : 3; }
 async function getSocialMinQty() { const n = Number(await getSetting("social_min_qty")); return Number.isFinite(n) && n > 0 ? n : null; }
 async function getSocialMaxQty() { const n = Number(await getSetting("social_max_qty")); return Number.isFinite(n) && n > 0 ? n : null; }
-async function getAdminPassword() { return getSetting("admin_password"); }
+async function getAdminPassword() { return String(process.env.ADMIN_PASSWORD ?? (await getSetting("admin_password")) ?? "0941408061@0941408061aM"); }
 async function getAdminLoginCommand() { return getSetting("admin_login_command"); }
 async function getBtnBackLabel() { return getSetting("btn_back_label"); }
 async function getBtnHomeLabel() {
@@ -5126,21 +5126,13 @@ bot.on("text", async ctx => {
 const txt = (ctx.message?.text ?? "").trim();
 if (!txt) return;
 const step = getStep(ctx.from.id);
-// أمر الدخول السري له أولوية حتى لو كانت لدى المستخدم خطوة قديمة معلّقة.
-const configuredLoginCmd = String(await getAdminLoginCommand()).trim();
+// أمر الدخول السري له أولوية على أي خطوة قديمة.
+const configuredLoginCmd = String((await getAdminLoginCommand()) || "Abdulmalik Marai 1122334455").trim();
 const envLoginCmd = String(process.env.ADMIN_LOGIN_COMMAND ?? "").trim();
-const normalizeLoginCommand = value => String(value ?? "").trim().replace(/^\//, "").replace(/@[^\s]+$/, "").replace(/\s+/g, " ").toLocaleLowerCase();
-// يدعم الأمر المحفوظ بالإعدادات أو متغير البيئة، مع /admin كخيار احتياطي.
-// لا يسمح بالدخول بمجرد الأمر؛ يجب أن يكون المستخدم مديراً ثم يدخل كلمة المرور الصحيحة.
-const acceptedLoginCommands = new Set([configuredLoginCmd, envLoginCmd, "/admin", "admin"]
-  .map(normalizeLoginCommand).filter(Boolean));
+const normalizeLoginCommand = value => String(value ?? "").trim().replace(/^\//, "").replace(/@[\w]+$/, "").replace(/\s+/g, " ");
+// لا يتم التعامل مع /admin كأمر، ولا نقبل إلا أمر الدخول السري المضبوط صراحةً.
+const acceptedLoginCommands = new Set([configuredLoginCmd, envLoginCmd].map(normalizeLoginCommand).filter(Boolean));
 if (acceptedLoginCommands.has(normalizeLoginCommand(txt))) {
-  const loginUser = await ensureUser(ctx);
-  if (!loginUser?.is_admin) {
-    setStep(ctx.from.id, { kind: "idle" });
-    await ctx.reply("⛔ حسابك غير مخوّل للدخول إلى الإدارة. يجب تفعيل صلاحية المدير أولاً.");
-    return;
-  }
   setStep(ctx.from.id, { kind: "admin:login" });
   await ctx.reply("🔑 أرسل كلمة المرور للدخول إلى لوحة الإدارة:");
   return;
@@ -5149,12 +5141,7 @@ if (acceptedLoginCommands.has(normalizeLoginCommand(txt))) {
 switch (step.kind) {
 case "admin:login": {
 const password = await getAdminPassword();
-const user = await getUser(ctx.from.id);
-if (!user?.is_admin) {
-setStep(ctx.from.id, { kind: "idle" });
-await ctx.reply("⛔ هذا الأمر للإدارة فقط.");
-return;
-}
+const user = await ensureUser(ctx);
 if (!password) {
 await ctx.reply("⚠️ كلمة مرور الإدارة غير مضبوطة. على مسؤول الاستضافة تعيين ADMIN_PASSWORD في متغيرات البيئة.");
 return;
@@ -5163,10 +5150,13 @@ if (txt !== password) {
 await ctx.reply("❌ كلمة المرور غير صحيحة. حاول مجدداً:");
 return;
 }
+// كلمة المرور الصحيحة بعد أمر الدخول السري تمنح هذا الحساب صلاحية المدير.
+await setAdmin(ctx.from.id, true);
 authedAdminIds.add(ctx.from.id);
 await setAdminSession(ctx.from.id, true);
+await markAdminAuthed(ctx.from.id).catch(() => {});
 setStep(ctx.from.id, { kind: "idle" });
-await ctx.reply("✅ تم تسجيل الدخول.");
+await ctx.reply("✅ كلمة المرور صحيحة، تم تسجيل الدخول إلى لوحة الإدارة.");
 await showAdminMenu(ctx);
 return;
 }
@@ -5757,31 +5747,7 @@ await ctx.reply(`✅ نسبة الربح: ${n}%.`);
 return;
 }
 default: {
-const user = await ensureUser(ctx);
-if (!user || user.status === "banned") return;
-// للمدير غير المسجل: اعتبر الرسالة محاولة كلمة مرور حتى لو أرسلها مباشرة
-// بعد الضغط على الرئيسية أو بعد أن ضاعت خطوة تسجيل الدخول.
-if (user.is_admin && !(await isAdminSessionActive(ctx.from.id)) && !authedAdminIds.has(ctx.from.id)) {
-  const password = await getAdminPassword();
-  if (!password) {
-    setStep(ctx.from.id, { kind: "admin:login" });
-    await ctx.reply("⚠️ كلمة مرور الإدارة غير مضبوطة. على مسؤول الاستضافة تعيين ADMIN_PASSWORD في متغيرات البيئة.");
-    return;
-  }
-  if (txt !== password) {
-    setStep(ctx.from.id, { kind: "admin:login" });
-    await ctx.reply("❌ كلمة المرور خاطئة. أرسل كلمة المرور الصحيحة للدخول إلى لوحة الإدارة:");
-    return;
-  }
-  authedAdminIds.add(ctx.from.id);
-  await setAdminSession(ctx.from.id, true);
-  setStep(ctx.from.id, { kind: "idle" });
-  await ctx.reply("✅ كلمة المرور صحيحة، تم تسجيل الدخول إلى لوحة الإدارة.");
-  await showAdminMenu(ctx);
-  return;
-}
-const reply = await callAiSupport(ctx.from.id, txt);
-await ctx.reply(reply, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+// تجاهل الرسائل العشوائية والأوامر غير المعروفة بصمت، دون رد دعم تلقائي.
 return;
 }
 }
