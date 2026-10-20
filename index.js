@@ -2985,7 +2985,10 @@ return;
 }
 
 // نجاح إنشاء الطلب لا يعني اكتمال التنفيذ؛ لا نعتبره منتهياً إلا بحالة نهائية صريحة.
-const initialIsFinalAccept = ACCEPT_STATUSES.has(initialStatus) && !["success", "successful", "approved", "accepted", "true", "1"].includes(String(initialStatus).toLowerCase());
+const hasDeliveredResult = Boolean(extractDeliveredCode(resp)) || Boolean(providerReplyText(resp, extractDeliveredCode(resp)));
+const initialIsFinalAccept = ACCEPT_STATUSES.has(initialStatus) && (
+  !["success", "successful", "approved", "accepted", "true", "1"].includes(String(initialStatus).toLowerCase()) || hasDeliveredResult
+);
 if (initialIsFinalAccept) {
 const deliveredCode = extractDeliveredCode(resp);
 const updated = await q(
@@ -3077,7 +3080,23 @@ if (row.status === "pending") lines.push("", "⏳ سأُعلمك تلقائيا�
 const kb = [];
 if (row.status === "pending") kb.push([Markup.button.callback("🔄 تحديث الحالة", `ord:check:${row.id}`)]);
 kb.push([Markup.button.callback("📦 طلباتي", "myorders:1"), Markup.button.callback("🏠 الرئيسية", "home")]);
-await sendOrEdit(ctx, lines.filter(Boolean).join("\n"), Markup.inlineKeyboard(kb));
+const detailsText = lines.filter(Boolean).join("\n");
+const detailsKeyboard = Markup.inlineKeyboard(kb);
+const mainImage = (await getSetting("main_menu_image_file_id").catch(() => "")) || "";
+if (mainImage) {
+  try {
+    if (detailsText.length <= 1000) await ctx.replyWithPhoto(mainImage, { caption: detailsText, ...detailsKeyboard });
+    else {
+      await ctx.replyWithPhoto(mainImage, { caption: `📄 تفاصيل الطلب #${row.id}`, ...detailsKeyboard });
+      await ctx.reply(detailsText, detailsKeyboard);
+    }
+  } catch (e) {
+    console.error("Order details photo failed:", e?.message ?? e);
+    await sendOrEdit(ctx, detailsText, detailsKeyboard);
+  }
+} else {
+  await sendOrEdit(ctx, detailsText, detailsKeyboard);
+}
 }
 
 function buildCancelUrl(rawUrl, source, order) {
@@ -3418,7 +3437,23 @@ async function notifyOrderResult(bot, order, status, deliveredCode = null, resp 
   _resultNotifyInFlight.add(order.id);
   try {
     const text = await buildOrderResultMessage(order, status, deliveredCode, resp);
-    await bot.telegram.sendMessage(order.user_id, text, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
+    const keyboard = Markup.inlineKeyboard([[Markup.button.callback("📄 عرض تفاصيل الطلب", `ord:details:${order.id}`)], [Markup.button.callback("🏠 الرئيسية", "home")]]);
+    // أرسل صورة واجهة المتجر مع إشعار النتيجة إن كانت مضبوطة، حتى تبقى ظاهرة للمستخدم.
+    const mainImage = (await getSetting("main_menu_image_file_id").catch(() => "")) || "";
+    if (mainImage) {
+      try {
+        if (text.length <= 1000) await bot.telegram.sendPhoto(order.user_id, mainImage, { caption: text, ...keyboard });
+        else {
+          await bot.telegram.sendPhoto(order.user_id, mainImage, { caption: `📄 تفاصيل الطلب #${order.id}`, ...keyboard });
+          await bot.telegram.sendMessage(order.user_id, text, keyboard);
+        }
+      } catch (photoErr) {
+        console.error("Order result photo send failed; falling back to text:", order.id, photoErr?.message ?? photoErr);
+        await bot.telegram.sendMessage(order.user_id, text, keyboard);
+      }
+    } else {
+      await bot.telegram.sendMessage(order.user_id, text, keyboard);
+    }
     await q("UPDATE orders SET result_notified_at=NOW(), result_notify_attempts=result_notify_attempts+1 WHERE id=$1", [order.id]);
     console.log("Order result sent:", { orderId: order.id, userId: order.user_id, status, attempts: "ok" });
     return true;
@@ -3938,7 +3973,7 @@ await sendOrEdit(ctx, text, Markup.inlineKeyboard(rows));
 async function showManualCategoriesAdmin(ctx) {
 if (!(await requireAdmin(ctx))) return;
 const cats = (await q("SELECT * FROM manual_categories WHERE parent_id=0 ORDER BY position")).rows;
-const rows = cats.map(c => [Markup.button.callback(`${c.active ? "📁" : "🔒"} ${c.name}`, `adm:mcManage:${c.id}`)]);
+const rows = cats.map(c => [Markup.button.callback(`${c.active ? "📁" : "🔒"} ${c.name}`, `adm:mcManage:${c.id}`), Markup.button.callback("➕ فرعي", `adm:addMcSub:${c.id}`)]);
 rows.push([Markup.button.callback("➕ إضافة قسم", "adm:addMc")]);
 rows.push([Markup.button.callback("⬅️ رجوع", "admin:menu")]);
 await sendOrEdit(ctx, "📁 الأقسام اليدوية:", Markup.inlineKeyboard(rows));
