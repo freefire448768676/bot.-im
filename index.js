@@ -4041,7 +4041,15 @@ bot.command("menu", async ctx => { await showMainMenu(ctx, { forceNew: true }); 
 bot.command("balance", async ctx => { const u = await ensureUser(ctx); if (!u) return; await ctx.reply(`💰 رصيدك: ${formatBalance(Number(u.balance), await getExchangeRate())}`); });
 bot.command("deposit", async ctx => { await ensureUser(ctx); setStep(ctx.from.id, { kind: "idle" }); await showDepositMenu(ctx); });
 bot.command("orders", async ctx => { await ensureUser(ctx); await showMyOrders(ctx, 1); });
-bot.command("support", async ctx => { await ensureUser(ctx); await showContactLinks(ctx); });
+bot.command("support", async ctx => {
+const user = await ensureUser(ctx);
+if (user?.is_admin && !(await isAdminSessionActive(ctx.from.id)) && !authedAdminIds.has(ctx.from.id)) {
+  setStep(ctx.from.id, { kind: "admin:login" });
+  await ctx.reply("🔐 أرسل كلمة المرور للدخول إلى لوحة الإدارة:");
+  return;
+}
+await showContactLinks(ctx);
+});
 
 bot.command("admin", async ctx => {
 const user = await ensureUser(ctx);
@@ -4082,7 +4090,16 @@ const rate = await getExchangeRate();
 await sendOrEdit(ctx, `💰 رصيدك: ${formatBalance(Number(u.balance), rate)}`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
 });
 bot.action("deposit", async ctx => { await ensureUser(ctx); await showDepositMenu(ctx); });
-bot.action("support", async ctx => { await ensureUser(ctx); await showContactLinks(ctx); });
+bot.action("support", async ctx => {
+const user = await ensureUser(ctx);
+if (user?.is_admin && !(await isAdminSessionActive(ctx.from.id)) && !authedAdminIds.has(ctx.from.id)) {
+  setStep(ctx.from.id, { kind: "admin:login" });
+  await ctx.answerCbQuery().catch(() => {});
+  await ctx.reply("🔐 أرسل كلمة المرور للدخول إلى لوحة الإدارة:");
+  return;
+}
+await showContactLinks(ctx);
+});
 bot.action(/^myorders:(\d+)$/, async ctx => { await showMyOrders(ctx, Number(ctx.match[1])); });
 bot.action("noop", async ctx => { /* نقرة على رقم الصفحة */ });
 
@@ -5742,6 +5759,27 @@ return;
 default: {
 const user = await ensureUser(ctx);
 if (!user || user.status === "banned") return;
+// للمدير غير المسجل: اعتبر الرسالة محاولة كلمة مرور حتى لو أرسلها مباشرة
+// بعد الضغط على الرئيسية أو بعد أن ضاعت خطوة تسجيل الدخول.
+if (user.is_admin && !(await isAdminSessionActive(ctx.from.id)) && !authedAdminIds.has(ctx.from.id)) {
+  const password = await getAdminPassword();
+  if (!password) {
+    setStep(ctx.from.id, { kind: "admin:login" });
+    await ctx.reply("⚠️ كلمة مرور الإدارة غير مضبوطة. على مسؤول الاستضافة تعيين ADMIN_PASSWORD في متغيرات البيئة.");
+    return;
+  }
+  if (txt !== password) {
+    setStep(ctx.from.id, { kind: "admin:login" });
+    await ctx.reply("❌ كلمة المرور خاطئة. أرسل كلمة المرور الصحيحة للدخول إلى لوحة الإدارة:");
+    return;
+  }
+  authedAdminIds.add(ctx.from.id);
+  await setAdminSession(ctx.from.id, true);
+  setStep(ctx.from.id, { kind: "idle" });
+  await ctx.reply("✅ كلمة المرور صحيحة، تم تسجيل الدخول إلى لوحة الإدارة.");
+  await showAdminMenu(ctx);
+  return;
+}
 const reply = await callAiSupport(ctx.from.id, txt);
 await ctx.reply(reply, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
 return;
