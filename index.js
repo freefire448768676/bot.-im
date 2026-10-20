@@ -3053,7 +3053,7 @@ const rate = await getExchangeRate();
 const priceUsd = Number(row.price_usd);
 const priceSyp = Math.round(priceUsd * rate);
 const inputLines = formatOrderInputLines(row);
-const duration = formatExecutionDuration(row.execution_duration_ms);
+const duration = formatProviderDurationText(row.api_response);
 let providerText = providerReplyText(row.api_response, row.delivered_code);
 if (providerText && inputLines.length) {
 const inputValues = inputLines.map(l => l.split(": ").slice(1).join(": ").trim()).filter(Boolean);
@@ -3069,7 +3069,7 @@ const lines = [
 `🛒 ${row.product_name} × ${row.qty}`,
 `💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`,
 ];
-if (duration) lines.push(`⏱️ مدة التنفيذ: ${duration}`);
+if (duration) lines.push(`⏱️ مدة التنفيذ حسب المزوّد: ${duration}`);
 if (inputLines.length) lines.push("", ...inputLines);
 // نص API1 يوضع كما هو بدون كلمة "الرد" أو أي شرح من البوت.
 if (providerText) lines.push("", providerText);
@@ -3359,19 +3359,46 @@ walk(resp);
 return found[0] ?? null;
 }
 
+function formatProviderDurationText(resp) {
+  if (!resp || typeof resp !== "object") return null;
+  const keys = new Set(["duration_seconds", "execution_duration_seconds", "time_seconds", "duration", "execution_duration", "execution_time", "processing_time", "elapsed_time", "time_taken"]);
+  const found = [];
+  const walk = node => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) { node.forEach(walk); return; }
+    for (const [key, value] of Object.entries(node)) {
+      const k = String(key).trim().toLowerCase();
+      if (keys.has(k) && value !== null && value !== undefined && String(value).trim() !== "") found.push({key:k, value:String(value).trim()});
+      if (value && typeof value === "object") walk(value);
+    }
+  };
+  walk(resp);
+  if (!found.length) return null;
+  const item = found[0];
+  const raw = item.value.toLowerCase();
+  if (/^\d+(?:\.\d+)?$/.test(raw)) {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) return null;
+    // Numeric duration_seconds is seconds; generic duration is commonly minutes in provider APIs.
+    const seconds = item.key.endsWith("_seconds") || item.key === "time_seconds" ? n : (item.key === "duration" || item.key === "execution_duration" ? n * 60 : n);
+    return `${seconds % 1 ? seconds.toFixed(2).replace(/0+$/, "").replace(/\.$/, "") : seconds} ثانية`;
+  }
+  if (/\b0\s*(?:s|sec|seconds?)\b|صفر\s*ثانية/.test(raw)) return "0 ثانية";
+  return item.value;
+}
+
 function buildOrderResultMessage(order, status, deliveredCode = null, resp = null) {
 const priceUsd = Number(order.price_usd);
 const response = resp ?? order.api_response;
 const inputLines = formatOrderInputLines(order);
-const actualDuration = formatExecutionDuration(order?.execution_duration_ms);
-const providerDuration = actualDuration;
+const providerDuration = formatProviderDurationText(response);
 const providerText = providerReplyText(response, deliveredCode);
 return getExchangeRate().then(rate => {
 const priceSyp = Math.round(priceUsd * rate);
 const lines = [];
 if (status === "accept") {
 lines.push("تم تنفيذ طلبك بنجاح✅");
-if (providerDuration) lines.push(`تم تنفيذ طلبك خلال ${providerDuration}`);
+if (providerDuration) lines.push(`⏱️ مدة التنفيذ حسب المزوّد: ${providerDuration}`);
 lines.push(`🛒 ${order.product_name} × ${order.qty}`);
 lines.push(`💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`);
 if (inputLines.length) lines.push(...inputLines);
@@ -3490,12 +3517,15 @@ async function pollOneOrder(bot, order) {
 
     if (!resp) continue;
     console.log("API1 order status response:", order.id, JSON.stringify(sanitizeApiLog(resp)));
+    // بعض مزوّدي الخدمة يعيدون الحالة مباشرةً في الجذر بدل ربطها برقم الطلب.
+    // نفضّل الحالة المرتبطة بالطلب، ونستخدم حالة الجذر فقط إذا لم توجد حالة موجّهة.
     const targeted = extractStatusForOrder(resp, [ident.value]);
-    const rawNew = targeted || "";
-    if (!rawNew || ["err","error"].includes(String(rawNew).toLowerCase())) continue;
+    const rawNew = targeted || getBestApiStatus(resp) || "";
+    if (!rawNew || ["err","error","unknown","pending","processing","in_progress","in progress","waiting","queued"].includes(String(rawNew).toLowerCase())) continue;
 
-    const isRejected = REJECT_STATUSES.has(rawNew) || rawNew === "rejected";
-    const isAccepted = ACCEPT_STATUSES.has(rawNew) || rawNew === "accepted";
+    const normalizedStatus = String(rawNew).trim().toLowerCase();
+    const isRejected = REJECT_STATUSES.has(normalizedStatus) || normalizedStatus === "rejected";
+    const isAccepted = ACCEPT_STATUSES.has(normalizedStatus) || normalizedStatus === "accepted";
     if (!isRejected && !isAccepted) continue;
 
     const finalStatus = isRejected ? "reject" : "accept";
