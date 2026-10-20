@@ -2969,11 +2969,11 @@ resp = { status: "ERR", message: e?.message ?? "خطأ شبكة" };
 
 const orderApiId = extractProviderOrderId(resp) || order.oranos_uuid;
 console.log("API1 order create response:", JSON.stringify(sanitizeApiLog(resp)));
-const initialStatus = extractStatusForOrder(resp, [orderApiId, order.oranos_uuid]) || getBestApiStatus(resp);
+const initialStatus = extractStatusForOrder(resp, [orderApiId, order.oranos_uuid]) || "";
 
 if (REJECT_STATUSES.has(initialStatus) || initialStatus === "err") {
 const updated = await q(
-"UPDATE orders SET status='reject', oranos_order_id=$1, api_response=$2, execution_completed_at=NOW(), execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint) WHERE id=$3 AND status='pending' RETURNING id",
+"UPDATE orders SET status='reject', oranos_order_id=$1, api_response=$2, execution_completed_at=NOW(), execution_duration_ms=NULL WHERE id=$3 AND status='pending' RETURNING id",
 [orderApiId, JSON.stringify(resp), order.id]
 );
 if (!updated.rows.length) return;
@@ -2986,8 +2986,10 @@ return;
 
 if (ACCEPT_STATUSES.has(initialStatus)) {
 const deliveredCode = extractDeliveredCode(resp);
+// المدة تؤخذ من الموقع فقط، وإلا تبقى فارغة حتى يؤكد الفحص الحقيقي.
+const providerMs = providerDurationMs(resp);
 const updated = await q(
-"UPDATE orders SET status='accept', oranos_order_id=$1, api_response=$2, delivered_code=$3, execution_completed_at=NOW(), execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint) WHERE id=$4 AND status='pending' RETURNING id",
+`UPDATE orders SET status='accept', oranos_order_id=$1, api_response=$2, delivered_code=$3, execution_completed_at=NOW(), execution_duration_ms=${providerMs != null ? String(providerMs) : "NULL"} WHERE id=$4 AND status='pending' RETURNING id`,
 [orderApiId, JSON.stringify(resp), deliveredCode ?? null, order.id]
 );
 if (!updated.rows.length) return;
@@ -3011,24 +3013,30 @@ const limit = 8; const offset = (page - 1) * limit;
 const res = await q("SELECT * FROM orders WHERE user_id=$1 AND admin_hidden=false ORDER BY created_at DESC LIMIT $2 OFFSET $3", [ctx.from.id, limit + 1, offset]);
 const hasNext = res.rows.length > limit; const slice = res.rows.slice(0, limit);
 if (!slice.length) { await sendOrEdit(ctx, "📭 لا يوجد لديك أي طلبات بعد.", Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])); return; }
-const lines = slice.map(r => `🛒 ${r.product_name} ×${r.qty} • ${Number(r.price_usd).toFixed(2)}$ • ${statusLabel(r.status)}`);
-const orderRows = [];
+// ضمان وصول نتيجة الطلب للمستخدم حتى لو فاتها الإشعار التلقائي.
 for (const r of slice) {
-const row = [Markup.button.callback("📄 عرض التفاصيل", `ord:details:${r.id}`)];
+if (["accept","reject"].includes(r.status) && !r.result_notified_at) {
+void notifyOrderResult(_botRef, r, r.status, r.delivered_code, r.api_response).catch(() => {});
+}
+}
+const kb = [];
+for (const r of slice) {
+// اسم الطلب فقط بدون أي رقم أو رمز جانبه.
+const nameBtn = Markup.button.callback(`🛒 ${r.product_name} ×${r.qty}`.slice(0, 55), `ord:details:${r.id}`);
+const viewBtn = Markup.button.callback("📄 عرض التفاصيل", `ord:details:${r.id}`);
+const row = [nameBtn, viewBtn];
 if (r.status === "pending") {
 row.push(Markup.button.callback("🔄 تحديث الحالة", `ord:check:${r.id}`));
 if (r.cancel_enabled && r.cancel_url && r.cancel_available_at && new Date(r.cancel_available_at).getTime() <= Date.now()) row.push(Markup.button.callback("❌ إلغاء الطلب", `api2cancel:${r.id}`));
 }
-orderRows.push(row);
+kb.push(row);
 }
 const navRow = [];
 if (page > 1) navRow.push(Markup.button.callback("⬅️ السابق", `myorders:${page - 1}`));
 if (hasNext) navRow.push(Markup.button.callback("التالي ➡️", `myorders:${page + 1}`));
-const kb = [];
-for (const row of orderRows) kb.push(row);
 if (navRow.length) kb.push(navRow);
 kb.push([Markup.button.callback("🏠 الرئيسية", "home")]);
-await sendOrEdit(ctx, `📦 طلباتي\n\n${lines.join("\n")}`, Markup.inlineKeyboard(kb));
+await sendOrEdit(ctx, "📦 طلباتي\n\nاختر طلباً لعرض تفاصيله:", Markup.inlineKeyboard(kb));
 }
 
 // ── تفاصيل الطلب للمستخدم (نفس رسالة Telegram قدر الإمكان) ──────────
@@ -3038,18 +3046,28 @@ if (!row || Number(row.user_id) !== Number(ctx.from.id)) {
 await sendOrEdit(ctx, "⚠️ الطلب غير موجود.", Markup.inlineKeyboard([[Markup.button.callback("📦 طلباتي", "myorders:1")], [Markup.button.callback("🏠 الرئيسية", "home")]]));
 return;
 }
+if (["accept","reject"].includes(row.status) && !row.result_notified_at) {
+void notifyOrderResult(_botRef, row, row.status, row.delivered_code, row.api_response).catch(() => {});
+}
 const rate = await getExchangeRate();
 const priceUsd = Number(row.price_usd);
 const priceSyp = Math.round(priceUsd * rate);
 const inputLines = formatOrderInputLines(row);
 const duration = formatExecutionDuration(row.execution_duration_ms);
-const providerText = providerReplyText(row.api_response, row.delivered_code);
+let providerText = providerReplyText(row.api_response, row.delivered_code);
+if (providerText && inputLines.length) {
+const inputValues = inputLines.map(l => l.split(": ").slice(1).join(": ").trim()).filter(Boolean);
+providerText = providerText.split("\n").filter(line => {
+const t = line.trim();
+if (!t) return false;
+return !inputValues.some(v => v && (t === v || t.endsWith(": " + v) || t.includes(v)));
+}).join("\n").trim();
+}
 const lines = [
-`📄 تفاصيل الطلب #${row.id}`,
+`📄 تفاصيل الطلب`,
 `📊 الحالة: ${statusLabel(row.status)}`,
 `🛒 ${row.product_name} × ${row.qty}`,
 `💰 ${priceUsd.toFixed(2)}$ | ${priceSyp.toLocaleString("en-US")} ل.س`,
-`🕐 التاريخ: ${new Date(row.created_at).toLocaleString("en-US")}`,
 ];
 if (duration) lines.push(`⏱️ مدة التنفيذ: ${duration}`);
 if (inputLines.length) lines.push("", ...inputLines);
@@ -3223,11 +3241,18 @@ function formatOrderParamLabel(key) {
 }
 
 function formatOrderInputLines(order) {
-  const params = order?.params && typeof order.params === "object" ? order.params : {};
-  const entries = Object.entries(params).filter(([k, v]) => k !== "qty" && v != null && String(v).trim() !== "");
-  if (!entries.length) return [];
-  // بدون 📌: اسم الحقل العربي ثم القيمة التي أدخلها المستخدم.
-  return entries.map(([k, v]) => `${formatOrderParamLabel(k)}: ${String(v)}`);
+const params = order?.params && typeof order.params === "object" ? order.params : {};
+const entries = Object.entries(params).filter(([k, v]) => k !== "qty" && v != null && String(v).trim() !== "");
+if (!entries.length) return [];
+const seen = new Set();
+const lines = [];
+for (const [k, v] of entries) {
+const label = formatOrderParamLabel(k);
+if (seen.has(label)) continue;
+seen.add(label);
+lines.push(`${label}: ${String(v).trim()}`);
+}
+return lines;
 }
 
 function providerReplyText(resp, deliveredCode = null) {
@@ -3288,6 +3313,25 @@ function providerReplyText(resp, deliveredCode = null) {
   collectFallback(resp);
   if (deliveredCode && !fallback.includes(String(deliveredCode).trim())) fallback.unshift(String(deliveredCode).trim());
   return fallback.join("\n").trim() || null;
+}
+
+function providerDurationMs(resp) {
+const raw = extractProviderDuration(resp);
+if (raw == null) return null;
+const text = String(raw).trim().toLowerCase();
+if (!text) return null;
+if (/^\d+(?:\.\d+)?$/.test(text)) {
+const n = Number(text);
+if (!Number.isFinite(n) || n <= 0) return null;
+return Math.round(n * 60_000);
+}
+const hm = text.match(/(?:(\d+)\s*(?:h|hr|hour|hours|ساعة|ساعات)\s*)?(?:(\d+)\s*(?:m|min|minute|minutes|دقيقة|دقائق)\s*)?(?:(\d+)\s*(?:s|sec|second|seconds|ثانية|ثواني))?/);
+if (hm && (hm[1] || hm[2] || hm[3])) {
+const ms = (Number(hm[1] || 0) * 3600 + Number(hm[2] || 0) * 60 + Number(hm[3] || 0)) * 1000;
+return ms > 0 ? ms : null;
+}
+const n2 = Number(text.replace(/[^\d.]/g, ""));
+return Number.isFinite(n2) && n2 > 0 ? Math.round(n2 * 60_000) : null;
 }
 
 function extractProviderDuration(resp) {
@@ -3374,14 +3418,15 @@ if (!ACCEPT_STATUSES.has(firstStatus) && !REJECT_STATUSES.has(firstStatus) && ro
 }
 // البحث الموجّه برقم الطلب/الـUUID أولاً قبل الاعتماد على أي حالة عامة في الرد.
 const targeted = extractStatusForOrder(resp, [row.oranos_order_id, row.oranos_uuid]);
-const rawNew = targeted || getBestApiStatus(resp) || String(row.status ?? "").toLowerCase();
+const rawNew = targeted || "";
 const isRejected = REJECT_STATUSES.has(rawNew);
 const isAccepted = ACCEPT_STATUSES.has(rawNew);
 const finalStatus = isRejected ? "reject" : isAccepted ? "accept" : "pending";
 const code = extractDeliveredCode(resp);
 let latest = row.status;
 if (finalStatus !== row.status && row.status === "pending") {
-const updateSql = "UPDATE orders SET status=$1, api_response=$2, execution_completed_at=NOW(), execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint)" + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3") + " AND status='pending' RETURNING id";
+const providerMs = providerDurationMs(resp);
+const updateSql = "UPDATE orders SET status=$1, api_response=$2, execution_completed_at=NOW(), execution_duration_ms=" + (providerMs != null ? String(providerMs) : "GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint)") + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3") + " AND status='pending' RETURNING id";
 const updateParams = code ? [finalStatus, JSON.stringify(resp), code, row.id] : [finalStatus, JSON.stringify(resp), row.id];
 const updated = await q(updateSql, updateParams);
 if (updated.rows.length) {
@@ -3427,8 +3472,11 @@ async function pollOneOrder(bot, order) {
   for (const ident of identifiers) {
     let resp = null;
     try {
-      // API1 فقط لمسار فحص حالة الطلب الحالي.
-      resp = await checkOrder(ident.value, ident.byUuid);
+      if (order.api_source_id) {
+        const src = await getApiSource(order.api_source_id).catch(() => null);
+        if (src) resp = await checkApiSourceOrder(src, ident.value, ident.byUuid).catch(() => null);
+      }
+      if (!resp) resp = await checkOrder(ident.value, ident.byUuid);
     } catch (e) {
       console.error("Order status check failed:", order.id, e?.message ?? e);
       continue;
@@ -3437,7 +3485,7 @@ async function pollOneOrder(bot, order) {
     if (!resp) continue;
     console.log("API1 order status response:", order.id, JSON.stringify(sanitizeApiLog(resp)));
     const targeted = extractStatusForOrder(resp, [ident.value]);
-    const rawNew = targeted || getBestApiStatus(resp);
+    const rawNew = targeted || "";
     if (!rawNew || ["err","error"].includes(String(rawNew).toLowerCase())) continue;
 
     const isRejected = REJECT_STATUSES.has(rawNew) || rawNew === "rejected";
@@ -3447,9 +3495,10 @@ async function pollOneOrder(bot, order) {
     const finalStatus = isRejected ? "reject" : "accept";
     const code = extractDeliveredCode(resp);
 
+    const providerMs = providerDurationMs(resp);
     const updateSql =
       "UPDATE orders SET status=$1, api_response=$2, execution_completed_at=NOW(), " +
-      "execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint)" +
+      `execution_duration_ms=${providerMs != null ? String(providerMs) : "GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint)"}` +
       (code ? ", delivered_code=$3" : "") +
       " WHERE id=" + (code ? "$4" : "$3") + " AND status='pending' RETURNING id";
 
@@ -5660,6 +5709,13 @@ return;
 default: {
 const user = await ensureUser(ctx);
 if (!user || user.status === "banned") return;
+// أمر الدخول السري للإدارة: يطلب كلمة المرور بدلاً من الرد التلقائي.
+const loginCmd = (await getAdminLoginCommand()).trim();
+if (loginCmd && txt === loginCmd && user.is_admin) {
+setStep(ctx.from.id, { kind: "admin:login" });
+await ctx.reply("🔑 أرسل كلمة المرور:");
+return;
+}
 const reply = await callAiSupport(ctx.from.id, txt);
 await ctx.reply(reply, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
 return;
