@@ -1200,7 +1200,7 @@ apiSourceClients.delete(id);
 // Stored in the database once; existing rows are updated with the supplied token.
 const DEFAULT_API2_NAME = "المصدر الثاني - Maxstore1";
 const DEFAULT_API2_BASE_URL = "https://maxstore1.com";
-const DEFAULT_API2_TOKEN = "msk_NRw8ZXlYtdPBil0wSxz2sAT4AV58gMvo2ITGGq-YC14";
+const DEFAULT_API2_TOKEN = process.env.API2_TOKEN ?? "";
 const DEFAULT_API2_MARKUP = 5;
 
 async function ensureDefaultApi2() {
@@ -2973,7 +2973,7 @@ const initialStatus = extractStatusForOrder(resp, [orderApiId, order.oranos_uuid
 
 if (REJECT_STATUSES.has(initialStatus) || initialStatus === "err") {
 const updated = await q(
-"UPDATE orders SET status='reject', oranos_order_id=$1, api_response=$2, execution_completed_at=NOW(), execution_duration_ms=NULL WHERE id=$3 AND status='pending' RETURNING id",
+"UPDATE orders SET status='reject', oranos_order_id=$1, api_response=$2, execution_completed_at=NOW(), execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint) WHERE id=$3 AND status='pending' RETURNING id",
 [orderApiId, JSON.stringify(resp), order.id]
 );
 if (!updated.rows.length) return;
@@ -2984,12 +2984,12 @@ await notifyOrderResult(_botRef, latest, "reject", extractDeliveredCode(resp), r
 return;
 }
 
-if (ACCEPT_STATUSES.has(initialStatus)) {
+// نجاح إنشاء الطلب لا يعني اكتمال التنفيذ؛ لا نعتبره منتهياً إلا بحالة نهائية صريحة.
+const initialIsFinalAccept = ACCEPT_STATUSES.has(initialStatus) && !["success", "successful", "approved", "accepted", "true", "1"].includes(String(initialStatus).toLowerCase());
+if (initialIsFinalAccept) {
 const deliveredCode = extractDeliveredCode(resp);
-// المدة تؤخذ من الموقع فقط، وإلا تبقى فارغة حتى يؤكد الفحص الحقيقي.
-const providerMs = providerDurationMs(resp);
 const updated = await q(
-`UPDATE orders SET status='accept', oranos_order_id=$1, api_response=$2, delivered_code=$3, execution_completed_at=NOW(), execution_duration_ms=${providerMs != null ? String(providerMs) : "NULL"} WHERE id=$4 AND status='pending' RETURNING id`,
+`UPDATE orders SET status='accept', oranos_order_id=$1, api_response=$2, delivered_code=$3, execution_completed_at=NOW(), execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint) WHERE id=$4 AND status='pending' RETURNING id`,
 [orderApiId, JSON.stringify(resp), deliveredCode ?? null, order.id]
 );
 if (!updated.rows.length) return;
@@ -3161,8 +3161,9 @@ await ctx.reply("✅ تم إلغاء الطلب وإعادة قيمته إلى �
 
 function formatExecutionDuration(ms) {
   const n = Number(ms);
-  if (!Number.isFinite(n) || n < 0) return null;
-  const totalSeconds = Math.max(0, Math.round(n / 1000));
+  if (ms == null || !Number.isFinite(n) || n < 0) return null;
+  if (n < 1000) return `${(n / 1000).toFixed(2).replace(/0+$/, "").replace(/\.$/, "")} ثانية`;
+  const totalSeconds = Math.floor(n / 1000);
   if (totalSeconds < 60) return `${totalSeconds} ثانية`;
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -3242,12 +3243,18 @@ function formatOrderParamLabel(key) {
 
 function formatOrderInputLines(order) {
 const params = order?.params && typeof order.params === "object" ? order.params : {};
-const entries = Object.entries(params).filter(([k, v]) => k !== "qty" && v != null && String(v).trim() !== "");
+const entries = Object.entries(params).filter(([k, v]) => !["qty", "quantity"].includes(String(k).toLowerCase()) && v != null && String(v).trim() !== "");
 if (!entries.length) return [];
 const seen = new Set();
 const lines = [];
+const productName = String(order?.product_name ?? "").toLowerCase();
+const isGameOrder = /\b(game|gaming|pubg|free fire|freefire|mobile legends|mlbb|roblox|fortnite|minecraft|genshin|valorant|call of duty|codm|لعبة|العاب|ألعاب|ببجي|فري فاير|فريفاير|روبلكس|روبلوكس|كود موبايل)\b/i.test(productName);
 for (const [k, v] of entries) {
-const label = formatOrderParamLabel(k);
+let label = formatOrderParamLabel(k);
+const normalizedKey = String(k).toLowerCase().replace(/[\s-]+/g, "_");
+const isId = /^(id|ids|player_id|playerid|player|game_id|gameid|game|user_id|userid|uid|account_id|accountid)$/.test(normalizedKey) || /(?:^|_)(?:player|game|user|account)_?id$/.test(normalizedKey);
+if (isId && !isGameOrder) continue;
+if (isId) label = "الأيدي";
 if (seen.has(label)) continue;
 seen.add(label);
 lines.push(`${label}: ${String(v).trim()}`);
@@ -3357,7 +3364,7 @@ const priceUsd = Number(order.price_usd);
 const response = resp ?? order.api_response;
 const inputLines = formatOrderInputLines(order);
 const actualDuration = formatExecutionDuration(order?.execution_duration_ms);
-const providerDuration = extractProviderDuration(response) || extractProviderDuration(order?.api_response) || actualDuration;
+const providerDuration = actualDuration;
 const providerText = providerReplyText(response, deliveredCode);
 return getExchangeRate().then(rate => {
 const priceSyp = Math.round(priceUsd * rate);
@@ -3425,8 +3432,7 @@ const finalStatus = isRejected ? "reject" : isAccepted ? "accept" : "pending";
 const code = extractDeliveredCode(resp);
 let latest = row.status;
 if (finalStatus !== row.status && row.status === "pending") {
-const providerMs = providerDurationMs(resp);
-const updateSql = "UPDATE orders SET status=$1, api_response=$2, execution_completed_at=NOW(), execution_duration_ms=" + (providerMs != null ? String(providerMs) : "GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint)") + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3") + " AND status='pending' RETURNING id";
+const updateSql = "UPDATE orders SET status=$1, api_response=$2, execution_completed_at=NOW(), execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint)" + (code ? ", delivered_code=$3" : "") + " WHERE id=" + (code ? "$4" : "$3") + " AND status='pending' RETURNING id";
 const updateParams = code ? [finalStatus, JSON.stringify(resp), code, row.id] : [finalStatus, JSON.stringify(resp), row.id];
 const updated = await q(updateSql, updateParams);
 if (updated.rows.length) {
@@ -3495,10 +3501,9 @@ async function pollOneOrder(bot, order) {
     const finalStatus = isRejected ? "reject" : "accept";
     const code = extractDeliveredCode(resp);
 
-    const providerMs = providerDurationMs(resp);
     const updateSql =
       "UPDATE orders SET status=$1, api_response=$2, execution_completed_at=NOW(), " +
-      `execution_duration_ms=${providerMs != null ? String(providerMs) : "GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint)"}` +
+      "execution_duration_ms=GREATEST(0, (EXTRACT(EPOCH FROM (NOW()-COALESCE(execution_started_at,created_at)))*1000)::bigint)" +
       (code ? ", delivered_code=$3" : "") +
       " WHERE id=" + (code ? "$4" : "$3") + " AND status='pending' RETURNING id";
 
@@ -4990,7 +4995,7 @@ if (!updated.rows.length) { await ctx.reply("⚠️ تم معالجة الطلب
 await adjustBalance(Number(o.user_id), Number(o.price_usd));
 await ctx.reply("✅ تم الرفض وإعادة الرصيد.");
 const rate = await getExchangeRate(); const syp = Math.round(Number(o.price_usd) * rate);
-await ctx.telegram.sendMessage(o.user_id, `❌ تم رفض طلبك\n🛒 ${o.product_name}\n💰 تمت إعادة ${Number(o.price_usd).toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+await ctx.telegram.sendMessage(o.user_id, `❌ تم رفض طلبك\n🛒 ${o.product_name}\n📊 الحالة: مرفوض\n💰 تمت إعادة ${Number(o.price_usd).toFixed(2)}$ | ${syp.toLocaleString("en-US")} ل.س`, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(err => console.error("Manual order rejection notification failed:", oid, err?.message ?? err));
 });
 bot.action(/^adm:mordReply:(\d+)$/, async ctx => {
 if (!(await requireAdmin(ctx))) return;
@@ -5104,13 +5109,35 @@ bot.on("text", async ctx => {
 const txt = (ctx.message?.text ?? "").trim();
 if (!txt) return;
 const step = getStep(ctx.from.id);
+// أمر الدخول السري له أولوية حتى لو كانت لدى المستخدم خطوة قديمة معلّقة.
+const configuredLoginCmd = String(await getAdminLoginCommand()).trim();
+const normalizeLoginCommand = value => String(value ?? "").trim().replace(/^\//, "").replace(/@[^\s]+$/, "").toLocaleLowerCase();
+if (configuredLoginCmd && normalizeLoginCommand(txt) === normalizeLoginCommand(configuredLoginCmd)) {
+  const loginUser = await ensureUser(ctx);
+  if (!loginUser?.is_admin) {
+    await ctx.reply("⛔ هذا الأمر للإدارة فقط.");
+    return;
+  }
+  setStep(ctx.from.id, { kind: "admin:login" });
+  await ctx.reply("🔑 أرسل كلمة المرور للدخول إلى لوحة الإدارة:");
+  return;
+}
 
 switch (step.kind) {
 case "admin:login": {
 const password = await getAdminPassword();
 const user = await getUser(ctx.from.id);
-if (!user?.is_admin || !password || txt !== password) {
-await ctx.reply("❌ كلمة المرور غير صحيحة.");
+if (!user?.is_admin) {
+setStep(ctx.from.id, { kind: "idle" });
+await ctx.reply("⛔ هذا الأمر للإدارة فقط.");
+return;
+}
+if (!password) {
+await ctx.reply("⚠️ كلمة مرور الإدارة غير مضبوطة. على مسؤول الاستضافة تعيين ADMIN_PASSWORD في متغيرات البيئة.");
+return;
+}
+if (txt !== password) {
+await ctx.reply("❌ كلمة المرور غير صحيحة. حاول مجدداً:");
 return;
 }
 authedAdminIds.add(ctx.from.id);
@@ -5276,8 +5303,8 @@ return;
 }
 setStep(ctx.from.id, { kind: "idle" });
 await ctx.reply("✅ تم قبول وتسليم الطلب.");
-const message = `✅ تم تنفيذ طلبك\n🛒 ${order.product_name}${delivery ? `\n\n🔑 تفاصيل الطلب:\n${delivery}` : ""}`;
-await ctx.telegram.sendMessage(order.user_id, message, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(() => {});
+const message = `✅ تم تنفيذ طلبك\n🛒 ${order.product_name}\n📊 الحالة: مقبول${delivery ? `\n\n🔑 تفاصيل الطلب:\n${delivery}` : ""}`;
+await ctx.telegram.sendMessage(order.user_id, message, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]])).catch(err => console.error("Manual order acceptance notification failed:", step.orderId, err?.message ?? err));
 return;
 }
 case "admin:manualOrderReply": {
@@ -5709,13 +5736,6 @@ return;
 default: {
 const user = await ensureUser(ctx);
 if (!user || user.status === "banned") return;
-// أمر الدخول السري للإدارة: يطلب كلمة المرور بدلاً من الرد التلقائي.
-const loginCmd = (await getAdminLoginCommand()).trim();
-if (loginCmd && txt === loginCmd && user.is_admin) {
-setStep(ctx.from.id, { kind: "admin:login" });
-await ctx.reply("🔑 أرسل كلمة المرور:");
-return;
-}
 const reply = await callAiSupport(ctx.from.id, txt);
 await ctx.reply(reply, Markup.inlineKeyboard([[Markup.button.callback("🏠 الرئيسية", "home")]]));
 return;
