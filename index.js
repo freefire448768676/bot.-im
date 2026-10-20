@@ -5111,11 +5111,17 @@ if (!txt) return;
 const step = getStep(ctx.from.id);
 // أمر الدخول السري له أولوية حتى لو كانت لدى المستخدم خطوة قديمة معلّقة.
 const configuredLoginCmd = String(await getAdminLoginCommand()).trim();
-const normalizeLoginCommand = value => String(value ?? "").trim().replace(/^\//, "").replace(/@[^\s]+$/, "").toLocaleLowerCase();
-if (configuredLoginCmd && normalizeLoginCommand(txt) === normalizeLoginCommand(configuredLoginCmd)) {
+const envLoginCmd = String(process.env.ADMIN_LOGIN_COMMAND ?? "").trim();
+const normalizeLoginCommand = value => String(value ?? "").trim().replace(/^\//, "").replace(/@[^\s]+$/, "").replace(/\s+/g, " ").toLocaleLowerCase();
+// يدعم الأمر المحفوظ بالإعدادات أو متغير البيئة، مع /admin كخيار احتياطي.
+// لا يسمح بالدخول بمجرد الأمر؛ يجب أن يكون المستخدم مديراً ثم يدخل كلمة المرور الصحيحة.
+const acceptedLoginCommands = new Set([configuredLoginCmd, envLoginCmd, "/admin", "admin"]
+  .map(normalizeLoginCommand).filter(Boolean));
+if (acceptedLoginCommands.has(normalizeLoginCommand(txt))) {
   const loginUser = await ensureUser(ctx);
   if (!loginUser?.is_admin) {
-    await ctx.reply("⛔ هذا الأمر للإدارة فقط.");
+    setStep(ctx.from.id, { kind: "idle" });
+    await ctx.reply("⛔ حسابك غير مخوّل للدخول إلى الإدارة. يجب تفعيل صلاحية المدير أولاً.");
     return;
   }
   setStep(ctx.from.id, { kind: "admin:login" });
